@@ -4,7 +4,7 @@ import os
 import re
 import time
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 from langchain_openai import ChatOpenAI
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
@@ -26,8 +26,8 @@ BACKUP_MODELS_RAW = [
     PRIMARY_MODEL,
     "nvidia/nemotron-3-nano-30b-a3b:free",
     "arcee-ai/trinity-large-preview:free",
-    "google/gemma-3-27b-it:free",
-    "tngtech/deepseek-r1t2-chimera:free",
+    "qwen/qwen3-next-80b-a3b-instruct:free",
+    "arcee-ai/trinity-large-preview:free",
     "meta-llama/llama-3.3-70b-instruct:free",
 ]
 BACKUP_MODELS = [m.strip() for m in BACKUP_MODELS_RAW if isinstance(m, str) and m.strip()]
@@ -37,7 +37,7 @@ MAX_RETRIES = int(os.environ.get("OPENROUTER_MAX_RETRIES", "1"))
 TEMPERATURE = float(os.environ.get("OPENROUTER_TEMPERATURE", "0.2"))
 
 # =========================
-# Small-talk / intent gate (ANTI “jawab hi malah rekap KRS”)
+# Small-talk / intent gate
 # =========================
 _SMALLTALK_EXACT = {
     "hi", "halo", "hai", "hello", "hey", "p",
@@ -46,7 +46,6 @@ _SMALLTALK_EXACT = {
     "makasih", "terima kasih", "thanks", "thx",
     "ok", "oke", "sip", "mantap",
 }
-
 _SMALLTALK_CONTAINS = [
     "apa kabar", "how are you", "lagi apa", "siapa kamu", "kamu siapa",
 ]
@@ -60,7 +59,6 @@ def _is_smalltalk(q: str) -> bool:
         return True
     if any(p in ql for p in _SMALLTALK_CONTAINS):
         return True
-    # sapaan sangat pendek
     if len(ql.split()) <= 2 and any(w in ql for w in ["hi", "halo", "hai", "hello", "hey"]):
         return True
     return False
@@ -69,24 +67,32 @@ def _is_smalltalk(q: str) -> bool:
 def _smalltalk_reply() -> str:
     return (
         "Halo! 😊\n\n"
-        "Aku bisa bantu analisis transkrip/KRS kamu.\n"
-        "Coba tanya seperti:\n"
-        "- *nilai terendah saya apa?*\n"
-        "- *mata kuliah yang B paling banyak di mana?*\n"
-        "- *rekap nilai tertinggi → terendah*\n"
+        "Aku bisa bantu baca dokumen akademik kamu (KRS/jadwal/transkrip).\n"
+        "Contoh pertanyaan:\n"
+        "- *jam berapa saja saya kuliah dalam 1 minggu?*\n"
+        "- *rekap jadwal per hari*\n"
+        "- *hitung total SKS*\n"
+        "- *nilai terendah saya apa?* (kalau data nilai ada)\n"
     )
 
 
+# =========================
+# Intent & query detectors
+# =========================
 def _is_academic_question(q: str) -> bool:
     """
-    Heuristik cepat: kalau ada kata kunci akademik, jalankan RAG.
-    Kalau tidak ada, jangan paksakan RAG (biar tidak nyasar).
+    Perluas agar pertanyaan jadwal/hari/jam tidak ditolak.
     """
     ql = (q or "").lower()
     keywords = [
-        "nilai", "grade", "bobot", "ipk", "ips", "transkrip", "krs",
-        "mata kuliah", "mk", "sks", "lulus", "tidak lulus",
-        "semester", "rekap", "urut", "tertinggi", "terendah", "banyak b",
+        # nilai / transkrip
+        "nilai", "grade", "bobot", "ipk", "ips", "transkrip", "khs",
+        # krs / matkul
+        "krs", "kartu rencana studi", "mata kuliah", "matakuliah", "mk", "sks",
+        "semester", "rekap", "urut", "tertinggi", "terendah", "lulus",
+        # ✅ jadwal
+        "jadwal", "jam", "hari", "waktu", "kuliah", "kelas", "ruang", "dosen",
+        "senin", "selasa", "rabu", "kamis", "jumat", "jum'at", "sabtu", "minggu",
     ]
     return any(k in ql for k in keywords)
 
@@ -97,13 +103,18 @@ def _wants_grade(q: str) -> bool:
     return any(k in ql for k in keys)
 
 
+def _wants_schedule(q: str) -> bool:
+    ql = (q or "").lower()
+    keys = ["jadwal", "jam", "hari", "waktu", "kuliah", "kelas", "ruang", "dosen", "per hari", "minggu"]
+    return any(k in ql for k in keys)
+
+
 # =========================
-# Helpers
+# Helpers: sources & llm
 # =========================
 def _build_sources_from_docs(docs, max_sources: int = 8, snippet_len: int = 220):
     if not docs:
         return []
-
     seen = set()
     sources = []
     for d in docs:
@@ -130,24 +141,21 @@ def _invoke_text(llm: ChatOpenAI, prompt: str) -> str:
     return str(out)
 
 
+# =========================
+# Allowed columns (anti-halu) - UPDATED
+# =========================
 def _count_letter_grades(text: str) -> int:
-    """
-    Anti false-positive:
-    Hitung kemunculan nilai huruf (A, A-, B+, C-, D, E) pakai batas kata,
-    supaya tidak salah match ke kode matkul.
-    """
     if not text:
         return 0
-    # A sampai E dengan opsional +/-
     pattern = re.compile(r"\b([A-E])([+-])?\b", re.IGNORECASE)
     return len(pattern.findall(text))
 
 
 def _detect_allowed_columns(docs) -> List[str]:
     """
-    Anti-halu: izinkan kolom hanya jika ada bukti dari:
-    - metadata["columns"] (CSV/Excel) dari ingest.py
-    - keyword di page_content (PDF/Text)
+    Izinkan kolom adaptif berdasarkan bukti:
+    - metadata["columns"] (CSV/Excel/PDF baru)
+    - keyword di page_content
     """
     allowed = ["Kode", "Mata Kuliah"]
 
@@ -166,18 +174,34 @@ def _detect_allowed_columns(docs) -> List[str]:
     meta_cols_l = [c.lower() for c in meta_cols]
 
     def has_col(name: str, keywords: List[str]) -> bool:
-        name_l = name.lower()
-        if name_l in meta_cols_l:
+        nl = name.lower()
+        if nl in meta_cols_l:
             return True
         return any(k in blob for k in keywords)
 
-    # --- Grade / Nilai Huruf (PDF-friendly + anti false-positive) ---
+    # ---- Jadwal ----
+    if has_col("Hari", ["hari", "day", "senin", "selasa", "rabu", "kamis", "jum", "sabtu"]):
+        allowed.append("Hari")
+
+    # jam/time: cari pola 07:30 atau kata jam/waktu
+    if has_col("Jam", [" jam ", "waktu", "time"]) or re.search(r"\b\d{1,2}[:.]\d{2}\b", blob):
+        allowed.append("Jam")
+
+    if has_col("Dosen Pengampu", ["dosen", "pengampu", "lecturer"]):
+        allowed.append("Dosen Pengampu")
+
+    # kampus beda-beda: ada yang pakai Kelas/Ruang/Lab
+    if has_col("Kelas", ["kelas", "class", "ruang", "room", "lab"]):
+        allowed.append("Kelas")
+
+    if has_col("Ruang", ["ruang", "room", "lab"]):
+        allowed.append("Ruang")
+
+    # ---- Nilai / Transkrip ----
     grade_count = _count_letter_grades(blob)
     grade_keywords_hit = any(k in blob for k in ["grade", "nilai", "nilai huruf", "mutu"])
-    # header-like "nilai" sering muncul di tabel KHS
     has_nilai_header_like = any(k in blob for k in ["\nnilai\n", " nilai ", "nilai:", "nilai\t", "nilai |"])
 
-    # Threshold minimal: 3 kemunculan grade huruf agar yakin
     if has_col("Grade", ["grade", "nilai huruf", "mutu"]) or (
         (grade_keywords_hit or has_nilai_header_like) and grade_count >= 3
     ):
@@ -189,29 +213,182 @@ def _detect_allowed_columns(docs) -> List[str]:
     if has_col("SKS", ["sks", "credit"]):
         allowed.append("SKS")
 
-    # Semester rawan halu -> hanya izinkan jika benar-benar ada bukti
     if has_col("Semester", ["semester", "smt", "sem."]):
         allowed.append("Semester")
 
-    return allowed
+    # unik & urut
+    out: List[str] = []
+    seen = set()
+    for a in allowed:
+        al = a.lower()
+        if al in seen:
+            continue
+        seen.add(al)
+        out.append(a)
 
-
-def _has_interactive_sections(answer: str) -> bool:
-    a = (answer or "").lower()
-    return ("insight singkat" in a) and (("pertanyaan lanjutan" in a) or ("opsi cepat" in a))
-
-
-def _table_mentions_semester(answer: str) -> bool:
-    return "| semester |" in (answer or "").lower()
-
-
-def _looks_like_markdown_table(answer: str) -> bool:
-    a = (answer or "")
-    return ("|" in a) and ("---" in a)
+    return out
 
 
 # =========================
-# Output contract validators (model-agnostic)
+# Schedule rows (data-first answering)
+# =========================
+_TIME_RANGE_RE = re.compile(r"(\d{1,2}[:.]\d{2})\s*[-–]\s*(\d{1,2}[:.]\d{2})")
+
+
+def _extract_schedule_rows_from_docs(docs) -> List[Dict[str, Any]]:
+    """
+    Ambil schedule_rows dari metadata docs (hasil ingest.py baru).
+    Dedup + flatten.
+    """
+    rows: List[Dict[str, Any]] = []
+    seen = set()
+
+    for d in docs or []:
+        meta = getattr(d, "metadata", {}) or {}
+        sr = meta.get("schedule_rows")
+        if not isinstance(sr, list):
+            continue
+
+        for item in sr:
+            if not isinstance(item, dict):
+                continue
+            key = (
+                str(item.get("hari", "")),
+                str(item.get("jam", "")),
+                str(item.get("kode", "")),
+                str(item.get("mata_kuliah", "")),
+                str(item.get("kelas", "")),
+                str(item.get("ruang", "")),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            rows.append(item)
+
+    return rows
+
+
+def _group_schedule(rows: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Group by hari. Sort by time_start if possible.
+    """
+    by_day: Dict[str, List[Dict[str, Any]]] = {}
+
+    def time_key(jam: str) -> Tuple[int, int]:
+        jam = (jam or "").replace("–", "-")
+        m = _TIME_RANGE_RE.search(jam)
+        if not m:
+            return (99, 99)
+        t = m.group(1).replace(".", ":")
+        hh, mm = t.split(":")
+        return (int(hh), int(mm))
+
+    for r in rows:
+        day = (r.get("hari") or "").strip() or "Unknown"
+        by_day.setdefault(day, []).append(r)
+
+    for day, items in by_day.items():
+        items.sort(key=lambda x: time_key(str(x.get("jam", ""))))
+
+    return by_day
+
+
+def _render_schedule_table(rows: List[Dict[str, Any]], allowed_cols: List[str]) -> str:
+    """
+    Render tabel Markdown berdasarkan allowed_cols, tapi khusus jadwal
+    kita prefer kolom yang relevan.
+    """
+    # prioritas kolom jadwal
+    preferred = ["Hari", "Jam", "Kode", "Mata Kuliah", "SKS", "Dosen Pengampu", "Kelas", "Ruang"]
+    chosen = [c for c in preferred if c in allowed_cols or c in ["Hari", "Jam", "Kode", "Mata Kuliah"]]
+
+    # minimal
+    if "Hari" not in chosen:
+        chosen.insert(0, "Hari")
+    if "Jam" not in chosen:
+        chosen.insert(1, "Jam")
+    if "Kode" not in chosen:
+        chosen.append("Kode")
+    if "Mata Kuliah" not in chosen:
+        chosen.append("Mata Kuliah")
+
+    header = "| " + " | ".join(chosen) + " |"
+    sep = "| " + " | ".join(["---"] * len(chosen)) + " |"
+
+    def get_cell(r: Dict[str, Any], col: str) -> str:
+        col_l = col.lower()
+        if col_l == "hari":
+            return str(r.get("hari", "") or "")
+        if col_l == "jam":
+            return str(r.get("jam", "") or "")
+        if col_l == "kode":
+            return str(r.get("kode", "") or "")
+        if col_l == "mata kuliah":
+            return str(r.get("mata_kuliah", "") or "")
+        if col_l == "sks":
+            return str(r.get("sks", "") or "")
+        if col_l == "dosen pengampu":
+            return str(r.get("dosen", "") or "")
+        if col_l == "kelas":
+            return str(r.get("kelas", "") or "")
+        if col_l == "ruang":
+            return str(r.get("ruang", "") or "")
+        return ""
+
+    lines = [header, sep]
+    for r in rows:
+        lines.append("| " + " | ".join([get_cell(r, c).replace("\n", " ").strip() for c in chosen]) + " |")
+
+    return "\n".join(lines)
+
+
+def _schedule_answer_data_first(q: str, rows: List[Dict[str, Any]], sources: List[Dict[str, Any]], allowed_cols: List[str]) -> Dict[str, Any]:
+    """
+    Jawab pertanyaan jadwal berbasis rows terstruktur (lebih akurat).
+    Tidak perlu LLM untuk menghasilkan data.
+    """
+    by_day = _group_schedule(rows)
+
+    # Ringkasan jam per hari
+    lines = []
+    for day, items in by_day.items():
+        jams = [str(it.get("jam", "")).strip() for it in items if str(it.get("jam", "")).strip()]
+        # dedup jam
+        seen = set()
+        jams_u = []
+        for j in jams:
+            if j in seen:
+                continue
+            seen.add(j)
+            jams_u.append(j)
+        if jams_u:
+            lines.append(f"- **{day}**: " + ", ".join(jams_u))
+
+    table_md = _render_schedule_table(rows, allowed_cols)
+
+    answer = (
+        "## Ringkasan\n"
+        "Berikut rekap jadwal kuliah kamu dari dokumen yang terunggah.\n\n"
+        "## Tabel\n"
+        f"{table_md}\n\n"
+        "## Insight Singkat\n"
+        + ("\n".join(lines) if lines else "- Jadwal berhasil diambil dari tabel dokumen.\n")
+        + "\n\n"
+        "## Pertanyaan Lanjutan\n"
+        "Kamu mau aku rekap berdasarkan apa?\n"
+        "- per hari (lebih ringkas)\n"
+        "- mata kuliah paling pagi / paling sore\n"
+        "- total jam kuliah per minggu\n\n"
+        "## Opsi Cepat\n"
+        "- [Rekap jadwal per hari]\n"
+        "- [Hitung total jam kuliah per minggu]\n"
+    )
+
+    return {"answer": answer, "sources": sources}
+
+
+# =========================
+# Output contract validators
 # =========================
 _REQUIRED_HEADINGS = [
     "## Ringkasan",
@@ -228,10 +405,6 @@ def _missing_headings(md: str) -> List[str]:
 
 
 def _extract_table_headers(md: str) -> List[List[str]]:
-    """
-    Ambil semua header tabel Markdown: baris pertama '| ... |' yang diikuti baris pemisah '---'
-    Return list of header lists.
-    """
     if not md:
         return []
     lines = [l.strip() for l in md.splitlines()]
@@ -256,24 +429,16 @@ def _find_illegal_columns(md: str, allowed_cols: List[str]) -> List[str]:
 
 
 def _grade_intent_addressed(md: str, allowed_cols: List[str]) -> bool:
-    """
-    Jika user minta nilai:
-    - valid jika ada kolom Grade/Bobot di tabel, ATAU
-    - jawaban jelas bilang data nilai tidak ada.
-    """
     a = (md or "").lower()
     if ("data nilai" in a) and ("tidak" in a or "belum" in a or "tidak ada" in a):
         return True
-
     allowed_l = {c.lower() for c in (allowed_cols or [])}
     if "grade" in allowed_l and "| grade |" in a:
         return True
     if "bobot" in allowed_l and "| bobot |" in a:
         return True
-
     if re.search(r"\|\s*(grade|bobot)\s*\|", a):
         return True
-
     return False
 
 
@@ -297,8 +462,6 @@ Aturan:
   ## Opsi Cepat
 - Jika pertanyaan user meminta nilai tapi Grade/Bobot tidak ada di ALLOWED_COLUMNS:
   tulis jelas "data nilai tidak ditemukan" dan jangan buat tabel seolah rekap nilai.
-- Jika data multi semester, pisahkan tabel per semester pakai:
-  ### Semester 1, ### Semester 2, dst (jika relevan).
 
 Jawaban lama:
 {answer}
@@ -307,6 +470,16 @@ Tulis ulang jawaban (Markdown) yang sudah diperbaiki:
 """
     fixed = _invoke_text(llm, repair_prompt).strip()
     return fixed or answer
+
+
+def _has_interactive_sections(answer: str) -> bool:
+    a = (answer or "").lower()
+    return ("insight singkat" in a) and (("pertanyaan lanjutan" in a) or ("opsi cepat" in a))
+
+
+def _looks_like_markdown_table(answer: str) -> bool:
+    a = (answer or "")
+    return ("|" in a) and ("---" in a)
 
 
 # =========================
@@ -327,9 +500,11 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
     if not _is_academic_question(q):
         return {
             "answer": (
-                "Aku bisa bantu analisis transkrip/KRS kamu. 😊\n\n"
-                "Biar aku tepat menjawab, kamu ingin tanya tentang apa?\n"
-                "Contoh: *nilai terendah*, *rekap nilai*, *mata kuliah yang B paling banyak*, atau *IPK/IPS*."
+                "Aku bisa bantu baca dokumen akademik kamu (KRS/jadwal/transkrip). 😊\n\n"
+                "Biar aku tepat, kamu mau tanya tentang:\n"
+                "- jadwal/jam kuliah\n"
+                "- daftar mata kuliah + SKS\n"
+                "- nilai/IPK/IPS (kalau data nilai ada)\n"
             ),
             "sources": [],
         }
@@ -353,17 +528,41 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
     docs = retriever.invoke(q)
     if not isinstance(docs, list):
         docs = list(docs) if docs else []
+
     sources = _build_sources_from_docs(docs)
     allowed_cols = _detect_allowed_columns(docs)
     allowed_cols_str = ", ".join(allowed_cols)
 
+    # =========================
+    # ✅ DATA-FIRST ROUTE: jadwal
+    # =========================
+    if _wants_schedule(q):
+        schedule_rows = _extract_schedule_rows_from_docs(docs)
+        if schedule_rows:
+            # jawab langsung berbasis data (akurat)
+            logger.info(
+                "📅 schedule_rows found=%s -> data-first answer",
+                len(schedule_rows),
+                extra={"request_id": request_id},
+            )
+            return _schedule_answer_data_first(q, schedule_rows, sources, allowed_cols)
+
+        # kalau tidak ada schedule_rows, lanjut ke LLM RAG biasa
+        logger.warning(
+            "📅 schedule intent but schedule_rows missing -> fallback to LLM RAG",
+            extra={"request_id": request_id},
+        )
+
+    # =========================
+    # Guardrail: nilai diminta tapi tidak ada kolom nilai
+    # =========================
     wants_grade = _wants_grade(q)
     has_grade_cols = any(c in allowed_cols for c in ["Grade", "Bobot"])
     if wants_grade and not has_grade_cols:
         return {
             "answer": (
                 "## Ringkasan\n"
-                "Aku menemukan data mata kuliah/semester dari dokumen kamu, tapi **data nilai (Grade/Bobot) tidak ada** di dokumen yang terunggah.\n\n"
+                "Aku menemukan data mata kuliah/jadwal dari dokumen kamu, tapi **data nilai (Grade/Bobot) tidak ada** di dokumen yang terunggah.\n\n"
                 "## Tabel\n"
                 "_Aku belum bisa menampilkan rekap nilai karena kolom nilai tidak tersedia di dokumen._\n\n"
                 "## Insight Singkat\n"
@@ -373,18 +572,21 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
                 "Kamu mau aku rekap apa dulu berdasarkan data yang ada?\n\n"
                 "## Opsi Cepat\n"
                 "- [Rekap mata kuliah per semester]\n"
-                "- [Hitung total SKS per semester]\n"
+                "- [Hitung total SKS]\n"
             ),
             "sources": sources,
         }
 
+    # =========================
+    # LLM RAG (default)
+    # =========================
     template = """
-Anda adalah asisten akademik yang teliti, ramah, dan proaktif. Anda membantu mahasiswa memahami nilai & progres akademiknya dari dokumen transkrip/KRS.
+Anda adalah asisten akademik yang teliti, ramah, dan proaktif. Anda membantu mahasiswa memahami dokumen akademik (KRS/jadwal/transkrip).
 
 ATURAN TAAT PERTANYAAN (PENTING):
 - Jawab sesuai maksud pertanyaan user.
+- Jika user bertanya jadwal/jam/hari, utamakan informasi jadwal.
 - Jika user tidak meminta rekap/daftar, jangan keluarkan tabel panjang.
-- Jika user bertanya singkat, jawab singkat + tawarkan opsi lanjut.
 - Jika user meminta NILAI/grade/bobot/ipk/ips tetapi Grade/Bobot tidak ada di ALLOWED_COLUMNS:
   JANGAN buat tabel seolah-olah rekap nilai. Jelaskan data nilai tidak ditemukan dan sebutkan kolom yang tersedia.
 
@@ -392,7 +594,6 @@ KONTRAK SKEMA (ANTI-HALU) — HARUS DIIKUTI:
 - Anda HANYA boleh menggunakan kolom dari daftar ALLOWED_COLUMNS berikut:
   {allowed_columns}
 - DILARANG membuat kolom lain atau mengisi nilai kolom yang tidak ada bukti di KONTEKS.
-- Jika "Semester" tidak ada di ALLOWED_COLUMNS, JANGAN tampilkan kolom Semester sama sekali.
 
 KONTRAK OUTPUT MARKDOWN (WAJIB, KONSISTEN):
 - Output HARUS punya heading berikut (persis):
@@ -401,15 +602,11 @@ KONTRAK OUTPUT MARKDOWN (WAJIB, KONSISTEN):
   ## Insight Singkat
   ## Pertanyaan Lanjutan
   ## Opsi Cepat
-- Jika data mencakup banyak semester: pecah tabel per semester memakai subheading:
-  ### Semester 1
-  ### Semester 2
-  dst (jika relevan).
 - Semua tabel wajib Markdown table (| dan ---).
 - Jangan menambah data di luar KONTEKS.
 
 ATURAN FORMAT:
-- Jika jawaban memuat daftar mata kuliah, WAJIB tampilkan dalam tabel Markdown.
+- Jika jawaban memuat daftar (mis: jadwal / daftar mata kuliah), WAJIB tampilkan dalam tabel Markdown.
 - Header tabel harus mengikuti kolom yang dipilih dari ALLOWED_COLUMNS (urutan bebas, tapi jangan tambahkan kolom lain).
 
 KONTEKS:
@@ -465,10 +662,9 @@ JAWABAN (Markdown):
                 issues.append(f"Kolom tabel tidak diizinkan: {', '.join(illegal_cols)}")
 
             if wants_grade and not _grade_intent_addressed(answer, allowed_cols):
-                issues.append("User meminta nilai, tapi jawaban tidak menampilkan Grade/Bobot dan tidak menjelaskan bahwa data nilai tidak tersedia.")
-
-            if ("Semester" not in allowed_cols) and _table_mentions_semester(answer):
-                issues.append("Kolom Semester muncul padahal tidak ada di ALLOWED_COLUMNS.")
+                issues.append(
+                    "User meminta nilai, tapi jawaban tidak menampilkan Grade/Bobot dan tidak menjelaskan bahwa data nilai tidak tersedia."
+                )
 
             if issues:
                 logger.warning(
@@ -478,12 +674,8 @@ JAWABAN (Markdown):
                 )
                 answer = _repair_answer(llm, answer, allowed_cols_str, issues)
 
+            # Pastikan ada lapisan interaktif
             if _looks_like_markdown_table(answer) and (not _has_interactive_sections(answer)):
-                logger.warning(
-                    "✨ Interactive layer missing -> enriching (model=%s)",
-                    model_name,
-                    extra={"request_id": request_id},
-                )
                 enrich_prompt = f"""
 Tambahkan lapisan interaktif TANPA mengubah isi tabel & tanpa menambah data baru.
 
