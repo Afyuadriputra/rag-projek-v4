@@ -1,97 +1,222 @@
-cara kerja frontend di frontend/src (struktur, alur data, dan komponen utama). Aku fokus ke arsitektur + flow yang dipakai saat login, chat, upload, dan sidebar.
+# Dokumentasi Frontend — Academic RAG System
 
-Arsitektur & Bootstrap
+Dokumen ini menjelaskan secara **detail dan rinci** cara kerja frontend di folder `frontend/src/`.
+Frontend menggunakan **React + Inertia.js + Vite** dan berkomunikasi dengan backend Django melalui API JSON.
 
-Entry point di main.tsx.
-Inisialisasi Inertia via createInertiaApp, resolve halaman dari frontend/src/pages/**.
-Konfigurasi global Axios untuk CSRF Django (X-CSRFToken + csrftoken).
-Import global styles index.css dan glass.css.
-Frontend memakai Inertia.js sebagai bridge ke Django, jadi halaman React di-resolve berdasarkan name yang dikirim backend (mis. Chat/Index, Auth/Login, Auth/Register).
-Layer API
+---
 
-api.ts
-Axios instance baseURL /api.
-Fungsi utama:
-sendChat(message, sessionId) → POST /api/chat/ → {answer, sources, session_id}.
-uploadDocuments(files) → POST /api/upload/ (multipart).
-getDocuments() → GET /api/documents/.
-deleteDocument(id) → DELETE /api/documents/<id>/.
-getSessions() → GET /api/sessions/.
-createSession(title?) → POST /api/sessions/.
-deleteSession(id) → DELETE /api/sessions/<id>/.
-getSessionHistory(id) → GET /api/sessions/<id>/.
-renameSession(id, title) → PATCH /api/sessions/<id>/.
-Tipe data kuat untuk response dan DocumentDto.
-Halaman Utama (Chat)
+## 1) Struktur Folder `frontend/src/`
 
-Index.tsx
-Props diterima dari backend (Inertia) sebagai initial state:
-user, initialHistory, documents, storage, sessions, activeSessionId.
-State utama:
-documents, storage, sessions, activeSession, items (chat thread), loading, dark, mobileMenuOpen, toast.
-Alur penting:
-On load: initialHistory diubah jadi ChatItem[] (user + assistant).
-Auto-load sessions saat login: getSessions() dipanggil di mount untuk sinkron list.
-onSend:
-Append user message → call sendChat → append assistant answer.
-onUploadChange:
-Upload → toast → refresh sidebar via getDocuments.
-Chat sessions:
-- Chat Baru → createSession() → set aktif + reset thread.
-- Pilih session → getSessionHistory() → render history.
-- Hapus session → confirm modal → deleteSession().
-- Rename session → renameSession().
-UI:
-Header (AppHeader) + Sidebar (KnowledgeSidebar) + Chat area (ChatThread + ChatComposer).
-Sidebar versi desktop dan drawer versi mobile.
-Auth Pages
+```
+frontend/src/
+  main.tsx
+  index.css
+  App.css
+  styles/
+    glass.css
+  pages/
+    Auth/
+      Login.tsx
+      Register.tsx
+    Chat/
+      Index.tsx
+  components/
+    atoms/
+      Avatar.tsx
+      Badge.tsx
+      IconButton.tsx
+      ProgressBar.tsx
+      ToggleSwitch.tsx
+    molecules/
+      ChatBubble.tsx
+      ChatComposer.tsx
+      DocumentItem.tsx
+      NavTabs.tsx
+      Toast.tsx
+      Toggle.tsx
+    organisms/
+      AppHeader.tsx
+      ChatThread.tsx
+      KnowledgeSidebar.tsx
+  lib/
+    api.ts
+    utils.ts
+```
 
-Login.tsx
-router.post("/login/") (Inertia) dengan username/password.
-Tampilkan error dari backend via errors.auth.
-Register.tsx
-router.post("/register/") dengan username/email/password/password_confirmation.
-Error handling per-field + error umum.
-Komponen UI
+---
 
-AppHeader.tsx
-Header sticky: logo, nav tab, toggle light/dark, dropdown profile.
-Logout via Inertia Link ke /logout/.
-KnowledgeSidebar.tsx
-Menampilkan list dokumen + status analyzed/processing.
-Tombol upload, progress storage.
-List chat session + tombol Chat Baru + delete.
-Pagination: tombol "Muat lagi" jika masih ada session berikutnya.
-ChatThread.tsx
-Render ChatBubble per item + auto scroll ke bawah.
-ChatComposer.tsx
-Input chat dengan textarea auto-resize.
-Enter untuk send, Shift+Enter untuk newline.
-Tombol upload + tombol kirim.
-ChatBubble.tsx
-Render bubble user/assistant.
-Untuk assistant: render Markdown (GFM) + sanitize.
-Fallback kalau model mengirim tabel plaintext (tab/spasi).
-Panel “Rujukan” (sources) bisa toggle.
-DocumentItem.tsx
-Deteksi ikon sesuai ekstensi file.
-Toast.tsx
-Notifikasi success/error.
-Styling & Utilities
+## 2) Entry Point — `main.tsx`
 
-Tailwind utility class + cn() (utils.ts).
-Banyak visual glass/blur dan animasi kecil langsung di komponen.
-Alur Data Utama (End‑to‑End)
+File ini adalah bootstrap Inertia + React.
 
-Backend render Inertia page Chat/Index dengan props awal.
-Index.tsx set state dari props.
-Chat:
-onSend → sendChat() → append jawaban.
-Upload:
-uploadDocuments() → refresh sidebar via getDocuments().
-Semua API lewat /api/* menggunakan Axios instance.
-Catatan Teknis yang Perlu Diketahui
+**Fungsi utama:**
+- Inisialisasi Inertia dengan `createInertiaApp`.
+- `resolve` halaman dari `frontend/src/pages/**`.
+- Setup global Axios CSRF header.
+- Load CSS global (`index.css`, `glass.css`).
 
-sendChat() di Index.tsx belum memasukkan sources ke state items.
-ChatBubble sudah siap menampilkan rujukan, tapi items hanya menyimpan text.
-Kalau mau rujukan tampil, items harus diberi sources: res.sources.
+**Dampak:**
+Setiap route Django Inertia (`Chat/Index`, `Auth/Login`, dll) akan dipetakan ke komponen React di folder `pages/`.
+
+---
+
+## 3) API Client — `lib/api.ts`
+
+Satu tempat untuk komunikasi ke backend.
+
+**Axios instance:**
+- `baseURL = /api`
+- CSRF header otomatis
+
+**Fungsi penting:**
+- `sendChat(message, sessionId)` → `POST /api/chat/`
+- `uploadDocuments(files)` → `POST /api/upload/` (multipart)
+- `getDocuments()` → `GET /api/documents/`
+- `deleteDocument(id)` → `DELETE /api/documents/<id>/`
+- `getSessions()` → `GET /api/sessions/`
+- `createSession()` → `POST /api/sessions/`
+- `deleteSession(id)` → `DELETE /api/sessions/<id>/`
+- `renameSession(id, title)` → `PATCH /api/sessions/<id>/`
+- `getSessionHistory(id)` → `GET /api/sessions/<id>/`
+
+---
+
+## 4) Halaman Auth — `pages/Auth`
+
+### 4.1 `Login.tsx`
+- Form username/password
+- Submit via `router.post("/login/")` (Inertia)
+- Menampilkan error dari backend (`errors.auth`)
+
+### 4.2 `Register.tsx`
+- Form username/email/password/password_confirmation
+- Submit via `router.post("/register/")`
+- Menampilkan error per field + error umum
+
+---
+
+## 5) Halaman Utama Chat — `pages/Chat/Index.tsx`
+
+Ini adalah **inti frontend** (dashboard chat + sidebar + upload + sessions).
+
+### 5.1 Props dari Backend
+Diterima lewat Inertia:
+- `user`
+- `initialHistory`
+- `documents`
+- `storage`
+- `sessions`
+- `activeSessionId`
+
+### 5.2 State utama
+- `items`: list chat (ChatBubble)
+- `documents`: list dokumen user
+- `storage`: quota/usage
+- `sessions`: list session chat
+- `activeSession`: session aktif
+- `loading`: status request utama
+- `toast`: notifikasi
+- `confirmDeleteId`: modal delete session
+- `confirmDeleteDocId`: modal delete dokumen
+- `deletingDocId`: progress delete dokumen
+
+### 5.3 Alur Chat
+1. User mengetik pesan di `ChatComposer`.
+2. `sendChat()` → backend.
+3. Response masuk ke `items`.
+
+### 5.4 Alur Upload
+1. Klik upload → file input hidden.
+2. `uploadDocuments()`.
+3. Toast tampil.
+4. `refreshDocuments()`.
+
+### 5.5 Alur Chat Session
+- **Chat baru**: `createSession()` → set aktif → reset thread.
+- **Select session**: `getSessionHistory()` → render history.
+- **Rename**: `renameSession()`.
+- **Delete**: modal confirm → `deleteSession()`.
+
+### 5.6 Alur Hapus Dokumen
+- Klik delete di sidebar.
+- Modal confirm.
+- `deleteDocument()`.
+- Progress overlay + spinner.
+- `refreshDocuments()`.
+
+---
+
+## 6) Organism Components
+
+### 6.1 `AppHeader.tsx`
+- Navbar atas
+- Toggle dark mode
+- Dropdown profile + logout
+
+### 6.2 `KnowledgeSidebar.tsx`
+- List dokumen (knowledge base)
+- List chat sessions
+- Upload button
+- Progress storage
+- Skeleton + overlay saat delete dokumen
+
+### 6.3 `ChatThread.tsx`
+- Render list chat bubble
+- Auto scroll ke bawah
+
+---
+
+## 7) Molecule Components
+
+### 7.1 `ChatBubble.tsx`
+- Render pesan user/assistant
+- Mendukung Markdown (ReactMarkdown + GFM)
+- Normalisasi `\n` → newline
+- Panel sources (rujukan dokumen)
+
+### 7.2 `ChatComposer.tsx`
+- Input chat
+- Upload button
+- Disable saat delete
+- Status line berubah saat proses
+
+### 7.3 `DocumentItem.tsx`
+- Menampilkan file dokumen + status embed
+- Tombol delete + spinner
+- Overlay “Menghapus…”
+
+### 7.4 `Toast.tsx`
+- Notifikasi global
+
+---
+
+## 8) Atoms & Util
+
+- `ProgressBar.tsx`: progress storage quota
+- `ToggleSwitch.tsx`: switch light/dark
+- `utils.ts`: helper `cn()` untuk className
+
+---
+
+## 9) UI/UX Notes
+
+- Layout menggunakan Tailwind utility classes.
+- Ada glass/blur aesthetic (`glass.css`).
+- Mobile support: sidebar drawer + safe area padding.
+- Chat composer selalu fixed di bawah.
+- Skeleton + overlay dipakai saat delete dokumen.
+
+---
+
+## 10) Ringkasan Flow Frontend
+
+1. Backend render `Chat/Index` via Inertia.
+2. Props masuk ke React → state init.
+3. User upload → backend → refresh docs.
+4. User chat → backend → history update.
+5. User manage sessions → create/rename/delete.
+6. UI selalu sinkron dengan API.
+
+---
+
+Jika dibutuhkan, dokumentasi ini bisa diperluas menjadi diagram arsitektur frontend atau flowchart UI/UX.
