@@ -1,3 +1,4 @@
+import React from "react";
 import DocumentItem from "@/components/molecules/DocumentItem";
 import type { DocStatus } from "@/components/molecules/DocumentItem";
 import ProgressBar from "@/components/atoms/ProgressBar";
@@ -13,17 +14,43 @@ type StorageInfo = {
 
 export default function KnowledgeSidebar({
   onUploadClick,
+  onCreateSession,
+  onSelectSession,
+  onDeleteSession,
+  onRenameSession,
+  onLoadMoreSessions,
+  onDeleteDocument,
+  deletingDocId,
+  disableUpload = false,
   docs,
+  sessions = [],
+  activeSessionId,
+  hasMoreSessions = false,
+  loadingMoreSessions = false,
   storage,
   storagePct = 0,
   className,
 }: {
   onUploadClick: () => void;
-  docs: Array<{ title: string; status: DocStatus }>;
+  onCreateSession: () => void;
+  onSelectSession: (sessionId: number) => void;
+  onDeleteSession: (sessionId: number) => void;
+  onRenameSession: (sessionId: number, title: string) => void;
+  onLoadMoreSessions: () => void;
+  onDeleteDocument: (docId: number) => void;
+  deletingDocId?: number | null;
+  disableUpload?: boolean;
+  docs: Array<{ id: number; title: string; status: DocStatus }>;
+  sessions?: Array<{ id: number; title: string; updated_at: string }>;
+  activeSessionId?: number;
+  hasMoreSessions?: boolean;
+  loadingMoreSessions?: boolean;
   storage?: StorageInfo;
   storagePct?: number;
   className?: string;
 }) {
+  const [editingId, setEditingId] = React.useState<number | null>(null);
+  const [editingTitle, setEditingTitle] = React.useState("");
   const analyzedCount = docs.filter((d) => d.status === "analyzed").length;
   const processingCount = docs.filter((d) => d.status === "processing").length;
 
@@ -78,7 +105,11 @@ export default function KnowledgeSidebar({
         {/* Upload Button */}
         <button
           onClick={onUploadClick}
-          className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-zinc-900 py-3 text-white shadow-lg shadow-zinc-200 transition-all hover:bg-zinc-800 hover:shadow-xl active:scale-[0.98]"
+          disabled={disableUpload}
+          className={cn(
+            "group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-zinc-900 py-3 text-white shadow-lg shadow-zinc-200 transition-all hover:bg-zinc-800 hover:shadow-xl active:scale-[0.98]",
+            disableUpload && "cursor-not-allowed opacity-60"
+          )}
         >
           <span className="material-symbols-outlined text-[20px] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5">
             cloud_upload
@@ -87,6 +118,135 @@ export default function KnowledgeSidebar({
             Unggah Dokumen
           </span>
         </button>
+      </div>
+
+      {/* --- Chat Sessions --- */}
+      <div className="px-4 pb-2">
+        <div className="mb-2 flex items-center justify-between px-2">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+            Chat
+          </div>
+          <button
+            type="button"
+            onClick={onCreateSession}
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-zinc-600 hover:bg-zinc-100"
+          >
+            <span className="material-symbols-outlined text-[14px]">add</span>
+            Chat Baru
+          </button>
+        </div>
+
+        <div className="max-h-[180px] overflow-y-auto scrollbar-hide">
+          {sessions.length > 0 ? (
+            <div className="space-y-1">
+              {sessions.map((s) => (
+                <div
+                  key={s.id}
+                  className={cn(
+                    "group flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-[12px] transition",
+                    activeSessionId === s.id
+                      ? "bg-zinc-900 text-white"
+                      : "bg-white/60 text-zinc-700 hover:bg-white"
+                  )}
+                >
+                  {editingId === s.id ? (
+                    <div className="flex flex-1 items-center gap-2">
+                      <input
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        className={cn(
+                          "flex-1 rounded-md px-2 py-1 text-[12px]",
+                          activeSessionId === s.id
+                            ? "border border-white/20 bg-white/10 text-white placeholder:text-white/70"
+                            : "border border-zinc-200 bg-white text-zinc-800 placeholder:text-zinc-400"
+                        )}
+                        placeholder="Judul chat"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            onRenameSession(s.id, editingTitle);
+                            setEditingId(null);
+                          }
+                          if (e.key === "Escape") {
+                            setEditingId(null);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onRenameSession(s.id, editingTitle);
+                          setEditingId(null);
+                        }}
+                        className="rounded-md p-1 text-white/80 hover:text-white"
+                        title="Simpan"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">check</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onSelectSession(s.id)}
+                        className="flex-1 truncate text-left"
+                        title={s.title}
+                      >
+                        {s.title || "Chat Baru"}
+                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(s.id);
+                            setEditingTitle(s.title || "Chat Baru");
+                          }}
+                          className={cn(
+                            "rounded-md p-1 transition",
+                            activeSessionId === s.id
+                              ? "text-white/80 hover:text-white"
+                              : "text-zinc-400 hover:text-zinc-800"
+                          )}
+                          title="Rename chat"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteSession(s.id)}
+                          className={cn(
+                            "rounded-md p-1 transition",
+                            activeSessionId === s.id
+                              ? "text-white/80 hover:text-white"
+                              : "text-zinc-400 hover:text-red-600"
+                          )}
+                          title="Hapus chat"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+              {hasMoreSessions && (
+                <button
+                  type="button"
+                  onClick={onLoadMoreSessions}
+                  disabled={loadingMoreSessions}
+                  className="mt-2 w-full rounded-xl border border-zinc-200 bg-white/70 px-3 py-2 text-[11px] font-semibold text-zinc-600 hover:bg-white disabled:opacity-60"
+                >
+                  {loadingMoreSessions ? "Memuat..." : "Muat lagi"}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 p-4 text-center text-[11px] text-zinc-500">
+              Belum ada chat. Klik “Chat Baru”.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* --- Scrollable List --- */}
@@ -100,7 +260,23 @@ export default function KnowledgeSidebar({
               Daftar Berkas
             </div>
             {docs.map((d, idx) => (
-              <DocumentItem key={idx} title={d.title} status={d.status} />
+              <div key={d.id ?? idx} className="relative">
+                <DocumentItem
+                  title={d.title}
+                  status={d.status}
+                  onDelete={() => onDeleteDocument(d.id)}
+                  isDeleting={deletingDocId === d.id}
+                  disableDelete={deletingDocId !== null && deletingDocId !== d.id}
+                />
+                {deletingDocId === d.id && (
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl border border-zinc-200 bg-white/60 backdrop-blur-[2px]">
+                    <div className="absolute inset-y-0 left-0 w-[40%] animate-pulse bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+                    <div className="absolute right-3 top-3 rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-semibold text-zinc-600 shadow-sm">
+                      Menghapus...
+                    </div>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         ) : (

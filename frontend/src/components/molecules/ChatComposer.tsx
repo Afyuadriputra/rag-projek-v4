@@ -5,10 +5,12 @@ export default function ChatComposer({
   onSend,
   onUploadClick,
   loading,
+  deletingDoc = false,
 }: {
   onSend: (message: string) => void;
   onUploadClick: () => void;
   loading?: boolean;
+  deletingDoc?: boolean;
 }) {
   const [value, setValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -115,9 +117,10 @@ export default function ChatComposer({
                 "text-zinc-800/70 hover:text-zinc-950",
                 "bg-white/10 hover:bg-white/18",
                 "border border-white/18 hover:border-white/32",
-                "shadow-[inset_0_1px_0_rgba(255,255,255,0.40)]"
+                "shadow-[inset_0_1px_0_rgba(255,255,255,0.40)]",
+                loading && "opacity-50 cursor-not-allowed"
               )}
-              title="Unggah dokumen"
+              title={deletingDoc ? "Sedang menghapus dokumen..." : "Unggah dokumen"}
             >
               <span className="material-symbols-outlined text-[22px] transition-transform duration-300 group-hover:rotate-12">
                 add_circle
@@ -150,6 +153,11 @@ export default function ChatComposer({
                   }
                 }}
               />
+              {loading && (
+                <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-zinc-600/70 font-medium">
+                  Input dinonaktifkan sementara
+                </div>
+              )}
             </div>
 
             {/* SEND BUTTON */}
@@ -190,7 +198,7 @@ export default function ChatComposer({
             {loading ? (
               <>
                 <span className="block size-1.5 animate-pulse rounded-full bg-zinc-600/50" />
-                Thinking...
+                {deletingDoc ? "Sedang menghapus..." : "Thinking..."}
               </>
             ) : (
               "Academic AI • Context Aware"

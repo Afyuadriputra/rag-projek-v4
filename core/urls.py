@@ -14,7 +14,10 @@ urlpatterns = [
     path('api/upload/', views.upload_api, name='upload_api'),
     path('api/chat/', views.chat_api, name='chat_api'),
     path('api/documents/', views.documents_api, name='documents_api'),
+    path('api/documents/<int:doc_id>/', views.document_detail_api, name='document_detail_api'),
     path('api/reingest/', views.reingest_api, name='reingest_api'),
+    path('api/sessions/', views.sessions_api, name='sessions_api'),
+    path('api/sessions/<int:session_id>/', views.session_detail_api, name='session_detail_api'),
 
 
 ]

@@ -163,15 +163,48 @@ LOGGING = {
             # - location: filename:lineno funcName (tetap jelas)
             #
             # Catatan: %(name)-28s akan left-align dan auto truncate di terminal.
+            # Layout umum: ringkas dan jelas untuk layar kecil
             "format": (
-                "%(log_color)s[%(asctime)s] %(levelname)-8s%(reset)s "
-                "%(cyan)s%(name)-28s%(reset)s "
-                "%(white)s rid=%(request_id)-10s%(reset)s "
-                "%(purple)s%(filename)s:%(lineno)4d %(funcName)-18s%(reset)s | "
-                "%(message)s"
+                "%(log_color)s%(levelname)-7s%(reset)s "
+                "%(white)s%(asctime)s%(reset)s "
+                "%(cyan)s%(name)-22s%(reset)s "
+                "%(white)srid=%(request_id)-10s%(reset)s "
+                "%(blue)s%(method)-6s%(reset)s "
+                "%(white)s%(path)-22s%(reset)s "
+                "%(status_color)s%(status)-3s%(reset)s "
+                "%(yellow)s%(duration_ms)4sms%(reset)s "
+                "%(white)suser=%(user)-10s ip=%(ip)-15s%(reset)s | "
+                "%(message)s "
+                "%(white)sua=%(agent)s%(reset)s "
+                "%(white)src=%(referer)s%(reset)s"
             ),
             "datefmt": "%H:%M:%S",
 
+            "log_colors": {
+                "DEBUG": "cyan",
+                "INFO": "green",
+                "WARNING": "yellow",
+                "ERROR": "red",
+                "CRITICAL": "red,bg_white",
+            },
+            "reset": True,
+        },
+        "request_compact": {
+            "()": "colorlog.ColoredFormatter",
+            # Layout khusus akses log: singkat, fokus ke aktivitas request
+            "format": (
+                "%(log_color)s%(levelname)-7s%(reset)s "
+                "%(white)s%(asctime)s%(reset)s "
+                "%(blue)s%(method)-6s%(reset)s "
+                "%(white)s%(path)-22s%(reset)s "
+                "%(status_color)s%(status)-3s%(reset)s "
+                "%(yellow)s%(duration_ms)4sms%(reset)s "
+                "%(white)suser=%(user)-10s ip=%(ip)-15s%(reset)s "
+                "%(white)srid=%(request_id)-10s%(reset)s "
+                "%(white)sua=%(agent)s%(reset)s "
+                "%(white)src=%(referer)s%(reset)s"
+            ),
+            "datefmt": "%H:%M:%S",
             "log_colors": {
                 "DEBUG": "cyan",
                 "INFO": "green",
@@ -190,6 +223,12 @@ LOGGING = {
             "filters": ["request_id"],
             "level": "DEBUG" if DEBUG else "INFO",
         },
+        "console_request": {
+            "class": "logging.StreamHandler",
+            "formatter": "request_compact",
+            "filters": ["request_id"],
+            "level": "INFO",
+        },
     },
 
     "loggers": {
@@ -201,7 +240,7 @@ LOGGING = {
 
         # Access log 1 baris per request (dari middleware kamu)
         "request": {
-            "handlers": ["console"],
+            "handlers": ["console_request"],
             "level": "INFO",
             "propagate": False,
         },

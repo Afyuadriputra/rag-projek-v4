@@ -4,6 +4,7 @@ import re
 import pdfplumber
 import pandas as pd
 import logging
+import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -23,6 +24,53 @@ _DAY_WORDS = {
 _TIME_RANGE_RE = re.compile(r"(\d{1,2}[:.]\d{2})\s*[-–]\s*(\d{1,2}[:.]\d{2})")
 # single time: 07:30
 _TIME_SINGLE_RE = re.compile(r"\b\d{1,2}[:.]\d{2}\b")
+_SEMESTER_RE = re.compile(r"\bsemester\s*(\d+)\b", re.IGNORECASE)
+
+# header mapping (normalized -> canonical)
+_HEADER_MAP = {
+    "kode": "kode",
+    "kode mk": "kode",
+    "kode matakuliah": "kode",
+    "kode matkul": "kode",
+    "course code": "kode",
+    "mk": "kode",
+    "mata kuliah": "mata_kuliah",
+    "matakuliah": "mata_kuliah",
+    "nama mata kuliah": "mata_kuliah",
+    "nama matakuliah": "mata_kuliah",
+    "course name": "mata_kuliah",
+    "nama": "mata_kuliah",
+    "hari": "hari",
+    "day": "hari",
+    "jam": "jam",
+    "waktu": "jam",
+    "time": "jam",
+    "sks": "sks",
+    "credit": "sks",
+    "credits": "sks",
+    "dosen": "dosen",
+    "pengampu": "dosen",
+    "dosen pengampu": "dosen",
+    "lecturer": "dosen",
+    "kelas": "kelas",
+    "class": "kelas",
+    "ruang": "ruang",
+    "room": "ruang",
+    "lab": "ruang",
+    "semester": "semester",
+}
+
+_CANON_LABELS = {
+    "kode": "Kode",
+    "mata_kuliah": "Mata Kuliah",
+    "hari": "Hari",
+    "jam": "Jam",
+    "sks": "SKS",
+    "dosen": "Dosen Pengampu",
+    "kelas": "Kelas",
+    "ruang": "Ruang",
+    "semester": "Semester",
+}
 
 
 # =========================
@@ -91,6 +139,38 @@ def _looks_like_header_row(row: List[str]) -> bool:
     return hits >= 2
 
 
+def _canonical_header(name: str) -> Optional[str]:
+    key = _norm_header(name)
+    if key in _HEADER_MAP:
+        return _HEADER_MAP[key]
+    # contains fallback
+    for k, v in _HEADER_MAP.items():
+        if k and k in key:
+            return v
+    return None
+
+
+def _canonical_columns_from_header(header: List[str]) -> Dict[int, str]:
+    mapping: Dict[int, str] = {}
+    for i, h in enumerate(header):
+        canon = _canonical_header(h)
+        if canon:
+            mapping[i] = canon
+    return mapping
+
+
+def _display_columns_from_mapping(mapping: Dict[int, str]) -> List[str]:
+    cols = []
+    seen = set()
+    for _, canon in mapping.items():
+        label = _CANON_LABELS.get(canon, canon.title())
+        if label.lower() in seen:
+            continue
+        seen.add(label.lower())
+        cols.append(label)
+    return cols
+
+
 def _find_idx(header_l: List[str], candidates: List[str]) -> Optional[int]:
     """
     Find first matching candidate in normalized header list.
@@ -110,6 +190,29 @@ def _find_idx(header_l: List[str], candidates: List[str]) -> Optional[int]:
 
 def _row_to_text(row: List[str]) -> str:
     return " | ".join([_norm(c) for c in row if _norm(c)]).strip()
+
+
+def _extract_semester_from_text(s: str) -> Optional[int]:
+    if not s:
+        return None
+    m = _SEMESTER_RE.search(str(s))
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except Exception:
+        return None
+
+
+def _detect_doc_type(detected_columns: Optional[List[str]], schedule_rows: Optional[List[Dict[str, Any]]]) -> str:
+    cols = [c.lower() for c in (detected_columns or [])]
+    if any(c in cols for c in ["hari", "jam", "ruang", "kelas"]):
+        return "schedule"
+    if schedule_rows:
+        return "schedule"
+    if any(c in cols for c in ["grade", "bobot", "nilai", "ips", "ipk"]):
+        return "transcript"
+    return "general"
 
 
 # =========================
@@ -147,12 +250,14 @@ def _extract_pdf_tables(pdf: pdfplumber.PDF) -> Tuple[str, List[str], List[Dict[
 
             # detect header
             header: Optional[List[str]] = None
+            canon_map: Dict[int, str] = {}
             if len(cleaned) >= 2 and _looks_like_header_row(cleaned[0]):
                 header = cleaned[0]
-                for c in header:
-                    c2 = _norm(c)
-                    if c2 and c2 not in detected_columns:
-                        detected_columns.append(c2)
+                canon_map = _canonical_columns_from_header(header)
+                # store display columns
+                for col in _display_columns_from_mapping(canon_map):
+                    if col not in detected_columns:
+                        detected_columns.append(col)
 
             # --- 2) schedule extraction from table ---
             if header:
@@ -208,6 +313,13 @@ def _extract_pdf_tables(pdf: pdfplumber.PDF) -> Tuple[str, List[str], List[Dict[
                         "kelas": row[kelas_idx] if kelas_idx is not None and kelas_idx < len(row) else "",
                         "ruang": row[ruang_idx] if ruang_idx is not None and ruang_idx < len(row) else "",
                     }
+
+                    # map extra columns if available via canon_map
+                    for idx, canon in canon_map.items():
+                        if canon in item:
+                            continue
+                        if idx < len(row):
+                            item[canon] = row[idx]
 
                     # accept row jika ada sinyal jadwal minimal:
                     # - day ada ATAU jam ada (lebih longgar agar tidak bolong)
@@ -339,8 +451,9 @@ def process_document(doc_instance) -> bool:
 
     detected_columns: Optional[List[str]] = None
     schedule_rows: Optional[List[Dict[str, Any]]] = None
+    semester_num: Optional[int] = _extract_semester_from_text(getattr(doc_instance, "title", ""))
 
-    logger.info("📄 MULAI PARSING: %s (Type: %s)", doc_instance.title, ext)
+    logger.info(" MULAI PARSING: %s (Type: %s)", doc_instance.title, ext)
 
     try:
         # =========================
@@ -365,51 +478,71 @@ def process_document(doc_instance) -> bool:
                     t = t.strip()
                     if t:
                         text_content += t + "\n"
+                        if semester_num is None:
+                            semester_num = _extract_semester_from_text(t)
 
-            logger.debug("✅ PDF Parsed. columns=%s schedule_rows=%s",
+            logger.debug(" PDF Parsed. columns=%s schedule_rows=%s",
                          len(detected_columns or []), len(schedule_rows or []))
+
+            # OCR fallback (optional) jika text kosong
+            if not (text_content or "").strip():
+                try:
+                    from pdf2image import convert_from_path  # type: ignore
+                    import pytesseract  # type: ignore
+                    logger.warning(" PDF text kosong -> mencoba OCR fallback")
+                    images = convert_from_path(file_path, first_page=1, last_page=min(2, len(pdf.pages)))
+                    ocr_texts = []
+                    for img in images:
+                        ocr_texts.append(pytesseract.image_to_string(img))
+                    ocr_blob = "\n".join([t.strip() for t in ocr_texts if t and t.strip()])
+                    if ocr_blob:
+                        text_content += ocr_blob + "\n"
+                        if semester_num is None:
+                            semester_num = _extract_semester_from_text(ocr_blob)
+                except Exception as e:
+                    logger.warning(" OCR fallback gagal/tdk tersedia: %s", e)
 
         elif ext in ["xlsx", "xls"]:
             try:
                 df = pd.read_excel(file_path).fillna("")
                 detected_columns = [str(c).strip() for c in list(df.columns) if str(c).strip()]
                 text_content = df.to_markdown(index=False)
-                logger.debug("✅ Excel Parsed: %s baris data.", len(df))
+                logger.debug(" Excel Parsed: %s baris data.", len(df))
             except Exception as e:
-                logger.error("❌ Gagal baca Excel %s: %s", doc_instance.title, e, exc_info=True)
+                logger.error(" Gagal baca Excel %s: %s", doc_instance.title, e, exc_info=True)
                 return False
 
         elif ext == "csv":
             try:
                 df = pd.read_csv(file_path)
             except Exception as e_comma:
-                logger.warning("⚠️ Gagal baca CSV pakai koma, mencoba titik-koma... (%s)", e_comma)
+                logger.warning(" Gagal baca CSV pakai koma, mencoba titik-koma... (%s)", e_comma)
                 try:
                     df = pd.read_csv(file_path, sep=";")
                 except Exception as e_semi:
-                    logger.warning("⚠️ Gagal baca CSV pakai titik-koma, mencoba encoding latin-1... (%s)", e_semi)
+                    logger.warning(" Gagal baca CSV pakai titik-koma, mencoba encoding latin-1... (%s)", e_semi)
                     try:
                         df = pd.read_csv(file_path, sep=None, engine="python", encoding="latin-1")
                     except Exception as e_final:
-                        logger.error("❌ CSV GAGAL TOTAL: %s. Error: %s", doc_instance.title, e_final, exc_info=True)
+                        logger.error(" CSV GAGAL TOTAL: %s. Error: %s", doc_instance.title, e_final, exc_info=True)
                         return False
 
             df = df.fillna("")
             detected_columns = [str(c).strip() for c in list(df.columns) if str(c).strip()]
             text_content = df.to_markdown(index=False)
-            logger.debug("✅ CSV Parsed: %s baris data.", len(df))
+            logger.debug(" CSV Parsed: %s baris data.", len(df))
 
         elif ext in ["md", "txt"]:
             with open(file_path, "r", encoding="utf-8") as f:
                 text_content = f.read()
-            logger.debug("✅ Text Parsed.")
+            logger.debug(" Text Parsed.")
 
         else:
-            logger.warning("⚠️ Tipe file tidak didukung: %s", ext)
+            logger.warning(" Tipe file tidak didukung: %s", ext)
             return False
 
         if not (text_content or "").strip():
-            logger.warning("⚠️ FILE KOSONG: %s tidak mengandung teks yang bisa dibaca.", doc_instance.title)
+            logger.warning(" FILE KOSONG: %s tidak mengandung teks yang bisa dibaca.", doc_instance.title)
             return False
 
         # =========================
@@ -419,7 +552,7 @@ def process_document(doc_instance) -> bool:
         chunks = splitter.split_text(text_content)
 
         if not chunks:
-            logger.warning("⚠️ CHUNKING GAGAL: Tidak ada potongan teks untuk %s.", doc_instance.title)
+            logger.warning(" CHUNKING GAGAL: Tidak ada potongan teks untuk %s.", doc_instance.title)
             return False
 
         # =========================
@@ -429,29 +562,40 @@ def process_document(doc_instance) -> bool:
 
         base_meta: Dict[str, Any] = {
             "user_id": str(doc_instance.user.id),
-            "doc_id": str(doc_instance.id),          # ✅ wajib untuk re-ingest delete
+            "doc_id": str(doc_instance.id),          
             "source": doc_instance.title,
             "file_type": ext,
         }
 
         if detected_columns:
-            base_meta["columns"] = detected_columns
+            # Chroma metadata hanya menerima primitive -> simpan sebagai JSON string
+            base_meta["columns"] = json.dumps(detected_columns, ensure_ascii=True)
 
         if schedule_rows:
+            if semester_num is not None:
+                for r in schedule_rows:
+                    if isinstance(r, dict) and "semester" not in r:
+                        r["semester"] = str(semester_num)
             # simpan lebih banyak (mis 220) supaya jadwal tidak kepotong,
             # tapi tetap aman (PDF KRS biasanya <= 50 baris)
-            base_meta["schedule_rows"] = schedule_rows[:220]
+            base_meta["schedule_rows"] = json.dumps(schedule_rows[:220], ensure_ascii=True)
+
+        if semester_num is not None:
+            base_meta["semester"] = int(semester_num)
+
+        doc_type = _detect_doc_type(detected_columns, schedule_rows)
+        base_meta["doc_type"] = doc_type
 
         metadatas = [base_meta for _ in chunks]
 
-        logger.debug("💾 Menyimpan ke ChromaDB... chunks=%s cols=%s schedule_rows=%s",
+        logger.debug(" Menyimpan ke ChromaDB... chunks=%s cols=%s schedule_rows=%s",
                      len(chunks), len(detected_columns or []), len(schedule_rows or []))
 
         vectorstore.add_texts(texts=chunks, metadatas=metadatas)
 
-        logger.info("✅ INGEST SELESAI: %s berhasil masuk Knowledge Base.", doc_instance.title)
+        logger.info(" INGEST SELESAI: %s berhasil masuk Knowledge Base.", doc_instance.title)
         return True
 
     except Exception as e:
-        logger.error("❌ CRITICAL ERROR di ingest.py pada file %s: %s", doc_instance.title, str(e), exc_info=True)
+        logger.error(" CRITICAL ERROR di ingest.py pada file %s: %s", doc_instance.title, str(e), exc_info=True)
         return False

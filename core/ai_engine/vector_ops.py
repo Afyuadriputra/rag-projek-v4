@@ -92,7 +92,7 @@ def purge_vectors_for_user(user_id: int) -> int:
         except Exception:
             pass
 
-        logger.warning("🔥 PURGE vectors user_id=%s deleted≈%s", user_id, count)
+        logger.warning(" PURGE vectors user_id=%s deleted≈%s", user_id, count)
         return count
     except Exception as e:
         logger.warning("vector_ops: purge_vectors_for_user failed err=%r where=%s", e, where)

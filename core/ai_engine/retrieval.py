@@ -4,6 +4,7 @@ import os
 import re
 import time
 import logging
+import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from langchain_openai import ChatOpenAI
@@ -35,6 +36,7 @@ BACKUP_MODELS = [m.strip() for m in BACKUP_MODELS_RAW if isinstance(m, str) and 
 REQUEST_TIMEOUT_SEC = int(os.environ.get("OPENROUTER_TIMEOUT", "45"))
 MAX_RETRIES = int(os.environ.get("OPENROUTER_MAX_RETRIES", "1"))
 TEMPERATURE = float(os.environ.get("OPENROUTER_TEMPERATURE", "0.2"))
+RAG_MAX_DISTANCE = float(os.environ.get("RAG_MAX_DISTANCE", "0.45"))  # lower is better (Chroma distance)
 
 # =========================
 # Small-talk / intent gate
@@ -49,6 +51,14 @@ _SMALLTALK_EXACT = {
 _SMALLTALK_CONTAINS = [
     "apa kabar", "how are you", "lagi apa", "siapa kamu", "kamu siapa",
 ]
+_SEMESTER_RE = re.compile(r"\bsemester\s*(\d+)\b", re.IGNORECASE)
+_TOPIC_KEYWORDS = {
+    "ai": ["ai", "artificial intelligence", "kecerdasan buatan", "machine learning", "deep learning", "pembelajaran mendalam", "computer vision", "pengolahan citra", "nlp", "pemrosesan bahasa alami", "data mining"],
+    "web": ["web", "pemrograman web", "fullstack", "frontend", "backend"],
+    "mobile": ["mobile", "android", "ios", "pemrograman mobile"],
+    "data": ["data", "sains data", "data science", "basis data", "database", "big data"],
+    "jaringan": ["jaringan", "network", "komunikasi data", "sistem operasi"],
+}
 
 
 def _is_smalltalk(q: str) -> bool:
@@ -66,7 +76,7 @@ def _is_smalltalk(q: str) -> bool:
 
 def _smalltalk_reply() -> str:
     return (
-        "Halo! 😊\n\n"
+        "Halo! \n\n"
         "Aku bisa bantu baca dokumen akademik kamu (KRS/jadwal/transkrip).\n"
         "Contoh pertanyaan:\n"
         "- *jam berapa saja saya kuliah dalam 1 minggu?*\n"
@@ -90,7 +100,7 @@ def _is_academic_question(q: str) -> bool:
         # krs / matkul
         "krs", "kartu rencana studi", "mata kuliah", "matakuliah", "mk", "sks",
         "semester", "rekap", "urut", "tertinggi", "terendah", "lulus",
-        # ✅ jadwal
+        #  jadwal
         "jadwal", "jam", "hari", "waktu", "kuliah", "kelas", "ruang", "dosen",
         "senin", "selasa", "rabu", "kamis", "jumat", "jum'at", "sabtu", "minggu",
     ]
@@ -107,6 +117,106 @@ def _wants_schedule(q: str) -> bool:
     ql = (q or "").lower()
     keys = ["jadwal", "jam", "hari", "waktu", "kuliah", "kelas", "ruang", "dosen", "per hari", "minggu"]
     return any(k in ql for k in keys)
+
+
+def _wants_semester(q: str) -> bool:
+    ql = (q or "").lower()
+    return "semester" in ql
+
+
+def _wants_krs_reco(q: str) -> bool:
+    ql = (q or "").lower()
+    keys = ["rekomendasi", "sarankan", "pilih", "ambil", "krs"]
+    # only treat as KRS recommendation if query is about KRS/jadwal/SKS
+    krs_signals = ["krs", "jadwal", "sks", "mata kuliah", "matakuliah", "mk"]
+    return any(k in ql for k in keys) and any(s in ql for s in krs_signals)
+
+
+def _wants_thesis_title(q: str) -> bool:
+    ql = (q or "").lower()
+    return any(k in ql for k in ["skripsi", "judul skripsi", "judul", "topik penelitian"])
+
+
+def _wants_thesis_followup(q: str) -> Optional[str]:
+    ql = (q or "").lower()
+    if "minat" in ql or ql.strip().startswith(("ai", "web", "mobile", "data", "jaringan")):
+        for key, kws in _TOPIC_KEYWORDS.items():
+            if any(k in ql for k in kws):
+                return key
+    return None
+
+
+def _extract_course_titles(docs) -> List[str]:
+    rows = _extract_schedule_rows_from_docs(docs)
+    titles = []
+    for r in rows:
+        mk = str(r.get("mata_kuliah", "")).strip()
+        if mk:
+            titles.append(mk)
+    return titles
+
+
+def _suggest_thesis_titles(topic_key: str, course_titles: List[str]) -> List[str]:
+    # heuristic: pick courses related to topic and build thesis ideas
+    rel = []
+    kws = _TOPIC_KEYWORDS.get(topic_key, [])
+    for t in course_titles:
+        tl = t.lower()
+        if any(k in tl for k in kws):
+            rel.append(t)
+    rel = list(dict.fromkeys(rel))[:5]
+    if topic_key == "ai":
+        base = [
+            "Klasifikasi teks akademik menggunakan Transformer",
+            "Deteksi plagiarisme dokumen PDF berbasis embedding",
+            "Rekomendasi KRS menggunakan model pembelajaran mesin",
+            "Ekstraksi jadwal kuliah dari PDF dengan OCR dan NLP",
+            "Chatbot akademik berbasis RAG untuk konsultasi KRS",
+        ]
+    elif topic_key == "web":
+        base = [
+            "Portal akademik berbasis web dengan analitik perilaku pengguna",
+            "Dashboard rekomendasi KRS berbasis data historis",
+            "Sistem manajemen dokumen akademik dengan pencarian semantik",
+        ]
+    elif topic_key == "mobile":
+        base = [
+            "Aplikasi mobile asisten akademik dengan notifikasi jadwal",
+            "OCR dokumen akademik di perangkat mobile",
+        ]
+    elif topic_key == "data":
+        base = [
+            "Analisis pola pengambilan mata kuliah berbasis data historis",
+            "Prediksi kelulusan mata kuliah menggunakan data akademik",
+        ]
+    elif topic_key == "general":
+        base = [
+            "Sistem rekomendasi KRS berbasis preferensi mahasiswa",
+            "Analisis pola pengambilan mata kuliah dan dampaknya terhadap IPK",
+            "Optimasi jadwal kuliah untuk meminimalkan konflik",
+            "Pencarian semantik dokumen akademik berbasis embedding",
+            "Analisis keterkaitan mata kuliah dan kompetensi lulusan",
+        ]
+    else:
+        base = [
+            "Optimasi jadwal kuliah untuk meminimalkan konflik",
+            "Sistem rekomendasi KRS berbasis preferensi mahasiswa",
+        ]
+    # enrich with course names if any
+    if rel:
+        base = [f"{b} (terkait: {', '.join(rel[:2])})" for b in base[:4]] + base[4:]
+    return base[:6]
+
+
+def _infer_doc_type(q: str) -> Optional[str]:
+    ql = (q or "").lower()
+    if any(k in ql for k in ["jadwal", "jam", "hari", "ruang", "kelas"]):
+        return "schedule"
+    if any(k in ql for k in ["transkrip", "nilai", "grade", "bobot", "ipk", "ips"]):
+        return "transcript"
+    if "krs" in ql:
+        return "schedule"
+    return None
 
 
 # =========================
@@ -170,6 +280,17 @@ def _detect_allowed_columns(docs) -> List[str]:
                 cs = str(c).strip()
                 if cs:
                     meta_cols.append(cs)
+        elif isinstance(cols, str):
+            # columns disimpan sebagai JSON string dari ingest
+            try:
+                parsed = json.loads(cols)
+                if isinstance(parsed, list):
+                    for c in parsed:
+                        cs = str(c).strip()
+                        if cs:
+                            meta_cols.append(cs)
+            except Exception:
+                pass
 
     meta_cols_l = [c.lower() for c in meta_cols]
 
@@ -213,7 +334,12 @@ def _detect_allowed_columns(docs) -> List[str]:
     if has_col("SKS", ["sks", "credit"]):
         allowed.append("SKS")
 
-    if has_col("Semester", ["semester", "smt", "sem."]):
+    # cek dari metadata semester
+    has_sem_meta = any(
+        isinstance((getattr(d, "metadata", {}) or {}).get("semester"), (int, str))
+        for d in (docs or [])
+    )
+    if has_col("Semester", ["semester", "smt", "sem."]) or has_sem_meta:
         allowed.append("Semester")
 
     # unik & urut
@@ -246,6 +372,11 @@ def _extract_schedule_rows_from_docs(docs) -> List[Dict[str, Any]]:
     for d in docs or []:
         meta = getattr(d, "metadata", {}) or {}
         sr = meta.get("schedule_rows")
+        if isinstance(sr, str):
+            try:
+                sr = json.loads(sr)
+            except Exception:
+                sr = None
         if not isinstance(sr, list):
             continue
 
@@ -266,6 +397,78 @@ def _extract_schedule_rows_from_docs(docs) -> List[Dict[str, Any]]:
             rows.append(item)
 
     return rows
+
+
+def _extract_semesters_from_docs(docs) -> List[str]:
+    sems = set()
+    for d in docs or []:
+        meta = getattr(d, "metadata", {}) or {}
+        sem = meta.get("semester")
+        if isinstance(sem, (int, float, str)):
+            s = str(sem).strip()
+            if s:
+                sems.add(s)
+        src = meta.get("source") or ""
+        m = _SEMESTER_RE.search(str(src))
+        if m:
+            sems.add(m.group(1))
+    return sorted(sems, key=lambda x: int(x) if str(x).isdigit() else x)
+
+
+def _parse_time_range(jam: str) -> Optional[Tuple[int, int]]:
+    if not jam:
+        return None
+    m = _TIME_RANGE_RE.search(str(jam).replace("–", "-"))
+    if not m:
+        return None
+    t1 = m.group(1).replace(".", ":")
+    t2 = m.group(2).replace(".", ":")
+    try:
+        h1, m1 = [int(x) for x in t1.split(":")]
+        h2, m2 = [int(x) for x in t2.split(":")]
+        return (h1 * 60 + m1, h2 * 60 + m2)
+    except Exception:
+        return None
+
+
+def _detect_conflicts(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    conflicts = []
+    by_day: Dict[str, List[Dict[str, Any]]] = {}
+    for r in rows:
+        day = (r.get("hari") or "Unknown").strip()
+        by_day.setdefault(day, []).append(r)
+    for day, items in by_day.items():
+        items = [i for i in items if _parse_time_range(str(i.get("jam", "")))]
+        items.sort(key=lambda x: _parse_time_range(str(x.get("jam", "")))[0])  # type: ignore
+        for i in range(len(items)):
+            for j in range(i + 1, len(items)):
+                a = items[i]
+                b = items[j]
+                ta = _parse_time_range(str(a.get("jam", "")))
+                tb = _parse_time_range(str(b.get("jam", "")))
+                if not ta or not tb:
+                    continue
+                # overlap
+                if ta[1] > tb[0] and tb[1] > ta[0]:
+                    conflicts.append({
+                        "hari": day,
+                        "a": a,
+                        "b": b,
+                    })
+    return conflicts
+
+
+def _sum_sks(rows: List[Dict[str, Any]]) -> int:
+    total = 0
+    for r in rows:
+        v = str(r.get("sks", "")).strip()
+        if not v:
+            continue
+        try:
+            total += int(float(v))
+        except Exception:
+            continue
+    return total
 
 
 def _group_schedule(rows: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
@@ -482,6 +685,11 @@ def _looks_like_markdown_table(answer: str) -> bool:
     return ("|" in a) and ("---" in a)
 
 
+def _llm_general_answer(q: str, request_id: str = "-") -> Dict[str, Any]:
+    # Deprecated in LLM-first mode; kept for compatibility.
+    return {"answer": q, "sources": []}
+
+
 # =========================
 # Main
 # =========================
@@ -494,120 +702,73 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
 
     q = (query or "").strip()
 
-    if _is_smalltalk(q):
-        return {"answer": _smalltalk_reply(), "sources": []}
-
-    if not _is_academic_question(q):
-        return {
-            "answer": (
-                "Aku bisa bantu baca dokumen akademik kamu (KRS/jadwal/transkrip). 😊\n\n"
-                "Biar aku tepat, kamu mau tanya tentang:\n"
-                "- jadwal/jam kuliah\n"
-                "- daftar mata kuliah + SKS\n"
-                "- nilai/IPK/IPS (kalau data nilai ada)\n"
-            ),
-            "sources": [],
-        }
+    # LLM-first: no smalltalk or hardcoded routing; always go to LLM with context if any.
 
     t0 = time.time()
     k = 20
     query_preview = q if len(q) <= 140 else q[:140] + "..."
 
     logger.info(
-        "🧠 RAG start user_id=%s k=%s q='%s'",
+        " RAG start user_id=%s k=%s q='%s'",
         user_id, k, query_preview,
         extra={"request_id": request_id},
     )
 
     vectorstore = get_vectorstore()
-    retriever = vectorstore.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": k, "filter": {"user_id": str(user_id)}},
-    )
+    base_filter = {"user_id": str(user_id)}
+    sem_match = _SEMESTER_RE.search(q)
+    if sem_match:
+        try:
+            base_filter["semester"] = int(sem_match.group(1))
+        except Exception:
+            pass
+    doc_type = _infer_doc_type(q)
+    if doc_type:
+        base_filter["doc_type"] = doc_type
 
-    docs = retriever.invoke(q)
-    if not isinstance(docs, list):
-        docs = list(docs) if docs else []
+    # Chroma expects a single operator in where; use $and when multiple filters
+    chroma_where = base_filter
+    if len(base_filter) > 1:
+        chroma_where = {"$and": [{"user_id": str(user_id)}] + [
+            {k: v} for k, v in base_filter.items() if k != "user_id"
+        ]}
+
+    # Use similarity_search_with_score to enable quality threshold
+    docs_with_scores = vectorstore.similarity_search_with_score(q, k=k, filter=chroma_where)
+    docs = [d for d, _ in docs_with_scores] if docs_with_scores else []
+    scores = [s for _, s in docs_with_scores] if docs_with_scores else []
+
+    # fallback: jika terlalu ketat, retry tanpa filter tambahan
+    if not docs and (len(base_filter) > 1):
+        docs_with_scores = vectorstore.similarity_search_with_score(q, k=k, filter={"user_id": str(user_id)})
+        docs = [d for d, _ in docs_with_scores] if docs_with_scores else []
+        scores = [s for _, s in docs_with_scores] if docs_with_scores else []
+
+    # allow LLM even when docs are empty / low-quality; context may be empty
 
     sources = _build_sources_from_docs(docs)
     allowed_cols = _detect_allowed_columns(docs)
     allowed_cols_str = ", ".join(allowed_cols)
 
-    # =========================
-    # ✅ DATA-FIRST ROUTE: jadwal
-    # =========================
-    if _wants_schedule(q):
-        schedule_rows = _extract_schedule_rows_from_docs(docs)
-        if schedule_rows:
-            # jawab langsung berbasis data (akurat)
-            logger.info(
-                "📅 schedule_rows found=%s -> data-first answer",
-                len(schedule_rows),
-                extra={"request_id": request_id},
-            )
-            return _schedule_answer_data_first(q, schedule_rows, sources, allowed_cols)
-
-        # kalau tidak ada schedule_rows, lanjut ke LLM RAG biasa
-        logger.warning(
-            "📅 schedule intent but schedule_rows missing -> fallback to LLM RAG",
-            extra={"request_id": request_id},
-        )
-
-    # =========================
-    # Guardrail: nilai diminta tapi tidak ada kolom nilai
-    # =========================
-    wants_grade = _wants_grade(q)
-    has_grade_cols = any(c in allowed_cols for c in ["Grade", "Bobot"])
-    if wants_grade and not has_grade_cols:
-        return {
-            "answer": (
-                "## Ringkasan\n"
-                "Aku menemukan data mata kuliah/jadwal dari dokumen kamu, tapi **data nilai (Grade/Bobot) tidak ada** di dokumen yang terunggah.\n\n"
-                "## Tabel\n"
-                "_Aku belum bisa menampilkan rekap nilai karena kolom nilai tidak tersedia di dokumen._\n\n"
-                "## Insight Singkat\n"
-                f"- Kolom yang tersedia saat ini: **{allowed_cols_str}**\n"
-                "- Jika kamu upload transkrip/KHS yang memuat nilai huruf/bobot, aku bisa rekap nilai dari semester awal sampai akhir.\n\n"
-                "## Pertanyaan Lanjutan\n"
-                "Kamu mau aku rekap apa dulu berdasarkan data yang ada?\n\n"
-                "## Opsi Cepat\n"
-                "- [Rekap mata kuliah per semester]\n"
-                "- [Hitung total SKS]\n"
-            ),
-            "sources": sources,
-        }
+    # LLM-first: skip all data-first routes and guards
 
     # =========================
     # LLM RAG (default)
     # =========================
     template = """
-Anda adalah asisten akademik yang teliti, ramah, dan proaktif. Anda membantu mahasiswa memahami dokumen akademik (KRS/jadwal/transkrip).
+Anda adalah asisten akademik yang menjawab pertanyaan pengguna dengan bantuan konteks dokumen jika tersedia.
 
-ATURAN TAAT PERTANYAAN (PENTING):
-- Jawab sesuai maksud pertanyaan user.
-- Jika user bertanya jadwal/jam/hari, utamakan informasi jadwal.
-- Jika user tidak meminta rekap/daftar, jangan keluarkan tabel panjang.
-- Jika user meminta NILAI/grade/bobot/ipk/ips tetapi Grade/Bobot tidak ada di ALLOWED_COLUMNS:
-  JANGAN buat tabel seolah-olah rekap nilai. Jelaskan data nilai tidak ditemukan dan sebutkan kolom yang tersedia.
-
-KONTRAK SKEMA (ANTI-HALU) — HARUS DIIKUTI:
-- Anda HANYA boleh menggunakan kolom dari daftar ALLOWED_COLUMNS berikut:
-  {allowed_columns}
-- DILARANG membuat kolom lain atau mengisi nilai kolom yang tidak ada bukti di KONTEKS.
-
-KONTRAK OUTPUT MARKDOWN (WAJIB, KONSISTEN):
-- Output HARUS punya heading berikut (persis):
+Aturan:
+- Selalu jawab pertanyaan user.
+- Jika KONTEKS kosong, gunakan pengetahuan umum dan jelaskan bahwa dokumen pengguna tidak menyediakan data spesifik.
+- Jika KONTEKS tersedia, gunakan itu sebagai rujukan utama.
+- Format wajib:
   ## Ringkasan
   ## Tabel
   ## Insight Singkat
   ## Pertanyaan Lanjutan
   ## Opsi Cepat
-- Semua tabel wajib Markdown table (| dan ---).
-- Jangan menambah data di luar KONTEKS.
-
-ATURAN FORMAT:
-- Jika jawaban memuat daftar (mis: jadwal / daftar mata kuliah), WAJIB tampilkan dalam tabel Markdown.
-- Header tabel harus mengikuti kolom yang dipilih dari ALLOWED_COLUMNS (urutan bebas, tapi jangan tambahkan kolom lain).
+- Jika tabel tidak diperlukan, isi dengan _Tidak ada data khusus dari dokumen pengguna._
 
 KONTEKS:
 {context}
@@ -624,7 +785,7 @@ JAWABAN (Markdown):
         model_t0 = time.time()
         try:
             logger.info(
-                "🤖 LLM try idx=%s model=%s timeout=%ss max_retries=%s",
+                " LLM try idx=%s model=%s timeout=%ss max_retries=%s",
                 idx, model_name, REQUEST_TIMEOUT_SEC, MAX_RETRIES,
                 extra={"request_id": request_id},
             )
@@ -643,36 +804,13 @@ JAWABAN (Markdown):
             )
 
             qa_chain = create_stuff_documents_chain(llm, PROMPT)
-            result = qa_chain.invoke({"input": q, "context": docs, "allowed_columns": allowed_cols_str})
+            result = qa_chain.invoke({"input": q, "context": docs})
 
             if isinstance(result, dict):
                 answer = result.get("answer") or result.get("output_text") or ""
             else:
                 answer = str(result)
             answer = (answer or "").strip() or "Maaf, tidak ada jawaban."
-
-            issues: List[str] = []
-
-            miss = _missing_headings(answer)
-            if miss:
-                issues.append(f"Heading wajib hilang: {', '.join(miss)}")
-
-            illegal_cols = _find_illegal_columns(answer, allowed_cols)
-            if illegal_cols:
-                issues.append(f"Kolom tabel tidak diizinkan: {', '.join(illegal_cols)}")
-
-            if wants_grade and not _grade_intent_addressed(answer, allowed_cols):
-                issues.append(
-                    "User meminta nilai, tapi jawaban tidak menampilkan Grade/Bobot dan tidak menjelaskan bahwa data nilai tidak tersedia."
-                )
-
-            if issues:
-                logger.warning(
-                    "🧱 Output contract violated -> repairing (model=%s) issues=%s",
-                    model_name, issues,
-                    extra={"request_id": request_id},
-                )
-                answer = _repair_answer(llm, answer, allowed_cols_str, issues)
 
             # Pastikan ada lapisan interaktif
             if _looks_like_markdown_table(answer) and (not _has_interactive_sections(answer)):
@@ -702,14 +840,14 @@ JAWABAN:
             total_dur = round(time.time() - t0, 2)
 
             logger.info(
-                "✅ LLM ok idx=%s model=%s model_time=%ss total_time=%ss answer_len=%s sources=%s allowed_cols=%s",
+                " LLM ok idx=%s model=%s model_time=%ss total_time=%ss answer_len=%s sources=%s allowed_cols=%s",
                 idx, model_name, model_dur, total_dur, len(answer), len(sources), len(allowed_cols),
                 extra={"request_id": request_id},
             )
 
             if idx > 0:
                 logger.warning(
-                    "🛟 Fallback used idx=%s model=%s",
+                    " Fallback used idx=%s model=%s",
                     idx, model_name,
                     extra={"request_id": request_id},
                 )
@@ -722,7 +860,7 @@ JAWABAN:
             err_preview = last_error if len(last_error) <= 200 else last_error[:200] + "..."
 
             logger.warning(
-                "⚠️ LLM fail idx=%s model=%s dur=%ss err=%s",
+                " LLM fail idx=%s model=%s dur=%ss err=%s",
                 idx, model_name, model_dur, err_preview,
                 extra={"request_id": request_id},
             )
@@ -732,7 +870,7 @@ JAWABAN:
                 continue
 
             logger.error(
-                "❌ All models failed last_err=%s",
+                " All models failed last_err=%s",
                 err_preview,
                 extra={"request_id": request_id},
                 exc_info=True,

@@ -52,6 +52,12 @@ API JSON (dipanggil frontend):
 - `POST /api/upload/` → upload dokumen (batch).
 - `POST /api/chat/` → kirim pesan chat.
 - `GET /api/documents/` → refresh daftar dokumen + storage.
+- `DELETE /api/documents/<id>/` → hapus dokumen + embeddings.
+- `GET /api/sessions/` → list chat session.
+- `POST /api/sessions/` → buat chat session baru.
+- `GET /api/sessions/<id>/` → ambil history chat session.
+- `PATCH /api/sessions/<id>/` → rename chat session.
+- `DELETE /api/sessions/<id>/` → hapus chat session.
 
 Semua endpoint API dibungkus `@login_required` dan `@csrf_exempt` di `core/views.py`.
 
@@ -89,12 +95,25 @@ Field penting:
 - `uploaded_at` → timestamp upload.
 - `is_embedded` → status ingest ke vectorstore.
 
-### 4.2 ChatHistory
+### 4.2 ChatSession
 
 File: `core/models.py`
 
 Field penting:
 - `user`
+- `title` (default: "Chat Baru")
+- `created_at`
+- `updated_at`
+
+Session dipakai untuk memisahkan history chat per topik.
+
+### 4.3 ChatHistory
+
+File: `core/models.py`
+
+Field penting:
+- `user`
+- `session` (FK ke ChatSession)
 - `question`
 - `answer`
 - `timestamp`
@@ -117,6 +136,15 @@ Props yang dikirim ke React:
 ```json
 {
   "user": { "id": 1, "username": "...", "email": "..." },
+  "activeSessionId": 10,
+  "sessions": [
+    {
+      "id": 10,
+      "title": "Chat Baru",
+      "created_at": "2026-01-27 13:10",
+      "updated_at": "2026-01-27 13:12"
+    }
+  ],
   "initialHistory": [
     {
       "question": "...",
@@ -164,7 +192,8 @@ Request body (JSON):
 
 ```json
 {
-  "message": "Tolong rekap nilai yang tidak lulus"
+  "message": "Tolong rekap nilai yang tidak lulus",
+  "session_id": 10
 }
 ```
 
@@ -172,7 +201,8 @@ Response sukses:
 
 ```json
 {
-  "answer": "...jawaban AI..."
+  "answer": "...jawaban AI...",
+  "session_id": 10
 }
 ```
 
@@ -182,8 +212,8 @@ Response error umum:
 
 Perilaku backend:
 1. Ambil `message`.
-2. Panggil `ask_bot(user.id, message)`.
-3. Simpan ke `ChatHistory`.
+2. Panggil `ask_bot(user.id, message)` (RAG).
+3. Simpan ke `ChatHistory` sesuai `session_id`.
 4. Kembalikan `answer`.
 
 ### 6.2 Upload API (Batch)
@@ -260,6 +290,70 @@ Response:
 Tujuan endpoint ini:
 - Dipanggil frontend setelah upload selesai agar sidebar sinkron.
 
+Hapus dokumen:
+- `DELETE /api/documents/<id>/` → `{ status: "success" }`
+- Efek: file dihapus dari storage + embeddings di vector DB dihapus.
+
+### 6.4 Sessions API (Chat Baru + List + Delete)
+
+Endpoint:
+- `GET /api/sessions/`
+- `POST /api/sessions/`
+
+Query params list:
+- `page` (default 1)
+- `page_size` (default 20)
+
+Contoh response list:
+
+```json
+{
+  "sessions": [
+    {
+      "id": 10,
+      "title": "Chat Baru",
+      "created_at": "2026-01-27 13:10",
+      "updated_at": "2026-01-27 13:12"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 20,
+    "total": 42,
+    "has_next": true
+  }
+}
+```
+
+Create session (opsional title):
+
+```json
+{
+  "title": "Semester Genap"
+}
+```
+
+Response:
+
+```json
+{
+  "session": {
+    "id": 11,
+    "title": "Semester Genap",
+    "created_at": "2026-01-27 13:15",
+    "updated_at": "2026-01-27 13:15"
+  }
+}
+```
+
+History per session:
+- `GET /api/sessions/<id>/` → `{ history: [...] }`
+
+Rename:
+- `PATCH /api/sessions/<id>/` body `{ "title": "Judul Baru" }` → `{ session: { ... } }`
+
+Delete:
+- `DELETE /api/sessions/<id>/` → `{ status: "success" }`
 ---
 
 ## 7. Mesin RAG (Ingest & Retrieval)
@@ -352,9 +446,14 @@ Jika kamu ingin memastikan frontend “nyambung” dengan backend ini, yang pent
   - `GET /logout/` → logout + redirect
 
 - API:
-  - `POST /api/chat/` → `{ message }` → `{ answer }`
+  - `POST /api/chat/` → `{ message, session_id }` → `{ answer, session_id }`
   - `POST /api/upload/` → multipart `files[]` → status + msg
   - `GET /api/documents/` → `{ documents, storage }`
+  - `GET /api/sessions/` → list session (pagination)
+  - `POST /api/sessions/` → create session
+  - `GET /api/sessions/<id>/` → history
+  - `PATCH /api/sessions/<id>/` → rename
+  - `DELETE /api/sessions/<id>/` → delete
 
 ---
 

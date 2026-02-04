@@ -20,7 +20,10 @@ export type ChatItem = {
 };
 
 function normalizeText(text: string) {
-  return (text ?? "").replace(/\r\n/g, "\n").trim();
+  return (text ?? "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .trim();
 }
 
 /**

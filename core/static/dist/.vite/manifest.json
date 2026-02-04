@@ -1,6 +1,6 @@
 {
   "node_modules/@locator/runtime/dist/components/Runtime.js": {
-    "file": "Runtime-CioVxzKO.js",
+    "file": "Runtime-05_t3dwg.js",
     "name": "Runtime",
     "src": "node_modules/@locator/runtime/dist/components/Runtime.js",
     "isDynamicEntry": true,
@@ -9,7 +9,7 @@
     ]
   },
   "src/main.tsx": {
-    "file": "main-BiOWeq9C.js",
+    "file": "main-C_m0CYju.js",
     "name": "main",
     "src": "src/main.tsx",
     "isEntry": true,
@@ -17,7 +17,7 @@
       "node_modules/@locator/runtime/dist/components/Runtime.js"
     ],
     "css": [
-      "main-vng8tReE.css"
+      "main-BY8-k_e3.css"
     ]
   }
 }

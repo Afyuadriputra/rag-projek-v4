@@ -17,9 +17,15 @@ function getDocMeta(title: string) {
 export default function DocumentItem({
   title,
   status,
+  onDelete,
+  isDeleting = false,
+  disableDelete = false,
 }: {
   title: string;
   status: DocStatus;
+  onDelete?: () => void;
+  isDeleting?: boolean;
+  disableDelete?: boolean;
 }) {
   const meta = getDocMeta(title);
 
@@ -81,18 +87,27 @@ export default function DocumentItem({
       </div>
 
       {/* Actions */}
-      <button
-        type="button"
-        className={cn(
-          "relative inline-flex items-center justify-center",
-          "size-9 rounded-xl border border-black/10 bg-white/60",
-          "text-zinc-500 hover:text-black hover:bg-white transition-all",
-          "opacity-0 group-hover:opacity-100"
-        )}
-        title="Opsi"
-      >
-        <span className="material-symbols-outlined text-[18px]">more_horiz</span>
-      </button>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={isDeleting || disableDelete}
+          className={cn(
+            "relative inline-flex items-center justify-center",
+            "size-9 rounded-xl border border-black/10 bg-white/60",
+            "text-zinc-500 hover:text-red-600 hover:bg-white transition-all",
+            "opacity-0 group-hover:opacity-100",
+            (isDeleting || disableDelete) && "opacity-50 cursor-not-allowed"
+          )}
+          title="Hapus dokumen"
+        >
+          {isDeleting ? (
+            <span className="size-4 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" />
+          ) : (
+            <span className="material-symbols-outlined text-[18px]">delete</span>
+          )}
+        </button>
+      )}
     </div>
   );
 }

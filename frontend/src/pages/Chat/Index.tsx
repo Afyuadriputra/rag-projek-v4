@@ -10,8 +10,8 @@ import ChatComposer from "@/components/molecules/ChatComposer";
 import Toast from "@/components/molecules/Toast";
 
 // API & Types
-import { sendChat, uploadDocuments, getDocuments } from "@/lib/api";
-import type { DocumentDto, DocumentsResponse } from "@/lib/api";
+import { sendChat, uploadDocuments, getDocuments, getSessions, createSession, deleteSession, getSessionHistory, renameSession, deleteDocument } from "@/lib/api";
+import type { DocumentDto, DocumentsResponse, ChatSessionDto } from "@/lib/api";
 import type { ChatItem } from "@/components/molecules/ChatBubble";
 
 // --- Types ---
@@ -25,6 +25,8 @@ type StorageInfo = {
 
 type PageProps = {
   user: { id: number; username: string; email: string };
+  activeSessionId: number;
+  sessions: ChatSessionDto[];
   initialHistory: Array<{
     question: string;
     answer: string;
@@ -41,15 +43,24 @@ function uid() {
 }
 
 export default function Index() {
+  const SESSIONS_PAGE_SIZE = 20;
   const { props } = usePage<PageProps>();
-  const { user, initialHistory, documents: initialDocs, storage: initialStorage } = props;
+  const { user, initialHistory, documents: initialDocs, storage: initialStorage, sessions: initialSessions, activeSessionId } = props;
 
   // State
   const [dark, setDark] = useState(false);
   const [documents, setDocuments] = useState<DocumentDto[]>(initialDocs ?? []);
   const [storage, setStorage] = useState<StorageInfo | undefined>(initialStorage);
+  const [sessions, setSessions] = useState<ChatSessionDto[]>(initialSessions ?? []);
+  const [activeSession, setActiveSession] = useState<number | undefined>(activeSessionId);
+  const [sessionsPage, setSessionsPage] = useState(1);
+  const [sessionsHasNext, setSessionsHasNext] = useState(false);
+  const [sessionsLoadingMore, setSessionsLoadingMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [confirmDeleteDocId, setConfirmDeleteDocId] = useState<number | null>(null);
+  const [deletingDocId, setDeletingDocId] = useState<number | null>(null);
 
   // ✅ scroll container ref
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -73,6 +84,27 @@ export default function Index() {
     if (dark) root.classList.add("dark");
     else root.classList.remove("dark");
   }, [dark]);
+
+  // ✅ Auto-load sessions on mount (fresh login / avoid stale state)
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await getSessions(1, SESSIONS_PAGE_SIZE);
+        if (!cancelled) {
+          setSessions(res.sessions ?? []);
+          setSessionsPage(1);
+          setSessionsHasNext(!!res.pagination?.has_next);
+        }
+      } catch {
+        // silent
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ✅ Safe-area bottom (iPhone)
   useEffect(() => {
@@ -152,7 +184,12 @@ export default function Index() {
       arr.push({
         id: uid(),
         role: "assistant",
-        text: "Halo! Saya siap membantu analisis akademikmu. Unggah transkrip atau KRS, lalu tanyakan rekap nilai atau IPK.",
+        text:
+          "Belum ada riwayat chat di sesi ini.\n\n" +
+          "Kamu bisa:\n" +
+          "- Upload KRS/KHS/Transkrip\n" +
+          "- Tanya rekap jadwal per hari\n" +
+          "- Cek total SKS\n",
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       });
       return arr;
@@ -193,12 +230,24 @@ export default function Index() {
 
     setLoading(true);
     try {
-      const res = await sendChat(message);
+      const res = await sendChat(message, activeSession);
       const aiText = res.answer ?? res.error ?? "Maaf, tidak ada jawaban.";
       setItems((prev) => [
         ...prev,
         { id: uid(), role: "assistant", text: aiText, time: timeStr },
       ]);
+      if (res.session_id && res.session_id !== activeSession) {
+        setActiveSession(res.session_id);
+      }
+      // refresh session list to update title/updated_at
+      try {
+        const s = await getSessions(1, SESSIONS_PAGE_SIZE);
+        setSessions(s.sessions ?? []);
+        setSessionsPage(1);
+        setSessionsHasNext(!!s.pagination?.has_next);
+      } catch {
+        // silent
+      }
     } catch (e: any) {
       setToast({ open: true, kind: "error", msg: e?.message ?? "Gagal terhubung ke AI." });
     } finally {
@@ -227,6 +276,102 @@ export default function Index() {
     }
   };
 
+  const onDeleteDocument = async (docId: number) => {
+    setConfirmDeleteDocId(docId);
+  };
+
+  const onCreateSession = async () => {
+    try {
+      const res = await createSession();
+      const newSession = res.session;
+      setSessions((prev) => [newSession, ...prev.filter((s) => s.id !== newSession.id)]);
+      setActiveSession(newSession.id);
+      setItems([
+        {
+          id: uid(),
+          role: "assistant",
+          text:
+            "Belum ada riwayat chat di sesi ini.\n\n" +
+            "Kamu bisa:\n" +
+            "- Upload KRS/KHS/Transkrip\n" +
+            "- Tanya rekap jadwal per hari\n" +
+            "- Cek total SKS\n",
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+      setMobileMenuOpen(false);
+    } catch (e: any) {
+      setToast({ open: true, kind: "error", msg: e?.message ?? "Gagal membuat chat." });
+    }
+  };
+
+  const onSelectSession = async (sessionId: number) => {
+    if (sessionId === activeSession) return;
+    setActiveSession(sessionId);
+    setLoading(true);
+    try {
+      const res = await getSessionHistory(sessionId);
+      const hist = res.history ?? [];
+      if (hist.length === 0) {
+        setItems([
+          {
+            id: uid(),
+            role: "assistant",
+            text:
+              "Belum ada riwayat chat di sesi ini.\n\n" +
+              "Kamu bisa:\n" +
+              "- Upload KRS/KHS/Transkrip\n" +
+              "- Tanya rekap jadwal per hari\n" +
+              "- Cek total SKS\n",
+            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
+      } else {
+        const arr: ChatItem[] = [];
+        for (const h of hist) {
+          arr.push({ id: uid(), role: "user", text: h.question, time: h.time });
+          arr.push({ id: uid(), role: "assistant", text: h.answer, time: h.time });
+        }
+        setItems(arr);
+      }
+      setMobileMenuOpen(false);
+    } catch (e: any) {
+      setToast({ open: true, kind: "error", msg: e?.message ?? "Gagal memuat chat." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onDeleteSession = async (sessionId: number) => {
+    setConfirmDeleteId(sessionId);
+  };
+
+  const onRenameSession = async (sessionId: number, title: string) => {
+    try {
+      const res = await renameSession(sessionId, title);
+      const updated = res.session;
+      setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    } catch (e: any) {
+      setToast({ open: true, kind: "error", msg: e?.message ?? "Gagal rename chat." });
+    }
+  };
+
+  const onLoadMoreSessions = async () => {
+    if (!sessionsHasNext || sessionsLoadingMore) return;
+    setSessionsLoadingMore(true);
+    try {
+      const nextPage = sessionsPage + 1;
+      const res = await getSessions(nextPage, SESSIONS_PAGE_SIZE);
+      setSessions((prev) => [...prev, ...(res.sessions ?? [])]);
+      setSessionsPage(nextPage);
+      setSessionsHasNext(!!res.pagination?.has_next);
+    } catch (e: any) {
+      setToast({ open: true, kind: "error", msg: e?.message ?? "Gagal memuat sesi." });
+    } finally {
+      setSessionsLoadingMore(false);
+    }
+  };
+
   // ✅ padding bawah final: composer + safe area (CSS env) + sedikit ekstra
   // `env(safe-area-inset-bottom)` akan bekerja di iOS Safari.
   const chatPaddingBottom = `calc(${composerH}px + env(safe-area-inset-bottom) + ${safeBottom}px + 12px)`;
@@ -246,11 +391,34 @@ export default function Index() {
 
       {/* 3. MAIN LAYOUT */}
       <div className="relative flex flex-1 min-h-0 min-w-0 overflow-hidden">
+        {deletingDocId !== null && (
+          <div className="pointer-events-none absolute inset-0 z-20 bg-white/40 backdrop-blur-[1px]">
+            <div className="absolute right-4 top-4 rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold text-zinc-600 shadow-sm">
+              <span className="inline-flex items-center gap-2">
+                <span className="size-3 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" />
+                Menghapus dokumen...
+              </span>
+            </div>
+          </div>
+        )}
         {/* --- DESKTOP SIDEBAR --- */}
         <div className="hidden h-full md:flex">
           <KnowledgeSidebar
             onUploadClick={onUploadClick}
+            onCreateSession={onCreateSession}
+            onSelectSession={onSelectSession}
+            onDeleteSession={onDeleteSession}
+            onRenameSession={onRenameSession}
+            onLoadMoreSessions={onLoadMoreSessions}
+            onDeleteDocument={onDeleteDocument}
+            deletingDocId={deletingDocId}
+            disableUpload={deletingDocId !== null}
+            sessions={sessions}
+            activeSessionId={activeSession}
+            hasMoreSessions={sessionsHasNext}
+            loadingMoreSessions={sessionsLoadingMore}
             docs={documents.map((d) => ({
+              id: d.id,
               title: d.title,
               status: d.is_embedded ? "analyzed" : "processing",
             }))}
@@ -274,7 +442,20 @@ export default function Index() {
         >
           <KnowledgeSidebar
             onUploadClick={onUploadClick}
+            onCreateSession={onCreateSession}
+            onSelectSession={onSelectSession}
+            onDeleteSession={onDeleteSession}
+            onRenameSession={onRenameSession}
+            onLoadMoreSessions={onLoadMoreSessions}
+            onDeleteDocument={onDeleteDocument}
+            deletingDocId={deletingDocId}
+            disableUpload={deletingDocId !== null}
+            sessions={sessions}
+            activeSessionId={activeSession}
+            hasMoreSessions={sessionsHasNext}
+            loadingMoreSessions={sessionsLoadingMore}
             docs={documents.map((d) => ({
+              id: d.id,
               title: d.title,
               status: d.is_embedded ? "analyzed" : "processing",
             }))}
@@ -302,7 +483,12 @@ export default function Index() {
           </div>
 
           {/* Composer */}
-          <ChatComposer onSend={onSend} onUploadClick={onUploadClick} loading={loading} />
+          <ChatComposer
+            onSend={onSend}
+            onUploadClick={onUploadClick}
+            loading={loading || deletingDocId !== null}
+            deletingDoc={deletingDocId !== null}
+          />
         </main>
       </div>
 
@@ -324,6 +510,148 @@ export default function Index() {
         message={toast.msg}
         onClose={() => setToast((p) => ({ ...p, open: false }))}
       />
+
+      {/* Confirm Delete Modal */}
+      {confirmDeleteId !== null && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => setConfirmDeleteId(null)}
+          />
+          <div className="relative z-[1001] w-[92%] max-w-[420px] rounded-2xl border border-white/40 bg-white/80 p-5 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-full bg-red-50 text-red-600">
+                <span className="material-symbols-outlined text-[20px]">delete</span>
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-zinc-900">Hapus chat ini?</div>
+                <div className="text-xs text-zinc-500">Riwayat chat akan dihapus permanen.</div>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteId(null)}
+                className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = confirmDeleteId;
+                  if (id == null) return;
+                  try {
+                    await deleteSession(id);
+                    const next = sessions.filter((s) => s.id !== id);
+                    setSessions(next);
+                    if (activeSession === id) {
+                      const fallback = next[0]?.id;
+                      if (fallback) {
+                        await onSelectSession(fallback);
+                      } else {
+                        setActiveSession(undefined);
+                        setItems([
+                          {
+                            id: uid(),
+                            role: "assistant",
+                            text:
+                              "Belum ada riwayat chat di sesi ini.\n\n" +
+                              "Kamu bisa:\n" +
+                              "- Upload KRS/KHS/Transkrip\n" +
+                              "- Tanya rekap jadwal per hari\n" +
+                              "- Cek total SKS\n",
+                            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                          },
+                        ]);
+                      }
+                    }
+                  } catch (e: any) {
+                    setToast({ open: true, kind: "error", msg: e?.message ?? "Gagal menghapus chat." });
+                  } finally {
+                    setConfirmDeleteId(null);
+                  }
+                }}
+                className="rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Document Modal */}
+      {confirmDeleteDocId !== null && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => setConfirmDeleteDocId(null)}
+          />
+          <div className="relative z-[1001] w-[92%] max-w-[420px] rounded-2xl border border-white/40 bg-white/80 p-5 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-full bg-red-50 text-red-600">
+                <span className="material-symbols-outlined text-[20px]">delete</span>
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-zinc-900">Hapus dokumen ini?</div>
+                <div className="text-xs text-zinc-500">
+                  File dan embedding di vector DB akan dihapus permanen.
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteDocId(null)}
+                className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = confirmDeleteDocId;
+                  if (id == null) return;
+                  setDeletingDocId(id);
+                  setLoading(true);
+                  try {
+                    await deleteDocument(id);
+                    await refreshDocuments();
+                    setToast({ open: true, kind: "success", msg: "Dokumen berhasil dihapus." });
+                  } catch (e: any) {
+                    const status = e?.response?.status;
+                    const serverMsg = e?.response?.data?.msg;
+                    if (status === 404) {
+                      setToast({ open: true, kind: "error", msg: "Dokumen tidak ditemukan di server." });
+                    } else {
+                      setToast({ open: true, kind: "error", msg: serverMsg ?? e?.message ?? "Gagal menghapus dokumen." });
+                    }
+                  } finally {
+                    setLoading(false);
+                    setDeletingDocId(null);
+                    setConfirmDeleteDocId(null);
+                  }
+                }}
+                disabled={deletingDocId === confirmDeleteDocId}
+                className={cn(
+                  "rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700",
+                  deletingDocId === confirmDeleteDocId && "opacity-70 cursor-not-allowed"
+                )}
+              >
+                {deletingDocId === confirmDeleteDocId ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="size-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    Menghapus...
+                  </span>
+                ) : (
+                  "Hapus"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

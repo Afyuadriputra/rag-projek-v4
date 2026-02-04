@@ -27,6 +27,8 @@ class RequestContextMiddleware:
 
             ip = request.META.get("HTTP_X_FORWARDED_FOR") or request.META.get("REMOTE_ADDR") or "-"
             ip = ip.split(",")[0].strip() if ip else "-"
+            agent = request.META.get("HTTP_USER_AGENT") or "-"
+            referer = request.META.get("HTTP_REFERER") or "-"
 
             logger.info(
                 "HTTP %s %s -> %s (%sms) user=%s ip=%s",
@@ -36,5 +38,15 @@ class RequestContextMiddleware:
                 dur_ms,
                 user,
                 ip,
-                extra={"request_id": request.request_id},
+                extra={
+                    "request_id": request.request_id,
+                    "user": user,
+                    "ip": ip,
+                    "method": request.method,
+                    "path": request.path,
+                    "status": status,
+                    "duration_ms": dur_ms,
+                    "agent": agent,
+                    "referer": referer,
+                },
             )

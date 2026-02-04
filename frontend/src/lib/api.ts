@@ -27,6 +27,7 @@ export interface ChatSource {
 export interface ChatResponse {
   answer?: string; // backend sukses -> {answer}
   sources?: ChatSource[];
+  session_id?: number;
   error?: string;  // backend error -> {error}
 }
 
@@ -57,6 +58,24 @@ export interface DocumentsResponse {
   };
 }
 
+// ✅ Chat Sessions
+export interface ChatSessionDto {
+  id: number;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SessionsResponse {
+  sessions: ChatSessionDto[];
+  pagination?: {
+    page: number;
+    page_size: number;
+    total: number;
+    has_next: boolean;
+  };
+}
+
 // ==========================================
 // 3. API FUNCTIONS (FUNGSI UTAMA DITANDAI)
 // ==========================================
@@ -65,9 +84,12 @@ export interface DocumentsResponse {
  * Mengirim pesan chat ke AI
  * URL Backend: POST /api/chat/
  */
-export const sendChat = async (message: string) => {
+export const sendChat = async (message: string, sessionId?: number) => {
   // Payload harus match dengan `json.loads(request.body)` di views.py
-  const response = await apiClient.post<ChatResponse>("/chat/", { message });
+  const response = await apiClient.post<ChatResponse>("/chat/", {
+    message,
+    session_id: sessionId,
+  });
   return response.data;
 };
 
@@ -100,6 +122,44 @@ export const uploadDocuments = async (files: FileList) => {
  */
 export const getDocuments = async () => {
   const response = await apiClient.get<DocumentsResponse>("/documents/");
+  return response.data;
+};
+
+export const deleteDocument = async (docId: number) => {
+  const response = await apiClient.delete<{ status: string }>(`/documents/${docId}/`);
+  return response.data;
+};
+
+export const getSessions = async (page: number = 1, pageSize: number = 20) => {
+  const response = await apiClient.get<SessionsResponse>("/sessions/", {
+    params: { page, page_size: pageSize },
+  });
+  return response.data;
+};
+
+export const createSession = async (title?: string) => {
+  const response = await apiClient.post<{ session: ChatSessionDto }>("/sessions/", {
+    title,
+  });
+  return response.data;
+};
+
+export const renameSession = async (sessionId: number, title: string) => {
+  const response = await apiClient.patch<{ session: ChatSessionDto }>(`/sessions/${sessionId}/`, {
+    title,
+  });
+  return response.data;
+};
+
+export const deleteSession = async (sessionId: number) => {
+  const response = await apiClient.delete<{ status: string }>(`/sessions/${sessionId}/`);
+  return response.data;
+};
+
+export const getSessionHistory = async (sessionId: number) => {
+  const response = await apiClient.get<{ history: Array<{ question: string; answer: string; time: string; date: string }> }>(
+    `/sessions/${sessionId}/`
+  );
   return response.data;
 };
 

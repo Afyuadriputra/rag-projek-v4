@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import AcademicDocument, ChatHistory
+from django import forms
+from .models import AcademicDocument, ChatHistory, UserQuota
 
 # --- KONFIGURASI HEADER ADMIN ---
 admin.site.site_header = "Academic AI Administration"
@@ -61,3 +62,41 @@ class ChatHistoryAdmin(admin.ModelAdmin):
     def short_answer(self, obj):
         return obj.answer[:50] + "..." if len(obj.answer) > 50 else obj.answer
     short_answer.short_description = "AI Answer"
+
+
+@admin.register(UserQuota)
+class UserQuotaAdmin(admin.ModelAdmin):
+    list_display = ("user", "quota_bytes", "updated_at")
+    search_fields = ("user__username", "user__email")
+    list_filter = ("updated_at",)
+    form = None
+
+
+class UserQuotaForm(forms.ModelForm):
+    quota_mb = forms.IntegerField(
+        required=False,
+        min_value=1,
+        label="Quota (MB)",
+        help_text="Masukkan kuota dalam MB. Contoh: 10 untuk 10MB."
+    )
+
+    class Meta:
+        model = UserQuota
+        fields = ("user", "quota_mb")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.quota_bytes:
+            self.fields["quota_mb"].initial = int(self.instance.quota_bytes / (1024 * 1024))
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        quota_mb = self.cleaned_data.get("quota_mb")
+        if quota_mb:
+            obj.quota_bytes = int(quota_mb) * 1024 * 1024
+        if commit:
+            obj.save()
+        return obj
+
+
+UserQuotaAdmin.form = UserQuotaForm
