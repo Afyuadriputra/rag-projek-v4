@@ -55,7 +55,9 @@ core/
 - Konfigurasi **database** (SQLite).
 - Konfigurasi **static/media**.
 - **Logging**: sudah disesuaikan agar rapi untuk terminal kecil, memakai `|` sebagai separator.
+- **Audit log**: aktivitas penting dicatat ke `logs/audit.log` (rotating harian).
 - **Middleware**: termasuk `core.middleware.RequestContextMiddleware` untuk request_id + access log.
+- **Security**: rate‑limit login via `django-axes`, CSRF aktif untuk auth form.
 
 ### 3.2 `config/urls.py`
 - Root URL mengarah ke `core.urls`.
@@ -66,6 +68,13 @@ core/
 - Filter `RequestIdFilter` menambahkan field:
   - `request_id`, `user`, `ip`, `method`, `path`, `status`, `duration_ms`, `agent`, `referer`.
 - Dipakai agar formatter log tidak error.
+- Warna status code lebih kontras:
+  - 2xx: bright green, 4xx: bright yellow, 5xx: bright red.
+
+### 3.4 Logging Audit (Rotating File)
+- File audit harian disimpan di: `logs/audit.log`.
+- Rotasi setiap tengah malam, retensi 14 hari.
+- Format audit ringkas: `time|level|rid|user|ip|message`.
 
 ---
 
@@ -93,13 +102,26 @@ core/
 
 ### 5.1 `core/middleware.py`
 - Membuat `request_id` unik.
+- Menambahkan **audit metadata** ke request (`request.audit`):
+  - `request_id`, `user`, `user_id`, `ip`, `agent`, `referer`, `method`, `path`.
 - Mencatat access log dalam format ringkas:
   - method, path, status, durasi, user, ip, user-agent, referer.
 
 ### 5.2 Logging Formatter
-- Log di terminal kecil lebih rapi karena format pakai `|`.
+- Format tanpa padding (tanpa spasi ekstra), tetap pakai `|`.
+- Log dibaca dengan **double‑spaced** (ada baris kosong di antara log).
 - Field yang selalu muncul:
   - level | time | logger | rid | method | path | status | duration | user | ip | ua | referer | file:line | message
+
+### 5.3 Audit Logger (CCTV)
+- **Logger:** `audit` (console + file).
+- **Aksi penting yang dicatat:**
+  - `register`, `login` (success/fail/locked/error), `logout`
+  - `upload` (success/error/payload too large/empty)
+  - `doc_delete`
+  - `session_create`, `session_rename`, `session_delete`
+  - `reingest`
+  - `quota_create`, `quota_update` (admin)
 
 ---
 
@@ -114,6 +136,7 @@ core/
 - `POST /api/upload/` → upload dokumen
 - `GET /api/documents/` → list dokumen + storage
 - `DELETE /api/documents/<id>/` → hapus dokumen + embeddings
+- `POST /api/reingest/` → ingest ulang dokumen (opsional `doc_ids`)
 
 **Chat sessions:**
 - `GET /api/sessions/` → list sessions
@@ -171,6 +194,9 @@ Fungsi penting:
 - Jika context ada → gunakan.
 - Jika context kosong → LLM jawab secara umum.
 
+**Prompt guardrail:**
+- Instruksi di dalam dokumen **tidak boleh** mengubah aturan sistem.
+
 ---
 
 ## 9) Kuota Upload
@@ -179,6 +205,8 @@ Fungsi penting:
 - Admin dapat mengubah di **Django Admin → UserQuota**.
 - Upload ditolak jika melewati kuota.
 - UI menampilkan storage dari API.
+- Perubahan kuota dicatat di audit log:
+  - `action=quota_create` / `action=quota_update`.
 
 ---
 
@@ -188,6 +216,7 @@ Fungsi penting:
 1. Frontend kirim file ke `POST /api/upload/`.
 2. Backend simpan file → ingest → embeddings ke Chroma.
 3. `is_embedded` diperbarui.
+4. Audit log: `action=upload`.
 
 ### 10.2 Chat
 1. Frontend kirim pertanyaan ke `POST /api/chat/`.
@@ -198,6 +227,7 @@ Fungsi penting:
 ### 10.3 Hapus Dokumen
 1. Frontend panggil `DELETE /api/documents/<id>/`.
 2. Backend hapus file + embeddings + record DB.
+3. Audit log: `action=doc_delete`.
 
 ---
 
@@ -206,6 +236,7 @@ Fungsi penting:
 - **OCR tidak bekerja:** pastikan `pytesseract`, `pdf2image`, dan `tesseract.exe` terpasang & masuk PATH.
 - **Chroma filter error:** pastikan filter memakai `$and` jika ada lebih dari satu key.
 - **Vector kosong:** lakukan `POST /api/reingest/`.
+- **Audit log kosong:** pastikan folder `logs/` ada dan permission write.
 
 ---
 
@@ -214,6 +245,7 @@ Fungsi penting:
 - Sistem menggunakan OpenRouter API Key (wajib).
 - Semua log dicatat rapi di terminal kecil untuk monitoring.
 - `retrieval.py` sudah dipisah menjadi modul agar lebih mudah maintenance.
+- Audit log di file `logs/audit.log` untuk review aktivitas.
 
 ---
 
@@ -222,6 +254,6 @@ Fungsi penting:
 Backend ini adalah sistem RAG berbasis Django, dengan alur:
 - Upload dokumen → ingest → embeddings → Chroma.
 - Chat → LLM‑first, menggunakan context jika ada.
-- Semua aktivitas tercatat di terminal dengan format rapi.
+- Semua aktivitas tercatat di terminal dengan format rapi + audit file harian.
 
 Jika ingin, dokumentasi ini bisa diperluas menjadi diagram arsitektur atau flowchart.
