@@ -1,6 +1,22 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 test.use({ viewport: { width: 1280, height: 720 } });
+
+const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:8000";
+
+async function login(page: Page) {
+  const resp = await page.goto(`${baseUrl}/login/`, { waitUntil: "domcontentloaded" });
+  if (!resp || !resp.ok()) {
+    throw new Error(
+      `Backend not reachable at ${baseUrl}. Start Django server before running Playwright.`
+    );
+  }
+  await expect(page.getByTestId("login-username")).toBeVisible({ timeout: 20000 });
+  await page.getByTestId("login-username").fill("mahasiswa_test");
+  await page.getByTestId("login-password").fill("password123");
+  await page.getByTestId("login-submit").click();
+  await expect(page).toHaveURL(`${baseUrl}/`, { timeout: 20000 });
+}
 
 test("E2E FULL: login → chat → lihat jawaban → upload → sidebar refresh", async ({ page }) => {
   test.setTimeout(120000);
@@ -14,13 +30,7 @@ test("E2E FULL: login → chat → lihat jawaban → upload → sidebar refresh"
     });
   });
 
-  await page.goto("http://127.0.0.1:8000/login/", { waitUntil: "networkidle" });
-
-  await page.getByTestId("login-username").fill("mahasiswa_test");
-  await page.getByTestId("login-password").fill("password123");
-  await page.getByTestId("login-submit").click();
-
-  await expect(page).toHaveURL("http://127.0.0.1:8000/", { timeout: 20000 });
+  await login(page);
 
   // Chat
   await expect(page.getByTestId("chat-input")).toBeVisible({ timeout: 20000 });

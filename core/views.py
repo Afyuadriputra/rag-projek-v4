@@ -5,6 +5,7 @@ import time
 
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponseServerError
+from django.core.exceptions import RequestDataTooBig
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from inertia import render as inertia_render
@@ -17,6 +18,7 @@ from . import service  #  business logic dipindah ke core/service.py
 from .models import UserQuota
 
 logger = logging.getLogger(__name__)
+audit_logger = logging.getLogger("audit")
 
 QUOTA_BYTES = 10 * 1024 * 1024  # 10MB
 
@@ -28,6 +30,15 @@ def _rid(request) -> str:
 def _log_extra(request) -> dict:
     return {"request_id": _rid(request)}
 
+def _audit_extra(request, **overrides) -> dict:
+    base = getattr(request, "audit", {}) or {}
+    extra = {
+        "request_id": base.get("request_id", _rid(request)),
+        "user": base.get("user", "-"),
+        "ip": base.get("ip", "-"),
+    }
+    extra.update({k: v for k, v in overrides.items() if v is not None})
+    return extra
 
 def _get_client_ip(request):
     xff = request.META.get("HTTP_X_FORWARDED_FOR")
@@ -73,16 +84,29 @@ def register_view(request):
                 UserQuota.objects.get_or_create(user=user)
             except Exception:
                 pass
-            login(request, user)
+            # perlu backend eksplisit karena ada multiple auth backends (axes)
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
 
             logger.info(f" [REGISTER SUCCESS] user={user.username} id={user.id} ip={ip}", extra=_log_extra(request))
+            audit_logger.info(
+                f"action=register status=success user_id={user.id}",
+                extra=_audit_extra(request, user=user.username),
+            )
             return redirect("home")
 
         except IntegrityError:
             logger.warning(f" [REGISTER FAIL] ip={ip} username='{username}' already used", extra=_log_extra(request))
+            audit_logger.warning(
+                "action=register status=fail reason=duplicate_username",
+                extra=_audit_extra(request, user=username),
+            )
             return inertia_render(request, "Auth/Register", props={"errors": {"username": "Username sudah digunakan."}})
         except Exception as e:
             logger.error(f" [REGISTER ERROR] ip={ip} err={repr(e)}", extra=_log_extra(request), exc_info=True)
+            audit_logger.error(
+                f"action=register status=error err={repr(e)}",
+                extra=_audit_extra(request, user=username),
+            )
             return inertia_render(request, "Auth/Register", props={"errors": {"auth": "Terjadi kesalahan server."}})
 
     return inertia_render(request, "Auth/Register")
@@ -100,16 +124,46 @@ def login_view(request):
             username = data.get("username")
             password = data.get("password")
 
-            user = authenticate(username=username, password=password)
+            # jika sudah terkunci oleh axes
+            try:
+                from axes.helpers import is_already_locked  # type: ignore
+                if is_already_locked(request):
+                    logger.warning(f" [LOGIN LOCKED] username={username} ip={ip}", extra=_log_extra(request))
+                    audit_logger.warning(
+                        "action=login status=locked",
+                        extra=_audit_extra(request, user=username),
+                    )
+                    return inertia_render(
+                        request,
+                        "Auth/Login",
+                        props={"errors": {"auth": "Terlalu banyak percobaan. Coba lagi nanti."}},
+                        status=403,
+                    )
+            except Exception:
+                pass
+
+            user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
                 logger.info(f" [LOGIN SUCCESS] user={user.username} id={user.id} ip={ip}", extra=_log_extra(request))
+                audit_logger.info(
+                    f"action=login status=success user_id={user.id}",
+                    extra=_audit_extra(request, user=user.username),
+                )
                 return redirect("home")
 
             logger.warning(f" [LOGIN FAIL] username={username} ip={ip}", extra=_log_extra(request))
+            audit_logger.warning(
+                "action=login status=fail reason=invalid_credentials",
+                extra=_audit_extra(request, user=username),
+            )
             return inertia_render(request, "Auth/Login", props={"errors": {"auth": "Username atau password salah."}})
         except Exception as e:
             logger.error(f" [LOGIN ERROR] ip={ip} err={repr(e)}", extra=_log_extra(request), exc_info=True)
+            audit_logger.error(
+                f"action=login status=error err={repr(e)}",
+                extra=_audit_extra(request, user=username),
+            )
             return inertia_render(request, "Auth/Login", props={"errors": {"auth": "Error sistem."}})
 
     return inertia_render(request, "Auth/Login")
@@ -121,6 +175,10 @@ def logout_view(request):
         user_name = request.user.username
         logout(request)
         logger.info(f" [LOGOUT] user='{user_name}' ip={ip}", extra=_log_extra(request))
+        audit_logger.info(
+            "action=logout status=success",
+            extra=_audit_extra(request, user=user_name),
+        )
     return redirect("login")
 
 
@@ -204,11 +262,23 @@ def document_detail_api(request, doc_id: int):
         if ok:
             logger.info(f" [DOC DELETE OK] user={user.username}(id={user.id}) ip={ip} doc_id={doc_id}",
                         extra=_log_extra(request))
+            audit_logger.info(
+                f"action=doc_delete status=success doc_id={doc_id}",
+                extra=_audit_extra(request),
+            )
             return JsonResponse({"status": "success"})
+        audit_logger.info(
+            f"action=doc_delete status=not_found doc_id={doc_id}",
+            extra=_audit_extra(request),
+        )
         return JsonResponse({"status": "error", "msg": "Dokumen tidak ditemukan."}, status=404)
     except Exception as e:
         logger.error(f" [DOC DELETE ERROR] user={user.username}(id={user.id}) ip={ip} doc_id={doc_id} err={repr(e)}",
                      extra=_log_extra(request), exc_info=True)
+        audit_logger.error(
+            f"action=doc_delete status=error doc_id={doc_id} err={repr(e)}",
+            extra=_audit_extra(request),
+        )
         return JsonResponse({"status": "error", "msg": "Terjadi kesalahan server."}, status=500)
 
 
@@ -222,9 +292,21 @@ def upload_api(request):
         logger.warning(f" [UPLOAD] Method not allowed method={request.method} ip={ip}", extra=_log_extra(request))
         return JsonResponse({"status": "error", "msg": "Method not allowed"}, status=405)
 
-    files = request.FILES.getlist("files")
+    try:
+        files = request.FILES.getlist("files")
+    except RequestDataTooBig:
+        logger.warning(f" [UPLOAD] payload terlalu besar user={user.username}(id={user.id}) ip={ip}", extra=_log_extra(request))
+        audit_logger.warning(
+            "action=upload status=payload_too_large",
+            extra=_audit_extra(request),
+        )
+        return JsonResponse({"status": "error", "msg": "File terlalu besar."}, status=413)
     if not files:
         logger.warning(f" [UPLOAD] submit tanpa file user={user.username}(id={user.id}) ip={ip}", extra=_log_extra(request))
+        audit_logger.warning(
+            "action=upload status=empty_files",
+            extra=_audit_extra(request),
+        )
         return JsonResponse({"status": "error", "msg": "Tidak ada file yang dikirim"}, status=400)
 
     logger.info(f" [BATCH START] user={user.username}(id={user.id}) ip={ip} files={len(files)}", extra=_log_extra(request))
@@ -232,6 +314,13 @@ def upload_api(request):
         quota_bytes = service.get_user_quota_bytes(user=user, default_quota_bytes=QUOTA_BYTES)
         payload = service.upload_files_batch(user=user, files=files, quota_bytes=quota_bytes)
         logger.info(f" [BATCH END] user={user.username}(id={user.id}) ip={ip} status={payload.get('status')}", extra=_log_extra(request))
+        total_size = sum([getattr(f, "size", 0) or 0 for f in files])
+        names = [getattr(f, "name", "-") for f in files]
+        names_preview = ", ".join(names[:5]) + ("..." if len(names) > 5 else "")
+        audit_logger.info(
+            f"action=upload status={payload.get('status')} files={len(files)} bytes={total_size} names={names_preview}",
+            extra=_audit_extra(request),
+        )
 
         # status code sesuai behavior lama
         if payload.get("status") == "success":
@@ -241,6 +330,10 @@ def upload_api(request):
     except Exception as e:
         logger.error(f" [UPLOAD CRASH] user={user.username}(id={user.id}) ip={ip} err={repr(e)}",
                      extra=_log_extra(request), exc_info=True)
+        audit_logger.error(
+            f"action=upload status=error err={repr(e)}",
+            extra=_audit_extra(request),
+        )
         return JsonResponse({"status": "error", "msg": "Terjadi kesalahan server."}, status=500)
 
 
@@ -263,6 +356,8 @@ def chat_api(request):
 
         query = data.get("message")
         session_id_raw = data.get("session_id")
+        if session_id_raw is not None and (not str(session_id_raw).isdigit()):
+            return JsonResponse({"error": "session_id tidak valid"}, status=400)
         session_id = int(session_id_raw) if str(session_id_raw).isdigit() else None
         if not query:
             logger.warning(f" [CHAT] Pesan kosong user={user.username}(id={user.id}) ip={ip}", extra=_log_extra(request))
@@ -314,6 +409,10 @@ def reingest_api(request):
         payload = service.reingest_documents_for_user(user=user, doc_ids=doc_ids)
 
         logger.info(f" [REINGEST END] user={user.username}(id={user.id}) ip={ip} status={payload.get('status')}", extra=_log_extra(request))
+        audit_logger.info(
+            f"action=reingest status={payload.get('status')} doc_ids={doc_ids}",
+            extra=_audit_extra(request),
+        )
 
         if payload.get("status") == "success":
             return JsonResponse(payload)
@@ -322,6 +421,10 @@ def reingest_api(request):
     except Exception as e:
         logger.error(f" [REINGEST CRASH] user={user.username}(id={user.id}) ip={ip} err={repr(e)}",
                      extra=_log_extra(request), exc_info=True)
+        audit_logger.error(
+            f"action=reingest status=error err={repr(e)}",
+            extra=_audit_extra(request),
+        )
         return JsonResponse({"status": "error", "msg": "Terjadi kesalahan server."}, status=500)
 
 
@@ -338,7 +441,12 @@ def sessions_api(request):
         try:
             page = request.GET.get("page", "1")
             page_size = request.GET.get("page_size", "20")
-            payload = service.list_sessions(user=user, limit=int(page_size), page=int(page))
+            try:
+                page_i = int(page)
+                page_size_i = int(page_size)
+            except Exception:
+                return JsonResponse({"status": "error", "msg": "Parameter pagination tidak valid."}, status=400)
+            payload = service.list_sessions(user=user, limit=page_size_i, page=page_i)
             return JsonResponse(payload)
         except Exception as e:
             logger.error(f" [SESSIONS LIST ERROR] user={user.username}(id={user.id}) ip={ip} err={repr(e)}",
@@ -356,10 +464,18 @@ def sessions_api(request):
                     title = ""
 
             session = service.create_session(user=user, title=title)
+            audit_logger.info(
+                f"action=session_create status=success session_id={session.get('id')}",
+                extra=_audit_extra(request),
+            )
             return JsonResponse({"session": session})
         except Exception as e:
             logger.error(f" [SESSIONS CREATE ERROR] user={user.username}(id={user.id}) ip={ip} err={repr(e)}",
                          extra=_log_extra(request), exc_info=True)
+            audit_logger.error(
+                f"action=session_create status=error err={repr(e)}",
+                extra=_audit_extra(request),
+            )
             return JsonResponse({"status": "error", "msg": "Terjadi kesalahan server."}, status=500)
 
     logger.warning(f" [SESSIONS] Method not allowed method={request.method} ip={ip}", extra=_log_extra(request))
@@ -376,11 +492,23 @@ def session_detail_api(request, session_id: int):
         try:
             ok = service.delete_session(user=user, session_id=session_id)
             if ok:
+                audit_logger.info(
+                    f"action=session_delete status=success session_id={session_id}",
+                    extra=_audit_extra(request),
+                )
                 return JsonResponse({"status": "success"})
+            audit_logger.info(
+                f"action=session_delete status=not_found session_id={session_id}",
+                extra=_audit_extra(request),
+            )
             return JsonResponse({"status": "error", "msg": "Session tidak ditemukan."}, status=404)
         except Exception as e:
             logger.error(f" [SESSIONS DELETE ERROR] user={user.username}(id={user.id}) ip={ip} err={repr(e)}",
                          extra=_log_extra(request), exc_info=True)
+            audit_logger.error(
+                f"action=session_delete status=error session_id={session_id} err={repr(e)}",
+                extra=_audit_extra(request),
+            )
             return JsonResponse({"status": "error", "msg": "Terjadi kesalahan server."}, status=500)
 
     if request.method == "PATCH":
@@ -394,11 +522,23 @@ def session_detail_api(request, session_id: int):
                     title = ""
             updated = service.rename_session(user=user, session_id=session_id, title=title)
             if not updated:
+                audit_logger.info(
+                    f"action=session_rename status=not_found session_id={session_id}",
+                    extra=_audit_extra(request),
+                )
                 return JsonResponse({"status": "error", "msg": "Session tidak ditemukan."}, status=404)
+            audit_logger.info(
+                f"action=session_rename status=success session_id={session_id}",
+                extra=_audit_extra(request),
+            )
             return JsonResponse({"session": updated})
         except Exception as e:
             logger.error(f" [SESSIONS RENAME ERROR] user={user.username}(id={user.id}) ip={ip} err={repr(e)}",
                          extra=_log_extra(request), exc_info=True)
+            audit_logger.error(
+                f"action=session_rename status=error session_id={session_id} err={repr(e)}",
+                extra=_audit_extra(request),
+            )
             return JsonResponse({"status": "error", "msg": "Terjadi kesalahan server."}, status=500)
 
     if request.method == "GET":

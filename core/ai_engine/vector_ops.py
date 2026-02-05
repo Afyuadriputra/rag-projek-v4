@@ -35,11 +35,10 @@ def delete_vectors_for_doc(user_id: str, doc_id: Optional[str] = None, source: O
         logger.warning("vector_ops: collection not found; skip delete")
         return 0
 
-    where = {"user_id": str(user_id)}
     if doc_id:
-        where["doc_id"] = str(doc_id)
+        where = {"$and": [{"user_id": str(user_id)}, {"doc_id": str(doc_id)}]}
     elif source:
-        where["source"] = str(source)
+        where = {"$and": [{"user_id": str(user_id)}, {"source": str(source)}]}
     else:
         # unsafe: jangan delete kalau tidak ada identitas dokumen
         return 0

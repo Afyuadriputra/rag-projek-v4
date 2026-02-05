@@ -249,7 +249,8 @@ export default function Index() {
         // silent
       }
     } catch (e: any) {
-      setToast({ open: true, kind: "error", msg: e?.message ?? "Gagal terhubung ke AI." });
+      const msg = e?.response?.data?.error ?? e?.message ?? "Gagal terhubung ke AI.";
+      setToast({ open: true, kind: "error", msg });
     } finally {
       setLoading(false);
     }
@@ -269,7 +270,8 @@ export default function Index() {
       setToast({ open: true, kind: res.status === "success" ? "success" : "error", msg: res.msg });
       await refreshDocuments();
     } catch (err: any) {
-      setToast({ open: true, kind: "error", msg: err?.message ?? "Upload gagal." });
+      const msg = err?.response?.data?.msg ?? err?.message ?? "Upload gagal.";
+      setToast({ open: true, kind: "error", msg });
     } finally {
       setLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -513,7 +515,7 @@ export default function Index() {
 
       {/* Confirm Delete Modal */}
       {confirmDeleteId !== null && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+        <div data-testid="confirm-delete-session" className="fixed inset-0 z-[1000] flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/30 backdrop-blur-sm"
             onClick={() => setConfirmDeleteId(null)}
@@ -537,6 +539,7 @@ export default function Index() {
                 Batal
               </button>
               <button
+                data-testid="confirm-delete-session-btn"
                 type="button"
                 onClick={async () => {
                   const id = confirmDeleteId;
@@ -583,7 +586,7 @@ export default function Index() {
 
       {/* Confirm Delete Document Modal */}
       {confirmDeleteDocId !== null && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+        <div data-testid="confirm-delete-doc" className="fixed inset-0 z-[1000] flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/30 backdrop-blur-sm"
             onClick={() => setConfirmDeleteDocId(null)}
@@ -609,6 +612,7 @@ export default function Index() {
                 Batal
               </button>
               <button
+                data-testid="confirm-delete-doc-btn"
                 type="button"
                 onClick={async () => {
                   const id = confirmDeleteDocId;

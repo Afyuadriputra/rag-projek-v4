@@ -127,6 +127,7 @@ export default function KnowledgeSidebar({
             Chat
           </div>
           <button
+            data-testid="session-create"
             type="button"
             onClick={onCreateSession}
             className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-zinc-600 hover:bg-zinc-100"
@@ -188,6 +189,7 @@ export default function KnowledgeSidebar({
                   ) : (
                     <>
                       <button
+                        data-testid={`session-item-${s.id}`}
                         type="button"
                         onClick={() => onSelectSession(s.id)}
                         className="flex-1 truncate text-left"
@@ -197,6 +199,7 @@ export default function KnowledgeSidebar({
                       </button>
                       <div className="flex items-center gap-1">
                         <button
+                          data-testid={`session-rename-${s.id}`}
                           type="button"
                           onClick={() => {
                             setEditingId(s.id);
@@ -213,6 +216,7 @@ export default function KnowledgeSidebar({
                           <span className="material-symbols-outlined text-[16px]">edit</span>
                         </button>
                         <button
+                          data-testid={`session-delete-${s.id}`}
                           type="button"
                           onClick={() => onDeleteSession(s.id)}
                           className={cn(
@@ -232,6 +236,7 @@ export default function KnowledgeSidebar({
               ))}
               {hasMoreSessions && (
                 <button
+                  data-testid="sessions-load-more"
                   type="button"
                   onClick={onLoadMoreSessions}
                   disabled={loadingMoreSessions}
@@ -262,6 +267,7 @@ export default function KnowledgeSidebar({
             {docs.map((d, idx) => (
               <div key={d.id ?? idx} className="relative">
                 <DocumentItem
+                  testId={d.id ? `doc-${d.id}` : undefined}
                   title={d.title}
                   status={d.status}
                   onDelete={() => onDeleteDocument(d.id)}

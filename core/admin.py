@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django import forms
+import logging
 from .models import AcademicDocument, ChatHistory, UserQuota
 
+audit_logger = logging.getLogger("audit")
 # --- KONFIGURASI HEADER ADMIN ---
 admin.site.site_header = "Academic AI Administration"
 admin.site.site_title = "Academic Admin Portal"
@@ -70,6 +72,20 @@ class UserQuotaAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "user__email")
     list_filter = ("updated_at",)
     form = None
+
+    def save_model(self, request, obj, form, change):
+        old_quota = None
+        if change and obj.pk:
+            try:
+                old_quota = UserQuota.objects.get(pk=obj.pk).quota_bytes
+            except Exception:
+                old_quota = None
+        super().save_model(request, obj, form, change)
+        action = "quota_update" if change else "quota_create"
+        audit_logger.info(
+            f"action={action} target_user={obj.user.username} target_user_id={obj.user.id} old_quota={old_quota} new_quota={obj.quota_bytes}",
+            extra=getattr(request, "audit", {}),
+        )
 
 
 class UserQuotaForm(forms.ModelForm):

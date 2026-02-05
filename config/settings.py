@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-change-me')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
@@ -33,6 +35,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'inertia',
     'django_vite',
+    'axes',
 
     # --- APP ANDA ---
     'core',
@@ -44,6 +47,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
 
     # ✅ Tambahan: Request ID + access log (tidak mengubah behavior endpoint)
@@ -54,6 +58,20 @@ MIDDLEWARE = [
     # WAJIB: Middleware Inertia (Taruh setelah Auth & Message)
     'inertia.middleware.InertiaMiddleware',
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+# --- AXES (rate limit login) ---
+AXES_ENABLED = True
+AXES_FAILURE_LIMIT = 5
+AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
+AXES_COOLOFF_TIME = 0.05  # jam (~3 menit); bisa diubah via env
+AXES_RESET_ON_SUCCESS = True
+# Tampilkan username & IP di log axes (defaultnya dimask)
+AXES_SENSITIVE_PARAMETERS = []
 
 ROOT_URLCONF = 'config.urls'
 
@@ -165,20 +183,20 @@ LOGGING = {
             # Catatan: %(name)-28s akan left-align dan auto truncate di terminal.
             # Layout umum: padat, cocok untuk terminal kecil (pakai '|')
             "format": (
-                "%(log_color)s%(levelname)-7s%(reset)s|"
+                "%(log_color)s%(levelname)s%(reset)s|"
                 "%(white)s%(asctime)s%(reset)s|"
-                "%(cyan)s%(name)-20s%(reset)s|"
-                "%(white)srid=%(request_id)-10s%(reset)s|"
-                "%(blue)s%(method)-6s%(reset)s|"
-                "%(white)s%(path)-20s%(reset)s|"
-                "%(status_color)s%(status)-3s%(reset)s|"
-                "%(yellow)s%(duration_ms)4sms%(reset)s|"
-                "%(white)suser=%(user)-10s%(reset)s|"
-                "%(white)sip=%(ip)-15s%(reset)s|"
+                "%(cyan)s%(name)s%(reset)s|"
+                "%(white)srid=%(request_id)s%(reset)s|"
+                "%(blue)s%(method)s%(reset)s|"
+                "%(white)s%(path)s%(reset)s|"
+                "%(status_color)s%(status)s%(reset)s|"
+                "%(yellow)s%(duration_ms)sms%(reset)s|"
+                "%(white)suser=%(user)s%(reset)s|"
+                "%(white)sip=%(ip)s%(reset)s|"
                 "%(white)sua=%(agent)s%(reset)s|"
                 "%(white)src=%(referer)s%(reset)s|"
                 "%(purple)s%(filename)s:%(lineno)d%(reset)s|"
-                "%(message)s"
+                "%(message)s\n"
             ),
             "datefmt": "%H:%M:%S",
 
@@ -195,17 +213,17 @@ LOGGING = {
             "()": "colorlog.ColoredFormatter",
             # Layout akses log: sangat padat, pakai '|'
             "format": (
-                "%(log_color)s%(levelname)-7s%(reset)s|"
+                "%(log_color)s%(levelname)s%(reset)s|"
                 "%(white)s%(asctime)s%(reset)s|"
-                "%(blue)s%(method)-6s%(reset)s|"
-                "%(white)s%(path)-20s%(reset)s|"
-                "%(status_color)s%(status)-3s%(reset)s|"
-                "%(yellow)s%(duration_ms)4sms%(reset)s|"
-                "%(white)suser=%(user)-10s%(reset)s|"
-                "%(white)sip=%(ip)-15s%(reset)s|"
-                "%(white)srid=%(request_id)-10s%(reset)s|"
+                "%(blue)s%(method)s%(reset)s|"
+                "%(white)s%(path)s%(reset)s|"
+                "%(status_color)s%(status)s%(reset)s|"
+                "%(yellow)s%(duration_ms)sms%(reset)s|"
+                "%(white)suser=%(user)s%(reset)s|"
+                "%(white)sip=%(ip)s%(reset)s|"
+                "%(white)srid=%(request_id)s%(reset)s|"
                 "%(white)sua=%(agent)s%(reset)s|"
-                "%(white)src=%(referer)s%(reset)s"
+                "%(white)src=%(referer)s%(reset)s\n"
             ),
             "datefmt": "%H:%M:%S",
             "log_colors": {
@@ -216,6 +234,10 @@ LOGGING = {
                 "CRITICAL": "red,bg_white",
             },
             "reset": True,
+        },
+        "audit_plain": {
+            "format": "%(asctime)s|%(levelname)s|rid=%(request_id)s|user=%(user)s|ip=%(ip)s|%(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
 
@@ -229,6 +251,16 @@ LOGGING = {
         "console_request": {
             "class": "logging.StreamHandler",
             "formatter": "request_compact",
+            "filters": ["request_id"],
+            "level": "INFO",
+        },
+        "audit_file": {
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "filename": str(LOG_DIR / "audit.log"),
+            "when": "midnight",
+            "backupCount": 14,
+            "encoding": "utf-8",
+            "formatter": "audit_plain",
             "filters": ["request_id"],
             "level": "INFO",
         },
@@ -273,6 +305,13 @@ LOGGING = {
         # AI engine: INFO (kalau mau super detail: ganti jadi DEBUG)
         "core.ai_engine": {
             "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+
+        # Audit log untuk aksi penting (disimpan di file + tampil di terminal)
+        "audit": {
+            "handlers": ["console", "audit_file"],
             "level": "INFO",
             "propagate": False,
         },

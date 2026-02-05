@@ -18,6 +18,24 @@ class RequestContextMiddleware:
         t0 = time.time()
         response = None
         try:
+            # audit metadata (dipakai oleh audit logger)
+            user_obj = getattr(request, "user", None)
+            username = getattr(user_obj, "username", "-") if user_obj and getattr(user_obj, "is_authenticated", False) else "-"
+            user_id = getattr(user_obj, "id", "-") if user_obj and getattr(user_obj, "is_authenticated", False) else "-"
+            ip = request.META.get("HTTP_X_FORWARDED_FOR") or request.META.get("REMOTE_ADDR") or "-"
+            ip = ip.split(",")[0].strip() if ip else "-"
+            agent = request.META.get("HTTP_USER_AGENT") or "-"
+            referer = request.META.get("HTTP_REFERER") or "-"
+            request.audit = {
+                "request_id": request.request_id,
+                "user": username,
+                "user_id": user_id,
+                "ip": ip,
+                "agent": agent,
+                "referer": referer,
+                "method": request.method,
+                "path": request.path,
+            }
             response = self.get_response(request)
             return response
         finally:

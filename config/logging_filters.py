@@ -24,15 +24,15 @@ class RequestIdFilter:
             record.referer = "-"
         if not hasattr(record, "status_color"):
             record.status_color = ""
-        # Color by status code (2xx green, 4xx yellow, 5xx red)
+        # Color by status code (2xx green, 4xx yellow, 5xx red) - high contrast
         try:
             st = int(record.status)
             if 200 <= st < 300:
-                record.status_color = "\x1b[32m"  # green
+                record.status_color = "\x1b[1;32m"  # bright green
             elif 400 <= st < 500:
-                record.status_color = "\x1b[33m"  # yellow
+                record.status_color = "\x1b[1;33m"  # bright yellow
             elif 500 <= st < 600:
-                record.status_color = "\x1b[31m"  # red
+                record.status_color = "\x1b[1;31m"  # bright red
         except Exception:
             pass
         return True

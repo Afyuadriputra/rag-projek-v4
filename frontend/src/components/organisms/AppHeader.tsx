@@ -64,6 +64,7 @@ export default function AppHeader({
         {/* Profile Section with Dropdown */}
         <div className="relative">
             <button 
+                data-testid="user-menu-button"
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="flex items-center gap-3 outline-none"
             >
@@ -102,6 +103,7 @@ export default function AppHeader({
                         
                         <div className="p-1">
                             <Link
+                                data-testid="logout-link"
                                 href="/logout/" // Sesuai endpoint Django
                                 className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
                             >

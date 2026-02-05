@@ -13,7 +13,7 @@ export default function Toast({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed top-20 right-6 z-[999]">
+    <div data-testid="toast" className="fixed top-20 right-6 z-[999]">
       <div
         className={cn(
           "glass-card rounded-2xl px-4 py-3 border shadow-sm min-w-[280px] max-w-[420px]",
@@ -28,7 +28,7 @@ export default function Toast({
             <div className="text-[11px] uppercase tracking-widest text-zinc-500 font-semibold mb-1">
               {kind === "success" ? "Success" : "Error"}
             </div>
-            <div className="text-[13px] text-zinc-700">{message}</div>
+            <div data-testid="toast-message" className="text-[13px] text-zinc-700">{message}</div>
           </div>
           <button onClick={onClose} className="text-zinc-400 hover:text-black">
             <span className="material-symbols-outlined text-[18px]">close</span>

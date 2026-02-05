@@ -19,7 +19,10 @@ export default function ChatThread({ items }: { items: ChatItem[] }) {
     // - w-full & mx-auto: Agar konten di tengah
     // - overflow-x-hidden: Mencegah tabel lebar merusak layout mobile
     // - px-4: Padding mobile
-    <div className="mx-auto w-full max-w-3xl min-w-0 overflow-x-hidden px-4 md:px-0">
+    <div
+      data-testid="chat-thread"
+      className="mx-auto w-full max-w-3xl min-w-0 overflow-x-hidden px-4 md:px-0"
+    >
       <div className="flex flex-col gap-6 md:gap-8">
         {/* Date Badge */}
         <div className="pointer-events-none sticky top-0 z-10 flex justify-center py-6">

@@ -20,17 +20,20 @@ export default function DocumentItem({
   onDelete,
   isDeleting = false,
   disableDelete = false,
+  testId,
 }: {
   title: string;
   status: DocStatus;
   onDelete?: () => void;
   isDeleting?: boolean;
   disableDelete?: boolean;
+  testId?: string;
 }) {
   const meta = getDocMeta(title);
 
   return (
     <div
+      data-testid={testId}
       className={cn(
         "group relative flex items-center gap-3 rounded-2xl px-3.5 py-3",
         "border border-black/5 bg-white/55 backdrop-blur-md",
@@ -89,6 +92,7 @@ export default function DocumentItem({
       {/* Actions */}
       {onDelete && (
         <button
+          data-testid={testId ? `${testId}-delete` : undefined}
           type="button"
           onClick={onDelete}
           disabled={isDeleting || disableDelete}
