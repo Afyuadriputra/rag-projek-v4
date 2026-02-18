@@ -9,15 +9,17 @@ def build_sources_from_docs(docs, max_sources: int = 8, snippet_len: int = 220):
     for d in docs:
         meta = getattr(d, "metadata", {}) or {}
         src = meta.get("source") or "unknown"
-        if src in seen:
+        page = meta.get("page")
+        source_label = f"{src} (p.{page})" if page else src
+        if source_label in seen:
             continue
-        seen.add(src)
+        seen.add(source_label)
 
         snippet = (getattr(d, "page_content", "") or "").strip().replace("\n", " ")
         if len(snippet) > snippet_len:
             snippet = snippet[:snippet_len] + "..."
 
-        sources.append({"source": src, "snippet": snippet})
+        sources.append({"source": source_label, "snippet": snippet})
         if len(sources) >= max_sources:
             break
     return sources

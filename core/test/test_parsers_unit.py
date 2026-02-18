@@ -1,43 +1,72 @@
 import unittest
 
-from core.ai_engine.parsers import classifier
-from core.ai_engine.parsers import normalize
-from core.ai_engine.parsers import schedule_jadwal_fakultas
+from core.ai_engine import ingest as ingest_mod
 
 
-class TestParsersClassifier(unittest.TestCase):
-    def test_classifier_jadwal_fakultas(self):
-        pages = ["HARI SESI JAM RUANG SMT KLS DOSEN"]
-        doc_type, conf, signals = classifier.classify(pages)
-        self.assertEqual(doc_type, "jadwal_fakultas")
-        self.assertGreaterEqual(conf, 0.6)
-        self.assertTrue("hari" in signals)
-
-    def test_classifier_krs(self):
-        pages = ["Lembar Rencana Studi\nNIM: 123456\nProgram Studi: Informatika\nSemester: 7"]
-        doc_type, conf, signals = classifier.classify(pages)
-        self.assertEqual(doc_type, "krs")
-        self.assertGreaterEqual(conf, 0.5)
-        self.assertTrue("krs" in signals or "lembar rencana studi" in signals)
-
-
-class TestParsersNormalize(unittest.TestCase):
-    def test_time_normalization(self):
-        self.assertEqual(normalize.normalize_time_range("07.00-07.50"), "07:00-07:50")
-        self.assertEqual(normalize.normalize_time_range("7:00–9:30"), "07:00-09:30")
-
-    def test_merge_header_smt(self):
-        merged = normalize.merge_split_headers(["SM", "T", "KLS"])
-        self.assertEqual(merged[0], "SMT")
-
-
-class TestMergedCellPropagation(unittest.TestCase):
-    def test_propagate_hari_sesi_jam(self):
+class TestParserChunkingProfile(unittest.TestCase):
+    def test_chunk_kind_tagging_row_parent_text(self):
         rows = [
-            {"hari": "SENIN", "sesi": "I", "jam": "07:00-07:50"},
-            {"hari": None, "sesi": None, "jam": None},
+            {
+                "hari": "SENIN",
+                "sesi": "I",
+                "jam": "07:00-07:50",
+                "kode": "IF101",
+                "mata_kuliah": "Algoritma",
+                "sks": "3",
+                "kelas": "A",
+                "ruang": "1.10",
+                "dosen": "Dosen A",
+                "semester": "3",
+                "page": 1,
+            },
+            {
+                "hari": "SENIN",
+                "sesi": "II",
+                "jam": "08:00-08:50",
+                "kode": "IF102",
+                "mata_kuliah": "Struktur Data",
+                "sks": "3",
+                "kelas": "A",
+                "ruang": "1.11",
+                "dosen": "Dosen B",
+                "semester": "3",
+                "page": 1,
+            },
         ]
-        schedule_jadwal_fakultas._propagate_merged_fields(rows)
-        self.assertEqual(rows[1]["hari"], "SENIN")
-        self.assertEqual(rows[1]["sesi"], "I")
-        self.assertEqual(rows[1]["jam"], "07:00-07:50")
+        row_chunks = ingest_mod._schedule_rows_to_row_chunks(rows)
+        payloads = ingest_mod._build_chunk_payloads(
+            doc_type="schedule",
+            text_content="Dokumen jadwal semester 3.",
+            row_chunks=row_chunks,
+            schedule_rows=rows,
+        )
+        kinds = [str(p.get("chunk_kind")) for p in payloads]
+        self.assertIn("row", kinds)
+        self.assertIn("parent", kinds)
+        self.assertIn("text", kinds)
+
+    def test_parent_chunk_contains_page_and_day_section(self):
+        rows = [
+            {
+                "hari": "SELASA",
+                "sesi": "III",
+                "jam": "10:00-10:50",
+                "mata_kuliah": "Basis Data",
+                "kode": "IF201",
+                "kelas": "B",
+                "ruang": "2.01",
+                "dosen": "Dosen C",
+                "semester": "5",
+                "page": 2,
+            }
+        ]
+        parents = ingest_mod._schedule_rows_to_parent_chunks(rows, target_chars=500)
+        self.assertGreaterEqual(len(parents), 1)
+        first = parents[0]
+        self.assertEqual(first.get("chunk_kind"), "parent")
+        self.assertEqual(first.get("page"), 2)
+        self.assertIn("hari:", str(first.get("section", "")))
+
+    def test_ocr_like_row_still_normalized_time(self):
+        s = ingest_mod._normalize_time_range("0 5 :7 0-0 0 :7 0")
+        self.assertEqual(s, "07:00-07:50")

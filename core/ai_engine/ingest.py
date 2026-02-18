@@ -453,6 +453,104 @@ def _schedule_rows_to_row_chunks(rows: Optional[List[Dict[str, Any]]], limit: in
     return out
 
 
+def _schedule_rows_to_parent_chunks(rows: Optional[List[Dict[str, Any]]], target_chars: int = 420) -> List[Dict[str, Any]]:
+    """
+    Parent chunk: rangkum beberapa row per page+hari agar retrieval punya konteks lebih lebar.
+    """
+    if not rows:
+        return []
+    grouped: Dict[Tuple[int, str], List[str]] = {}
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        page_val = r.get("page", 0)
+        try:
+            page_num = int(page_val or 0)
+        except Exception:
+            page_num = 0
+        day = _norm(r.get("hari", "")) or "-"
+        key = (page_num, day)
+        grouped.setdefault(key, [])
+        cells: List[str] = []
+        for col in ["sesi", "jam", "kode", "mata_kuliah", "kelas", "ruang", "dosen", "semester"]:
+            val = _norm(r.get(col, ""))
+            if val:
+                cells.append(f"{col}={val}")
+        if cells:
+            grouped[key].append(" | ".join(cells))
+
+    out: List[Dict[str, Any]] = []
+    for (page_num, day), lines in grouped.items():
+        if not lines:
+            continue
+        buffer = f"PARENT_SCHEDULE page={page_num} hari={day}\n"
+        for line in lines:
+            if len(buffer) + len(line) + 2 > target_chars and len(buffer) > 60:
+                out.append({"text": buffer.strip(), "chunk_kind": "parent", "page": page_num, "section": f"hari:{day}"})
+                buffer = f"PARENT_SCHEDULE page={page_num} hari={day}\n"
+            buffer += f"- {line}\n"
+        if buffer.strip():
+            out.append({"text": buffer.strip(), "chunk_kind": "parent", "page": page_num, "section": f"hari:{day}"})
+    return out
+
+
+def _build_chunk_payloads(
+    *,
+    doc_type: str,
+    text_content: str,
+    row_chunks: List[str],
+    schedule_rows: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Build payload chunk dengan profil per doc_type:
+    - schedule: row + parent + text
+    - others: text only
+    """
+    profile_enabled = (os.environ.get("RAG_DOC_CHUNK_PROFILE", "1") or "1").strip().lower() in {"1", "true", "yes"}
+    if profile_enabled and doc_type == "schedule":
+        text_chunk_size = int(os.environ.get("RAG_SCHEDULE_TEXT_CHUNK_SIZE", "820") or 820)
+        text_chunk_overlap = int(os.environ.get("RAG_SCHEDULE_TEXT_CHUNK_OVERLAP", "100") or 100)
+    else:
+        text_chunk_size = int(os.environ.get("RAG_TEXT_CHUNK_SIZE", "820") or 820)
+        text_chunk_overlap = int(os.environ.get("RAG_TEXT_CHUNK_OVERLAP", "100") or 100)
+
+    splitter = RecursiveCharacterTextSplitter(chunk_size=max(200, text_chunk_size), chunk_overlap=max(40, text_chunk_overlap))
+    text_chunks = [_norm(c) for c in splitter.split_text(text_content or "") if _norm(c)]
+
+    payloads: List[Dict[str, Any]] = []
+    seen = set()
+
+    for rc in row_chunks or []:
+        val = _norm(rc)
+        if not val or val in seen:
+            continue
+        seen.add(val)
+        payloads.append({"text": val, "chunk_kind": "row"})
+
+    if profile_enabled and doc_type == "schedule":
+        for p in _schedule_rows_to_parent_chunks(schedule_rows):
+            txt = _norm(p.get("text", ""))
+            if not txt or txt in seen:
+                continue
+            seen.add(txt)
+            payloads.append(
+                {
+                    "text": txt,
+                    "chunk_kind": "parent",
+                    "page": p.get("page"),
+                    "section": p.get("section", ""),
+                }
+            )
+
+    for tc in text_chunks:
+        if tc in seen:
+            continue
+        seen.add(tc)
+        payloads.append({"text": tc, "chunk_kind": "text"})
+
+    return payloads
+
+
 def _row_confidence(row: Dict[str, Any]) -> Tuple[float, List[str]]:
     """
     Hitung confidence sederhana untuk memutuskan apakah row perlu diperbaiki LLM.
@@ -1109,16 +1207,21 @@ def process_document(doc_instance) -> bool:
             logger.warning(" FILE KOSONG: %s tidak mengandung teks yang bisa dibaca.", doc_instance.title)
             return False
 
+        doc_type = _detect_doc_type(detected_columns, schedule_rows)
+
         # =========================
         # 2) CHUNKING
         # =========================
-        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=120)
-        chunks = list(row_chunks)
-        chunks.extend(splitter.split_text(text_content))
-        # dedup chunk agar embedding tidak boros untuk konten identik
-        chunks = [c for c in dict.fromkeys([_norm(c) for c in chunks if _norm(c)])]
+        chunk_payloads_all = _build_chunk_payloads(
+            doc_type=doc_type,
+            text_content=text_content,
+            row_chunks=row_chunks,
+            schedule_rows=schedule_rows,
+        )
+        chunk_payloads = [x for x in chunk_payloads_all if str(x.get("text") or "").strip()]
+        chunks = [str(x.get("text") or "") for x in chunk_payloads]
 
-        if not chunks:
+        if not chunk_payloads:
             logger.warning(" CHUNKING GAGAL: Tidak ada potongan teks untuk %s.", doc_instance.title)
             return False
 
@@ -1152,12 +1255,25 @@ def process_document(doc_instance) -> bool:
         if semester_num is not None:
             base_meta["semester"] = int(semester_num)
 
-        doc_type = _detect_doc_type(detected_columns, schedule_rows)
         base_meta["doc_type"] = doc_type
         if row_chunks:
             base_meta["table_format"] = "csv_canonical"
+        chunk_profile_enabled = (os.environ.get("RAG_DOC_CHUNK_PROFILE", "1") or "1").strip().lower() in {"1", "true", "yes"}
+        base_meta["chunk_profile"] = "on" if chunk_profile_enabled else "off"
 
-        metadatas = [base_meta for _ in chunks]
+        metadatas: List[Dict[str, Any]] = []
+        for payload in chunk_payloads:
+            meta = dict(base_meta)
+            meta["chunk_kind"] = str(payload.get("chunk_kind") or "text")
+            if payload.get("page") is not None and str(payload.get("page")).strip():
+                try:
+                    meta["page"] = int(payload.get("page"))
+                except Exception:
+                    pass
+            section = str(payload.get("section") or "").strip()
+            if section:
+                meta["section"] = section
+            metadatas.append(meta)
 
         logger.debug(" Menyimpan ke ChromaDB... chunks=%s cols=%s schedule_rows=%s",
                      len(chunks), len(detected_columns or []), len(schedule_rows or []))

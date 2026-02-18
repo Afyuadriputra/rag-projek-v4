@@ -1,9 +1,8 @@
-import json
 import unittest
 from types import SimpleNamespace
 
 from core.ai_engine import ingest as ingest_mod
-from core.ai_engine import retrieval as ret_mod
+from core.ai_engine.retrieval import main as ret_main
 
 
 class TestAIEngineIngestUnit(unittest.TestCase):
@@ -37,31 +36,28 @@ class TestAIEngineIngestUnit(unittest.TestCase):
 
 
 class TestAIEngineRetrievalUnit(unittest.TestCase):
-    def test_extract_semesters_from_docs(self):
+    def test_build_filter_contains_user_and_doc_type(self):
+        out = ret_main._build_chroma_filter(user_id=7, query="jadwal semester 3")
+        self.assertIn("$and", out)
+        filters = out["$and"]
+        self.assertTrue(any(f.get("user_id") == "7" for f in filters if isinstance(f, dict)))
+        self.assertTrue(any(f.get("doc_type") == "schedule" for f in filters if isinstance(f, dict)))
+
+    def test_dedup_docs(self):
         docs = [
-            SimpleNamespace(metadata={"semester": 3, "source": "semester 3.pdf"}, page_content=""),
-            SimpleNamespace(metadata={"source": "semester 7.pdf"}, page_content=""),
-            SimpleNamespace(metadata={"semester": "5"}, page_content=""),
+            SimpleNamespace(metadata={"doc_id": "1", "source": "a.pdf", "page": 1}, page_content="A"),
+            SimpleNamespace(metadata={"doc_id": "1", "source": "a.pdf", "page": 1}, page_content="A"),
+            SimpleNamespace(metadata={"doc_id": "2", "source": "b.pdf", "page": 1}, page_content="B"),
         ]
-        sems = ret_mod._extract_semesters_from_docs(docs)
-        self.assertEqual(sems, ["3", "5", "7"])
+        out = ret_main._dedup_docs(docs)
+        self.assertEqual(len(out), 2)
 
-    def test_extract_schedule_rows_from_json_metadata(self):
-        rows = [{"hari": "Senin", "jam": "07:30-09:00"}]
-        docs = [SimpleNamespace(metadata={"schedule_rows": json.dumps(rows)}, page_content="")]
-        out = ret_mod._extract_schedule_rows_from_docs(docs)
-        self.assertEqual(out, rows)
+    def test_has_citation_helper(self):
+        self.assertTrue(ret_main._has_citation("Data ada di [source: jadwal.pdf]"))
+        self.assertFalse(ret_main._has_citation("Tanpa sitasi"))
 
-    def test_sum_sks(self):
-        rows = [{"sks": "3"}, {"sks": "2"}, {"sks": "4"}]
-        self.assertEqual(ret_mod._sum_sks(rows), 9)
-
-    def test_conflict_detection(self):
-        rows = [
-            {"hari": "Senin", "jam": "08:00-09:30", "mata_kuliah": "A"},
-            {"hari": "Senin", "jam": "09:00-10:00", "mata_kuliah": "B"},
-            {"hari": "Selasa", "jam": "08:00-09:00", "mata_kuliah": "C"},
-        ]
-        conflicts = ret_mod._detect_conflicts(rows)
-        self.assertTrue(any(c["hari"] == "Senin" for c in conflicts))
-
+    def test_query_rewrite(self):
+        q = "jadwal kelas hari senin jam pagi"
+        out = ret_main._rewrite_queries(q)
+        self.assertGreaterEqual(len(out), 1)
+        self.assertEqual(out[0], q)

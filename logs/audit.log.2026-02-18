@@ -1,0 +1,71 @@
+2026-02-18 16:39:32|INFO|rid=1bb96898e7|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 16:39:37|INFO|rid=5a1fc3c12b|user=Sartika byu|ip=127.0.0.1|action=logout status=success
+2026-02-18 16:57:37|INFO|rid=c323657b58|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 17:52:13|WARNING|rid=3ef61beeb2|user=Sartika byu|ip=127.0.0.1|action=login status=fail reason=invalid_credentials
+2026-02-18 17:52:20|WARNING|rid=bc8765939a|user=Sartika byu|ip=127.0.0.1|action=login status=fail reason=invalid_credentials
+2026-02-18 17:52:26|INFO|rid=7074649819|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 17:54:15|INFO|rid=0ed0175b1a|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 17:54:32|INFO|rid=a0db4fddf7|user=Sartika byu|ip=127.0.0.1|action=upload status=success files=1 bytes=173550 names=semester 4.pdf
+2026-02-18 19:23:53|INFO|rid=61b6bdaaff|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 19:26:07|INFO|rid=d7ec6a91a9|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 19:32:21|INFO|rid=b500e53fd7|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 19:32:44|INFO|rid=0dd6842c80|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=19
+2026-02-18 19:32:46|INFO|rid=9b64930baa|user=Sartika byu|ip=127.0.0.1|action=logout status=success
+2026-02-18 19:33:11|INFO|rid=fb41fd30a0|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 19:33:16|INFO|rid=89443f2c61|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 19:43:10|INFO|rid=b35cbacae7|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 19:46:29|INFO|rid=583bda28ff|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 19:46:34|INFO|rid=cd0371eb81|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 19:46:47|INFO|rid=7b183328a3|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 19:56:54|INFO|rid=4c8f25908e|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 19:56:57|INFO|rid=8a60e4e355|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=23
+2026-02-18 19:57:03|INFO|rid=ebb7591b86|user=Sartika byu|ip=127.0.0.1|action=doc_delete status=success doc_id=122
+2026-02-18 20:19:11|INFO|rid=1da9ed67ee|user=Sartika byu|ip=127.0.0.1|action=session_create status=success session_id=24
+2026-02-18 20:19:22|INFO|rid=7c00de6dae|user=Sartika byu|ip=127.0.0.1|action=session_create status=success session_id=25
+2026-02-18 20:19:31|INFO|rid=29bbdd75a6|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=24
+2026-02-18 20:19:33|INFO|rid=f282286353|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=25
+2026-02-18 20:20:49|INFO|rid=a273dd3a90|user=Sartika byu|ip=127.0.0.1|action=session_create status=success session_id=27
+2026-02-18 20:21:37|WARNING|rid=ba8948a326|user=Sartika byu|ip=127.0.0.1|action=login status=fail reason=invalid_credentials
+2026-02-18 20:21:44|WARNING|rid=36032faacb|user=Sartika byu|ip=127.0.0.1|action=login status=fail reason=invalid_credentials
+2026-02-18 20:21:51|INFO|rid=540c69e354|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 20:21:54|INFO|rid=a65bf7a12f|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=26
+2026-02-18 20:30:41|INFO|rid=f22f8eed1b|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=27
+2026-02-18 20:30:51|INFO|rid=238680165f|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=28
+2026-02-18 20:30:52|INFO|rid=bf26ba7e3b|user=Sartika byu|ip=127.0.0.1|action=session_create status=success session_id=29
+2026-02-18 20:31:17|INFO|rid=648ed5b0c2|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=29
+2026-02-18 20:32:05|INFO|rid=05d20283e3|user=Sartika byu|ip=127.0.0.1|action=logout status=success
+2026-02-18 20:32:16|INFO|rid=ae2e5cb8c2|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 20:41:03|INFO|rid=c9a4c59533|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=30
+2026-02-18 20:41:20|INFO|rid=9c8c711fe9|user=Sartika byu|ip=127.0.0.1|action=logout status=success
+2026-02-18 20:41:39|INFO|rid=d2912493e6|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 21:00:23|INFO|rid=4abef90324|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 21:00:28|INFO|rid=b80fc3dd53|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 21:00:40|INFO|rid=dd082c67b9|user=mahasiswa_test|ip=127.0.0.1|action=login status=success user_id=3
+2026-02-18 21:21:12|INFO|rid=6416f21922|user=Sartika byu|ip=127.0.0.1|action=upload status=success files=2 bytes=343506 names=semester 2.pdf, semester 1.pdf
+2026-02-18 21:24:57|INFO|rid=614cfecbfe|user=Sartika byu|ip=127.0.0.1|action=session_create status=success session_id=32
+2026-02-18 21:25:06|INFO|rid=54d39aeb7c|user=Sartika byu|ip=127.0.0.1|action=session_rename status=success session_id=32
+2026-02-18 21:25:26|INFO|rid=9afbccb110|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=32
+2026-02-18 21:25:28|INFO|rid=a658c26edf|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=31
+2026-02-18 21:34:44|INFO|rid=6a5a7086af|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 21:56:26|INFO|rid=5e560c095d|user=Sartika byu|ip=127.0.0.1|action=session_create status=success session_id=34
+2026-02-18 21:58:46|INFO|rid=a02610a412|user=Sartika byu|ip=127.0.0.1|action=doc_delete status=success doc_id=124
+2026-02-18 21:58:48|INFO|rid=68a81c6fd3|user=Sartika byu|ip=127.0.0.1|action=doc_delete status=success doc_id=123
+2026-02-18 21:59:01|INFO|rid=6102c056f5|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=34
+2026-02-18 21:59:06|INFO|rid=c3b3da241e|user=Sartika byu|ip=127.0.0.1|action=session_create status=success session_id=35
+2026-02-18 21:59:27|INFO|rid=3a5de87781|user=Sartika byu|ip=127.0.0.1|action=logout status=success
+2026-02-18 21:59:35|WARNING|rid=b8c9300ee4|user=Sartika byu|ip=127.0.0.1|action=login status=fail reason=invalid_credentials
+2026-02-18 21:59:42|INFO|rid=4dcf44f029|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 22:00:14|INFO|rid=dad29b4bb6|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-18 22:01:37|INFO|rid=4c255e32de|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=33
+2026-02-18 22:01:41|INFO|rid=33c048c14b|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=35
+2026-02-18 22:29:32|INFO|rid=b55669adba|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=36
+2026-02-18 22:29:35|INFO|rid=208b686950|user=Sartika byu|ip=127.0.0.1|action=session_create status=success session_id=37
+2026-02-18 22:30:10|INFO|rid=377a7be632|user=Sartika byu|ip=127.0.0.1|action=upload status=success files=1 bytes=166801 names=semester 7.pdf
+2026-02-18 22:31:37|INFO|rid=2b9cb2179e|user=Sartika byu|ip=127.0.0.1|action=logout status=success
+2026-02-18 22:31:46|WARNING|rid=2e519fa7c0|user=iki|ip=127.0.0.1|action=login status=fail reason=invalid_credentials
+2026-02-18 22:32:02|WARNING|rid=d48bd1b355|user=iki|ip=127.0.0.1|action=login status=fail reason=invalid_credentials
+2026-02-18 22:32:08|WARNING|rid=8a67fbf121|user=iki uir|ip=127.0.0.1|action=login status=fail reason=invalid_credentials
+2026-02-18 22:32:14|INFO|rid=130e6f6a6e|user=iki uir|ip=127.0.0.1|action=login status=success user_id=6
+2026-02-18 22:33:03|INFO|rid=303894c990|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=121
+2026-02-18 22:33:06|INFO|rid=7982ad8286|user=iki uir|ip=127.0.0.1|action=session_delete status=success session_id=21
+2026-02-18 22:34:42|INFO|rid=37e4a6f0dc|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=38803 names=khs23101051531.pdf

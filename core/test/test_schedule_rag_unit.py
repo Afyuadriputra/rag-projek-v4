@@ -1,41 +1,44 @@
 import unittest
 
-from core.ai_engine.parsers.chunking import build_schedule_chunks
+from core.ai_engine import ingest as ingest_mod
 from core.ai_engine.retrieval import main as ret_main
 
 
 class TestScheduleIntent(unittest.TestCase):
-    def test_schedule_intent_detector(self):
-        q = "Kapan kelas SMT 3 hari Senin jam 07.00?"
-        self.assertTrue(ret_main._detect_schedule_intent(q))
+    def test_infer_doc_type_schedule(self):
+        self.assertEqual(ret_main.infer_doc_type("jadwal kelas hari senin"), "schedule")
 
-    def test_filter_builder(self):
-        q = "Kapan kelas SMT 3 kelas A hari Senin?"
-        filters = ret_main._build_schedule_filters(q, {"user_id": "1"})
-        first = filters[0]
-        self.assertEqual(first.get("hari"), "SENIN")
-        self.assertEqual(first.get("semester"), 3)
-        self.assertIn("doc_type", first)
+    def test_filter_builder_has_semester_and_doc_type(self):
+        out = ret_main._build_chroma_filter(user_id=1, query="jadwal semester 3")
+        self.assertIn("$and", out)
+        filters = out["$and"]
+        self.assertTrue(any(x.get("semester") == 3 for x in filters if isinstance(x, dict)))
+        self.assertTrue(any(x.get("doc_type") == "schedule" for x in filters if isinstance(x, dict)))
 
 
-class TestChunkHeader(unittest.TestCase):
-    def test_chunk_header_presence(self):
+class TestChunkProfile(unittest.TestCase):
+    def test_parent_chunk_presence_for_schedule(self):
         rows = [
             {
                 "hari": "SENIN",
                 "sesi": "I",
-                "jam_mulai": "07:00",
-                "jam_selesai": "07:50",
+                "jam": "07:00-07:50",
                 "mata_kuliah": "Hukum",
-                "kode_mk": "HK101",
+                "kode": "HK101",
                 "kelas": "A",
-                "ruang_lokasi": "1.10",
-                "dosen": ["Dosen A"],
+                "ruang": "1.10",
+                "dosen": "Dosen A",
                 "semester": 3,
                 "page": 1,
             }
         ]
-        chunks = build_schedule_chunks(rows, "jadwal_fakultas")
-        text = chunks[0][0]
-        self.assertIn("SENIN, Sesi I", text)
-        self.assertIn("07:00–07:50", text)
+        payloads = ingest_mod._build_chunk_payloads(
+            doc_type="schedule",
+            text_content="jadwal kuliah",
+            row_chunks=ingest_mod._schedule_rows_to_row_chunks(rows),
+            schedule_rows=rows,
+        )
+        kinds = [p.get("chunk_kind") for p in payloads]
+        self.assertIn("row", kinds)
+        self.assertIn("parent", kinds)
+        self.assertIn("text", kinds)
