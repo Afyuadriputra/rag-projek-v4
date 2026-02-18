@@ -1,0 +1,66 @@
+2026-02-05 23:13:59|INFO|rid=49b81093c5|user=Sartika byu|ip=127.0.0.1|action=logout status=success
+2026-02-05 23:15:57|INFO|rid=2a32e12271|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-05 23:16:11|INFO|rid=ffe3db7fa4|user=Sartika byu|ip=127.0.0.1|action=doc_delete status=success doc_id=71
+2026-02-05 23:16:14|INFO|rid=4ec243fee4|user=Sartika byu|ip=127.0.0.1|action=doc_delete status=success doc_id=70
+2026-02-05 23:16:16|INFO|rid=11cb1f5b7e|user=Sartika byu|ip=127.0.0.1|action=doc_delete status=success doc_id=69
+2026-02-05 23:16:18|INFO|rid=b86e19b63a|user=Sartika byu|ip=127.0.0.1|action=doc_delete status=success doc_id=68
+2026-02-05 23:16:20|INFO|rid=0871311b9c|user=Sartika byu|ip=127.0.0.1|action=doc_delete status=success doc_id=67
+2026-02-05 23:16:22|INFO|rid=4fe1ab1fcb|user=Sartika byu|ip=127.0.0.1|action=doc_delete status=success doc_id=66
+2026-02-05 23:16:24|INFO|rid=7e27be2229|user=Sartika byu|ip=127.0.0.1|action=doc_delete status=success doc_id=65
+2026-02-05 23:16:28|INFO|rid=2cb950eaa7|user=Sartika byu|ip=127.0.0.1|action=session_delete status=success session_id=8
+2026-02-05 23:19:40|INFO|rid=a6a4b895e0|user=Sartika byu|ip=127.0.0.1|action=logout status=success
+2026-02-05 23:20:21|INFO|rid=4fa876baff|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-05 23:21:24|INFO|rid=7ad56cfb1b|user=Sartika byu|ip=127.0.0.1|action=upload status=success files=7 bytes=1197243 names=semester 7.pdf, semester 6.pdf, semester 5.pdf, semester 4.pdf, semester 3.pdf...
+2026-02-06 00:54:40|INFO|rid=57a73551ea|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=88
+2026-02-06 00:55:51|INFO|rid=6c32606432|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 01:19:02|INFO|rid=c57a40b6e4|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=89
+2026-02-06 01:50:40|INFO|rid=2fbdc5592c|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 02:15:12|INFO|rid=d719f84d41|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=90
+2026-02-06 02:16:12|INFO|rid=c093232637|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 02:21:19|INFO|rid=d4cdcb43ff|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=91
+2026-02-06 02:21:29|INFO|rid=2ccee2fead|user=iki uir|ip=127.0.0.1|action=session_create status=success session_id=13
+2026-02-06 02:22:32|INFO|rid=183672e321|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 02:38:43|INFO|rid=4a5faa6826|user=iki uir|ip=127.0.0.1|action=session_delete status=success session_id=12
+2026-02-06 02:38:50|INFO|rid=a9c3cef9b7|user=iki uir|ip=127.0.0.1|action=session_delete status=success session_id=13
+2026-02-06 02:38:59|INFO|rid=5019ed4635|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=92
+2026-02-06 02:39:47|INFO|rid=e213993f06|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 02:43:35|INFO|rid=dca3833fc9|user=iki uir|ip=127.0.0.1|action=session_delete status=success session_id=14
+2026-02-06 02:43:43|INFO|rid=bbdca44c45|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=93
+2026-02-06 02:43:46|INFO|rid=ee76dcdaf8|user=iki uir|ip=127.0.0.1|action=logout status=success
+2026-02-06 02:43:55|INFO|rid=e5cfb1d85c|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-06 11:53:56|INFO|rid=839532ad2f|user=Sartika byu|ip=127.0.0.1|action=logout status=success
+2026-02-06 11:54:16|INFO|rid=8161db63a3|user=iki uir|ip=127.0.0.1|action=login status=success user_id=6
+2026-02-06 11:55:11|INFO|rid=73e4299223|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 12:11:02|INFO|rid=2b1659ad7a|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=94
+2026-02-06 12:11:57|INFO|rid=33a3455b3e|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 12:14:38|INFO|rid=d4362339af|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=95
+2026-02-06 12:15:32|INFO|rid=d0c45536c2|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 12:24:22|INFO|rid=b642170abb|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=96
+2026-02-06 12:25:15|INFO|rid=7854b7ef4c|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=97
+2026-02-06 12:26:35|INFO|rid=e0ebe6f47d|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 12:31:33|INFO|rid=bac69d1b1c|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=98
+2026-02-06 12:32:23|INFO|rid=f2deb7338c|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 12:37:40|INFO|rid=6d7d6fdab4|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=99
+2026-02-06 12:38:59|INFO|rid=7cf2fc6ae1|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 13:15:53|INFO|rid=efd77722e9|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=100
+2026-02-06 13:16:34|INFO|rid=901592ee61|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 13:34:09|INFO|rid=60a7dba718|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=101
+2026-02-06 13:35:09|INFO|rid=649bd3891e|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 13:37:25|INFO|rid=8a7b2c1436|user=iki uir|ip=127.0.0.1|action=logout status=success
+2026-02-06 13:37:42|INFO|rid=993a3b84e6|user=Sartika byu|ip=127.0.0.1|action=login status=success user_id=5
+2026-02-06 13:41:21|INFO|rid=840585477b|user=Sartika byu|ip=127.0.0.1|action=logout status=success
+2026-02-06 13:41:33|INFO|rid=0d8da1f2f3|user=iki uir|ip=127.0.0.1|action=login status=success user_id=6
+2026-02-06 13:41:40|INFO|rid=f94b035cae|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=102
+2026-02-06 13:42:32|INFO|rid=3131a59947|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 14:01:08|INFO|rid=c7e7f2536c|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=103
+2026-02-06 14:02:34|INFO|rid=c64f88e052|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 14:23:55|INFO|rid=563777402b|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=104
+2026-02-06 14:25:01|INFO|rid=37890b76be|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 14:35:15|INFO|rid=3f5f319190|user=iki uir|ip=127.0.0.1|action=session_delete status=success session_id=15
+2026-02-06 14:35:46|INFO|rid=c46dae8256|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=105
+2026-02-06 14:46:07|INFO|rid=5e4fe00959|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 15:48:44|INFO|rid=ca0d53232f|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=106
+2026-02-06 15:49:47|INFO|rid=45d4ca90f2|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf
+2026-02-06 15:58:48|INFO|rid=ede6f446bd|user=iki uir|ip=127.0.0.1|action=session_delete status=success session_id=16
+2026-02-06 15:59:01|INFO|rid=58d9ec078e|user=iki uir|ip=127.0.0.1|action=doc_delete status=success doc_id=107
+2026-02-06 15:59:53|INFO|rid=a03d9ea551|user=iki uir|ip=127.0.0.1|action=upload status=success files=1 bytes=2289948 names=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf

@@ -1,16 +1,48 @@
-# Environments
-venv/
-
-# Database
-db.sqlite3
-
-# API Keys / Secrets
+# ==========================================
+# Environments & Secrets (SANGAT PENTING)
+# ==========================================
 .env
+.env.local
+.env.*.local
+venv/
+env/
+ENV/
+*.log
 
-# Large Local Storage / Databases
+# ==========================================
+# Databases & Local Data (Data User/Sensitive)
+# ==========================================
+db.sqlite3
+db.sqlite3-journal
 chroma_db/
 media/
+out_csv/
 
-# Python cache
+# ==========================================
+# Frontend (Node/Vite)
+# ==========================================
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/test-results/
+frontend/e2e/test-results/
+frontend/e2e/playwright-report/
+frontend/.base-dir
+
+# ==========================================
+# Python & Backend Specific
+# ==========================================
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.pytest_cache/
+.agents/
+
+# ==========================================
+# Documents & OS Specific
+# ==========================================
+*.pdf
+*.docx
+*.doc
+.DS_Store
+Thumbs.db

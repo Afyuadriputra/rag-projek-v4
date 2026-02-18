@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import UploadedFile
 from .models import AcademicDocument, ChatHistory, ChatSession, UserQuota
 from .ai_engine.ingest import process_document
 from .ai_engine.retrieval import ask_bot
-from .ai_engine.vector_ops import delete_vectors_for_doc
+from .ai_engine.vector_ops import delete_vectors_for_doc, delete_vectors_for_doc_strict
 
 
 
@@ -391,11 +391,16 @@ def delete_document_for_user(user: User, doc_id: int) -> bool:
     doc = AcademicDocument.objects.filter(user=user, id=doc_id).first()
     if not doc:
         return False
-    try:
-        # Hapus embedding dulu
-        delete_vectors_for_doc(user_id=str(user.id), doc_id=str(doc.id), source=getattr(doc, "title", None))
-    except Exception:
-        pass
+    # Strict delete: jika vector masih tersisa, batalkan delete dokumen.
+    ok, remaining = delete_vectors_for_doc_strict(
+        user_id=str(user.id),
+        doc_id=str(doc.id),
+        source=getattr(doc, "title", None),
+    )
+    if not ok:
+        raise RuntimeError(
+            f"Gagal menghapus vector dokumen secara tuntas (doc_id={doc.id}, remaining={remaining})"
+        )
     # Hapus file dari storage
     try:
         if doc.file:

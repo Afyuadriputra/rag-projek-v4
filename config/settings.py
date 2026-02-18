@@ -255,11 +255,13 @@ LOGGING = {
             "level": "INFO",
         },
         "audit_file": {
-            "class": "logging.handlers.TimedRotatingFileHandler",
+            # Windows-safe rotating handler (hindari file lock error)
+            "class": "concurrent_log_handler.ConcurrentTimedRotatingFileHandler",
             "filename": str(LOG_DIR / "audit.log"),
             "when": "midnight",
             "backupCount": 14,
             "encoding": "utf-8",
+            "delay": True,
             "formatter": "audit_plain",
             "filters": ["request_id"],
             "level": "INFO",

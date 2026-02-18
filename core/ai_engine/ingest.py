@@ -1,14 +1,20 @@
 ﻿# core/ai_engine/ingest.py
 
+import os
 import re
 import pdfplumber
 import pandas as pd
 import logging
 import json
 from typing import Any, Dict, List, Optional, Tuple
+from uuid import uuid4
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from .config import get_vectorstore
+try:
+    from langchain_openai import ChatOpenAI  # type: ignore
+except Exception:  # pragma: no cover - optional dependency for hybrid mode
+    ChatOpenAI = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +49,8 @@ _HEADER_MAP = {
     "hari": "hari",
     "day": "hari",
     "jam": "jam",
+    "sesi": "sesi",
+    "session": "sesi",
     "waktu": "jam",
     "time": "jam",
     "sks": "sks",
@@ -58,6 +66,9 @@ _HEADER_MAP = {
     "room": "ruang",
     "lab": "ruang",
     "semester": "semester",
+    "smt": "semester",
+    "sm t": "semester",
+    "s m t": "semester",
 }
 
 _CANON_LABELS = {
@@ -65,11 +76,45 @@ _CANON_LABELS = {
     "mata_kuliah": "Mata Kuliah",
     "hari": "Hari",
     "jam": "Jam",
+    "sesi": "Sesi",
     "sks": "SKS",
     "dosen": "Dosen Pengampu",
     "kelas": "Kelas",
     "ruang": "Ruang",
     "semester": "Semester",
+}
+
+_SCHEDULE_CANON_ORDER = [
+    "hari",
+    "sesi",
+    "jam",
+    "kode",
+    "mata_kuliah",
+    "sks",
+    "kelas",
+    "ruang",
+    "dosen",
+    "semester",
+    "page",
+]
+
+_MAX_SCHEDULE_ROWS = 2500
+_DAY_CANON = {
+    "senin": "Senin",
+    "selasa": "Selasa",
+    "rabu": "Rabu",
+    "kamis": "Kamis",
+    "jumat": "Jumat",
+    "jumat": "Jumat",
+    "sabtu": "Sabtu",
+    "minggu": "Minggu",
+    "monday": "Monday",
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday",
+    "sunday": "Sunday",
 }
 
 
@@ -108,12 +153,97 @@ def _normalize_time_range(s: str) -> str:
     s = s.replace("\n", " ").replace("\r", " ")
     s = s.replace("–", "-").replace("—", "-")
     s = s.replace(".", ":")
+    # rapikan digit yang terpecah: "0 7 : 0 0" -> "07:00"
+    s = re.sub(r"(?<=\d)\s+(?=\d)", "", s)
+    s = re.sub(r"(?<=\d)\s*:\s*(?=\d)", ":", s)
     s = re.sub(r"\s+", " ", s).strip()
     # normalize spaces around dash
     s = re.sub(r"\s*-\s*", "-", s)
     # handle "07:30- 10:00" -> "07:30-10:00"
     s = s.replace("- ", "-")
+    m = _TIME_RANGE_RE.search(s)
+    if m:
+        try:
+            h1, m1 = [int(x) for x in m.group(1).replace(".", ":").split(":")]
+            h2, m2 = [int(x) for x in m.group(2).replace(".", ":").split(":")]
+            if 0 <= h1 <= 23 and 0 <= h2 <= 23 and 0 <= m1 <= 59 and 0 <= m2 <= 59:
+                return f"{h1:02d}:{m1:02d}-{h2:02d}:{m2:02d}"
+        except Exception:
+            pass
+
+    # fallback untuk kasus digit kebalik/acak ringan:
+    # contoh "0 5 :7 0-0 0 :7 0" -> "07:00-07:50"
+    digits = re.sub(r"\D+", "", s)
+    if len(digits) == 8:
+        def _chunk_reverse_4(d: str) -> str:
+            return d[:4][::-1] + d[4:][::-1]
+
+        candidates = [
+            digits,
+            digits[::-1],
+            _chunk_reverse_4(digits),
+            digits[4:] + digits[:4],
+        ]
+        for cand in candidates:
+            h1, m1, h2, m2 = int(cand[:2]), int(cand[2:4]), int(cand[4:6]), int(cand[6:8])
+            if 0 <= h1 <= 23 and 0 <= h2 <= 23 and 0 <= m1 <= 59 and 0 <= m2 <= 59:
+                a = h1 * 60 + m1
+                b = h2 * 60 + m2
+                if b < a:
+                    h1, m1, h2, m2 = h2, m2, h1, m1
+                return f"{h1:02d}:{m1:02d}-{h2:02d}:{m2:02d}"
     return s.strip()
+
+
+def _is_valid_time_range(s: str) -> bool:
+    m = _TIME_RANGE_RE.search(_normalize_time_range(s or ""))
+    if not m:
+        return False
+    try:
+        h1, m1 = [int(x) for x in m.group(1).replace(".", ":").split(":")]
+        h2, m2 = [int(x) for x in m.group(2).replace(".", ":").split(":")]
+        return 0 <= h1 <= 23 and 0 <= h2 <= 23 and 0 <= m1 <= 59 and 0 <= m2 <= 59
+    except Exception:
+        return False
+
+
+def _normalize_day_text(s: str) -> str:
+    raw = _norm(s)
+    if not raw:
+        return ""
+    letters = re.sub(r"[^a-z]+", "", raw.lower())
+    if not letters:
+        return raw
+    if letters in _DAY_CANON:
+        return _DAY_CANON[letters]
+    rev = letters[::-1]
+    if rev in _DAY_CANON:
+        return _DAY_CANON[rev]
+    return raw
+
+
+def _is_noise_numbering_row(row: List[str]) -> bool:
+    """
+    Baris noise seperti "1 2 3 4 5 6 7 8 9 10" pada header tiap halaman.
+    """
+    vals = []
+    for c in row:
+        v = _norm(c).replace(".", "").replace(",", "")
+        if v:
+            vals.append(v)
+    if len(vals) < 5:
+        return False
+    if not all(v.isdigit() for v in vals):
+        return False
+    nums = [int(v) for v in vals]
+    return nums == list(range(1, len(nums) + 1))
+
+
+def _is_noise_header_repeat_row(row: List[str]) -> bool:
+    joined = _norm_header(" ".join([_norm(x) for x in row if _norm(x)]))
+    if not joined:
+        return False
+    return ("no" in joined and "hari" in joined and "jam" in joined and "mata kuliah" in joined)
 
 
 def _looks_like_header_row(row: List[str]) -> bool:
@@ -215,6 +345,353 @@ def _detect_doc_type(detected_columns: Optional[List[str]], schedule_rows: Optio
     return "general"
 
 
+def _schedule_rows_to_csv_text(rows: Optional[List[Dict[str, Any]]]) -> Tuple[str, int, int]:
+    """
+    Bentuk representasi CSV canonical dari schedule_rows agar konten tabel
+    lebih terstruktur untuk RAG.
+    """
+    if not rows:
+        return "", 0, 0
+
+    normalized_rows: List[Dict[str, Any]] = []
+    no_counter = 0
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        hari = _normalize_day_text(r.get("hari", ""))
+        hari = hari.upper() if hari else ""
+        sesi = _norm(r.get("sesi", ""))
+        jam = _normalize_time_range(r.get("jam", ""))
+        ruang = _norm(r.get("ruang", ""))
+        ruang = re.sub(r"(?<=\d),(?=\d)", ".", ruang)  # 1,10 -> 1.10
+        smt = _norm(r.get("semester", ""))
+        mk = _norm(r.get("mata_kuliah", ""))
+        sks = _norm(r.get("sks", ""))
+        kls = _norm(r.get("kelas", ""))
+        dosen = _norm(r.get("dosen", ""))
+
+        # Hindari row fallback (hasil page-text) yang hanya berisi slot waktu.
+        # Untuk CSV canonical, wajib ada mata kuliah atau kode.
+        if not (mk or _norm(r.get("kode", ""))):
+            continue
+
+        no_counter += 1
+        normalized_rows.append({
+            "NO": no_counter,
+            "HARI": hari,
+            "SESI": sesi,
+            "JAM": jam,
+            "Ruang": ruang,
+            "SMT": smt,
+            "MATA_KULIAH": mk,
+            "SKS": sks,
+            "KLS": kls,
+            "DOSEN_PENGAMPU_TEAM_TEACHING": dosen,
+        })
+
+    if not normalized_rows:
+        return "", 0, 0
+
+    df = pd.DataFrame(normalized_rows).fillna("")
+    ordered_cols = [
+        "NO",
+        "HARI",
+        "SESI",
+        "JAM",
+        "Ruang",
+        "SMT",
+        "MATA_KULIAH",
+        "SKS",
+        "KLS",
+        "DOSEN_PENGAMPU_TEAM_TEACHING",
+    ]
+    df = df[[c for c in ordered_cols if c in df.columns]]
+    return df.to_csv(index=False), int(len(df.index)), int(len(df.columns))
+
+
+def _csv_preview(csv_text: str, max_lines: int = 12, max_chars: int = 3500) -> str:
+    """
+    Preview CSV untuk log terminal agar mudah review tanpa membanjiri output.
+    """
+    lines = (csv_text or "").splitlines()
+    if not lines:
+        return "-"
+    preview = "\n".join(lines[:max_lines])
+    if len(lines) > max_lines:
+        preview += f"\n... (+{len(lines) - max_lines} rows)"
+    if len(preview) > max_chars:
+        preview = preview[:max_chars] + "\n... (truncated)"
+    return preview
+
+
+def _schedule_rows_to_row_chunks(rows: Optional[List[Dict[str, Any]]], limit: int = 2000) -> List[str]:
+    """
+    Row-level chunking berbasis pasangan kolom=nilai supaya query detail
+    (hari/jam/kelas/dosen) lebih mudah kena di retrieval.
+    """
+    if not rows:
+        return []
+
+    out: List[str] = []
+    for idx, r in enumerate(rows[:limit], start=1):
+        if not isinstance(r, dict):
+            continue
+        cells: List[str] = []
+        for key in _SCHEDULE_CANON_ORDER:
+            val = _norm(r.get(key, ""))
+            if val:
+                cells.append(f"{key}={val}")
+        # tambahan kolom non-canonical
+        for key, value in r.items():
+            if key in _SCHEDULE_CANON_ORDER:
+                continue
+            val = _norm(value)
+            if val:
+                cells.append(f"{key}={val}")
+        if len(cells) >= 2:
+            out.append(f"CSV_ROW {idx}: " + " | ".join(cells))
+    return out
+
+
+def _row_confidence(row: Dict[str, Any]) -> Tuple[float, List[str]]:
+    """
+    Hitung confidence sederhana untuk memutuskan apakah row perlu diperbaiki LLM.
+    """
+    issues: List[str] = []
+    score = 1.0
+
+    hari = _normalize_day_text(row.get("hari", ""))
+    sesi = _norm(row.get("sesi", ""))
+    jam = _normalize_time_range(row.get("jam", ""))
+    mk = _norm(row.get("mata_kuliah", ""))
+    dosen = _norm(row.get("dosen", ""))
+    kls = _norm(row.get("kelas", ""))
+    smt = _norm(row.get("semester", ""))
+    ruang = _norm(row.get("ruang", ""))
+
+    if not hari:
+        score -= 0.15
+        issues.append("missing_hari")
+    if not sesi:
+        score -= 0.12
+        issues.append("missing_sesi")
+    if not jam or not _is_valid_time_range(jam):
+        score -= 0.25
+        issues.append("invalid_jam")
+    if not mk:
+        score -= 0.45
+        issues.append("missing_mata_kuliah")
+    if not dosen:
+        score -= 0.20
+        issues.append("missing_dosen")
+    if not ruang:
+        score -= 0.10
+        issues.append("missing_ruang")
+    if not kls:
+        score -= 0.08
+        issues.append("missing_kelas")
+    if not smt:
+        score -= 0.08
+        issues.append("missing_semester")
+
+    return max(0.0, min(1.0, score)), issues
+
+
+def _build_repair_llm() -> Optional[Any]:
+    """
+    Build LLM client for hybrid repair. Return None if unavailable.
+    """
+    if ChatOpenAI is None:
+        return None
+
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    if not api_key:
+        return None
+
+    model_name = os.environ.get("INGEST_REPAIR_MODEL") or os.environ.get(
+        "OPENROUTER_MODEL", "qwen/qwen3-next-80b-a3b-instruct:free"
+    )
+
+    try:
+        return ChatOpenAI(
+            openai_api_key=api_key,
+            openai_api_base="https://openrouter.ai/api/v1",
+            model_name=model_name,
+            temperature=float(os.environ.get("INGEST_REPAIR_TEMPERATURE", "0.0")),
+            request_timeout=int(os.environ.get("INGEST_REPAIR_TIMEOUT", "60")),
+            max_retries=int(os.environ.get("INGEST_REPAIR_RETRIES", "1")),
+            default_headers={
+                "HTTP-Referer": "http://localhost:8000",
+                "X-Title": "AcademicChatbot-Ingest",
+            },
+        )
+    except Exception as e:
+        logger.warning(" Hybrid LLM init gagal: %s", e)
+        return None
+
+
+def _extract_json_from_llm_response(text: str) -> Optional[List[Dict[str, Any]]]:
+    if not text:
+        return None
+
+    raw = text.strip()
+    # try direct JSON
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list):
+            return data
+    except Exception:
+        pass
+
+    # try fenced json block
+    m = re.search(r"```json\s*(.*?)\s*```", raw, flags=re.DOTALL | re.IGNORECASE)
+    if m:
+        try:
+            data = json.loads(m.group(1).strip())
+            if isinstance(data, list):
+                return data
+        except Exception:
+            pass
+
+    # fallback first array blob
+    m2 = re.search(r"(\[\s*\{.*\}\s*\])", raw, flags=re.DOTALL)
+    if m2:
+        try:
+            data = json.loads(m2.group(1))
+            if isinstance(data, list):
+                return data
+        except Exception:
+            pass
+
+    return None
+
+
+def _repair_rows_with_llm(rows: List[Dict[str, Any]], source: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """
+    Hybrid step: only repair low-confidence rows with LLM strict JSON output.
+    """
+    if not rows:
+        return rows, {"enabled": False, "checked": 0, "repaired": 0}
+
+    enabled = (os.environ.get("PDF_HYBRID_LLM_REPAIR", "1") or "1").strip() in {"1", "true", "yes"}
+    if not enabled:
+        return rows, {"enabled": False, "checked": 0, "repaired": 0}
+
+    llm = _build_repair_llm()
+    if llm is None:
+        return rows, {"enabled": False, "checked": 0, "repaired": 0, "reason": "llm_unavailable"}
+
+    threshold = float(os.environ.get("INGEST_REPAIR_THRESHOLD", "0.82"))
+    max_rows = int(os.environ.get("INGEST_REPAIR_MAX_ROWS", "220"))
+    batch_size = int(os.environ.get("INGEST_REPAIR_BATCH_SIZE", "25"))
+
+    candidates: List[Tuple[int, Dict[str, Any], List[str], float]] = []
+    for idx, row in enumerate(rows):
+        if not isinstance(row, dict):
+            continue
+        # skip very weak fallback rows that have no class content
+        if not (_norm(row.get("mata_kuliah", "")) or _norm(row.get("kode", ""))):
+            continue
+        conf, issues = _row_confidence(row)
+        row["_confidence"] = conf
+        row["_issues"] = issues
+        if conf < threshold:
+            candidates.append((idx, row, issues, conf))
+
+    if not candidates:
+        return rows, {"enabled": True, "checked": len(rows), "repaired": 0}
+
+    candidates = candidates[:max_rows]
+    repaired = 0
+    run_id = uuid4().hex[:8]
+
+    for start in range(0, len(candidates), max(1, batch_size)):
+        batch = candidates[start:start + max(1, batch_size)]
+        payload: List[Dict[str, Any]] = []
+        for i, row, issues, conf in batch:
+            payload.append(
+                {
+                    "idx": i,
+                    "issues": issues,
+                    "confidence": round(conf, 3),
+                    "row": {
+                        "hari": _norm(row.get("hari", "")),
+                        "sesi": _norm(row.get("sesi", "")),
+                        "jam": _norm(row.get("jam", "")),
+                        "ruang": _norm(row.get("ruang", "")),
+                        "semester": _norm(row.get("semester", "")),
+                        "mata_kuliah": _norm(row.get("mata_kuliah", "")),
+                        "sks": _norm(row.get("sks", "")),
+                        "kelas": _norm(row.get("kelas", "")),
+                        "dosen": _norm(row.get("dosen", "")),
+                        "kode": _norm(row.get("kode", "")),
+                        "page": int(row.get("page", 0) or 0),
+                    },
+                }
+            )
+
+        prompt = (
+            "Anda memperbaiki data jadwal kuliah hasil OCR/PDF.\n"
+            "Tugas: perbaiki hanya field yang rusak/kosong. Jangan halusinasi.\n"
+            "Jika tidak yakin, biarkan nilai lama.\n"
+            "Wajib output JSON ARRAY valid tanpa teks tambahan.\n"
+            "Setiap item wajib punya keys: idx, hari, sesi, jam, ruang, semester, mata_kuliah, sks, kelas, dosen, kode.\n"
+            "Format jam wajib HH:MM-HH:MM.\n"
+            "Hari gunakan: SENIN/SELASA/RABU/KAMIS/JUMAT/SABTU/MINGGU jika bahasa Indonesia.\n"
+            f"Source: {source}\n"
+            f"Run: {run_id}\n"
+            f"Input rows:\n{json.dumps(payload, ensure_ascii=True)}"
+        )
+
+        try:
+            out = llm.invoke(prompt)
+            content = out.content if hasattr(out, "content") else str(out)
+            parsed = _extract_json_from_llm_response(content if isinstance(content, str) else str(content))
+            if not parsed:
+                continue
+
+            for item in parsed:
+                if not isinstance(item, dict):
+                    continue
+                idx = item.get("idx")
+                if not isinstance(idx, int) or idx < 0 or idx >= len(rows):
+                    continue
+                row = rows[idx]
+                if not isinstance(row, dict):
+                    continue
+
+                updates = {
+                    "hari": _normalize_day_text(item.get("hari", row.get("hari", ""))),
+                    "sesi": _norm(item.get("sesi", row.get("sesi", ""))),
+                    "jam": _normalize_time_range(item.get("jam", row.get("jam", ""))),
+                    "ruang": _norm(item.get("ruang", row.get("ruang", ""))),
+                    "semester": _norm(item.get("semester", row.get("semester", ""))),
+                    "mata_kuliah": _norm(item.get("mata_kuliah", row.get("mata_kuliah", ""))),
+                    "sks": _norm(item.get("sks", row.get("sks", ""))),
+                    "kelas": _norm(item.get("kelas", row.get("kelas", ""))),
+                    "dosen": _norm(item.get("dosen", row.get("dosen", ""))),
+                    "kode": _norm(item.get("kode", row.get("kode", ""))),
+                }
+
+                before_conf, _ = _row_confidence(row)
+                row.update({k: v for k, v in updates.items() if v != ""})
+                after_conf, after_issues = _row_confidence(row)
+                row["_confidence"] = after_conf
+                row["_issues"] = after_issues
+                if after_conf > before_conf:
+                    repaired += 1
+        except Exception as e:
+            logger.warning(" Hybrid LLM repair batch gagal: %s", e)
+
+    return rows, {
+        "enabled": True,
+        "checked": len(rows),
+        "candidates": len(candidates),
+        "repaired": repaired,
+        "run_id": run_id,
+    }
+
+
 # =========================
 # PDF extraction
 # =========================
@@ -228,6 +705,9 @@ def _extract_pdf_tables(pdf: pdfplumber.PDF) -> Tuple[str, List[str], List[Dict[
     detected_columns: List[str] = []
     schedule_rows: List[Dict[str, Any]] = []
     text_parts: List[str] = []
+    carry_day = ""
+    carry_sesi = ""
+    carry_jam = ""
 
     for page_idx, page in enumerate(pdf.pages, start=1):
         # --- 1) extract tables ---
@@ -264,22 +744,34 @@ def _extract_pdf_tables(pdf: pdfplumber.PDF) -> Tuple[str, List[str], List[Dict[
                 header_l = [_norm_header(h) for h in header]
 
                 day_idx = _find_idx(header_l, ["hari", "day"])
+                sesi_idx = _find_idx(header_l, ["sesi", "session"])
                 time_idx = _find_idx(header_l, ["jam", "waktu", "time"])
                 code_idx = _find_idx(header_l, ["kode mk", "kode", "course code", "kode matakuliah", "kode matkul"])
                 name_idx = _find_idx(header_l, ["nama matakuliah", "nama mata kuliah", "mata kuliah", "matakuliah", "course name", "nama"])
                 sks_idx = _find_idx(header_l, ["sks", "credit", "credits"])
                 dosen_idx = _find_idx(header_l, ["dosen pengampu", "dosen", "pengampu", "lecturer"])
-                kelas_idx = _find_idx(header_l, ["kelas", "class"])
+                kelas_idx = _find_idx(header_l, ["kelas", "kls", "class"])
                 ruang_idx = _find_idx(header_l, ["ruang", "room", "lab"])
+                semester_idx = _find_idx(header_l, ["semester", "smt", "smt.", "sm t", "s m t", "sm"])
+
+                # Untuk PDF dengan merged cells: baris lanjutan sering kosong di hari/sesi/jam.
+                # Kita carry-forward nilai terakhir agar tiap row menjadi rekaman jadwal lengkap.
+                last_day = carry_day
+                last_sesi = carry_sesi
+                last_jam = carry_jam
 
                 # Jika day/time tidak ketemu, kita fallback ke scanning cell per row (lebih tahan format berbeda)
                 for row in cleaned[1:]:
-                    if len(schedule_rows) >= 300:
+                    if len(schedule_rows) >= _MAX_SCHEDULE_ROWS:
                         break
+                    if _is_noise_numbering_row(row) or _is_noise_header_repeat_row(row):
+                        continue
 
                     # pick day & time
                     day = row[day_idx] if day_idx is not None and day_idx < len(row) else ""
+                    sesi = row[sesi_idx] if sesi_idx is not None and sesi_idx < len(row) else ""
                     jam = row[time_idx] if time_idx is not None and time_idx < len(row) else ""
+                    semester_cell = row[semester_idx] if semester_idx is not None and semester_idx < len(row) else ""
 
                     # fallback search day/time inside row if missing
                     joined_l = " ".join([_norm_header(c) for c in row if _norm(c)])
@@ -298,13 +790,25 @@ def _extract_pdf_tables(pdf: pdfplumber.PDF) -> Tuple[str, List[str], List[Dict[
 
                     jam = _normalize_time_range(jam)
 
-                    # skip kalau benar2 kosong
+                    # forward fill untuk baris merged-cell
+                    day = _normalize_day_text(day) or last_day
+                    sesi = _norm(sesi) or last_sesi
+                    jam = _normalize_time_range(jam) or last_jam
+                    if day:
+                        last_day = day
+                    if sesi:
+                        last_sesi = sesi
+                    if jam:
+                        last_jam = jam
+
+                    # skip kalau benar2 kosong (tidak ada sinyal slot)
                     if not day and not jam:
                         continue
 
                     item: Dict[str, Any] = {
                         "page": page_idx,
-                        "hari": _norm(day),
+                        "hari": day,
+                        "sesi": sesi,
                         "jam": jam,
                         "kode": row[code_idx] if code_idx is not None and code_idx < len(row) else "",
                         "mata_kuliah": row[name_idx] if name_idx is not None and name_idx < len(row) else "",
@@ -312,7 +816,27 @@ def _extract_pdf_tables(pdf: pdfplumber.PDF) -> Tuple[str, List[str], List[Dict[
                         "dosen": row[dosen_idx] if dosen_idx is not None and dosen_idx < len(row) else "",
                         "kelas": row[kelas_idx] if kelas_idx is not None and kelas_idx < len(row) else "",
                         "ruang": row[ruang_idx] if ruang_idx is not None and ruang_idx < len(row) else "",
+                        "semester": _norm(semester_cell),
                     }
+
+                    # Fallback: beberapa PDF menggeser kolom dosen ke sel paling kanan.
+                    if not _norm(item.get("dosen", "")):
+                        for c in reversed(row):
+                            c_norm = _norm(c)
+                            if not c_norm:
+                                continue
+                            if c_norm in {
+                                _norm(item.get("kode", "")),
+                                _norm(item.get("mata_kuliah", "")),
+                                _norm(item.get("sks", "")),
+                                _norm(item.get("kelas", "")),
+                                _norm(item.get("ruang", "")),
+                                _norm(item.get("semester", "")),
+                            }:
+                                continue
+                            if "," in c_norm or "." in c_norm or len(c_norm.split()) >= 2:
+                                item["dosen"] = c_norm
+                                break
 
                     # map extra columns if available via canon_map
                     for idx, canon in canon_map.items():
@@ -326,11 +850,18 @@ def _extract_pdf_tables(pdf: pdfplumber.PDF) -> Tuple[str, List[str], List[Dict[
                     if item["hari"] or item["jam"]:
                         schedule_rows.append(item)
 
+                # simpan slot terakhir lintas tabel/halaman
+                carry_day = last_day
+                carry_sesi = last_sesi
+                carry_jam = last_jam
+
             else:
                 # --- No header: best-effort detect schedule rows ---
                 for row in cleaned:
-                    if len(schedule_rows) >= 300:
+                    if len(schedule_rows) >= _MAX_SCHEDULE_ROWS:
                         break
+                    if _is_noise_numbering_row(row) or _is_noise_header_repeat_row(row):
+                        continue
                     raw = _row_to_text(row)
                     raw_n = _normalize_time_range(raw)
                     low = raw_n.lower()
@@ -361,7 +892,7 @@ def _extract_pdf_tables(pdf: pdfplumber.PDF) -> Tuple[str, List[str], List[Dict[
             if time_ranges:
                 # untuk setiap time range, coba temukan "hari" terdekat di sekitar match
                 for m in time_ranges:
-                    if len(schedule_rows) >= 300:
+                    if len(schedule_rows) >= _MAX_SCHEDULE_ROWS:
                         break
                     span_start = max(0, m.start() - 60)
                     span_end = min(len(t_l), m.end() + 60)
@@ -405,6 +936,7 @@ def _extract_pdf_tables(pdf: pdfplumber.PDF) -> Tuple[str, List[str], List[Dict[
         if not isinstance(r, dict):
             continue
         hari = _norm(r.get("hari", ""))
+        hari = _normalize_day_text(hari)
         jam = _normalize_time_range(r.get("jam", ""))
         kode = _norm(r.get("kode", ""))
         mk = _norm(r.get("mata_kuliah", ""))
@@ -448,6 +980,7 @@ def process_document(doc_instance) -> bool:
     file_path = doc_instance.file.path
     ext = file_path.split(".")[-1].lower()
     text_content = ""
+    row_chunks: List[str] = []
 
     detected_columns: Optional[List[str]] = None
     schedule_rows: Optional[List[Dict[str, Any]]] = None
@@ -468,6 +1001,37 @@ def process_document(doc_instance) -> bool:
 
                 if pdf_schedule_rows:
                     schedule_rows = pdf_schedule_rows
+                    schedule_rows, repair_stats = _repair_rows_with_llm(schedule_rows, doc_instance.title)
+                    if repair_stats.get("enabled"):
+                        logger.info(
+                            " HYBRID_REPAIR source=%s checked=%s candidates=%s repaired=%s run=%s",
+                            doc_instance.title,
+                            repair_stats.get("checked", 0),
+                            repair_stats.get("candidates", 0),
+                            repair_stats.get("repaired", 0),
+                            repair_stats.get("run_id", "-"),
+                        )
+                    row_chunks = _schedule_rows_to_row_chunks(schedule_rows)
+                    csv_repr, csv_rows, csv_cols = _schedule_rows_to_csv_text(schedule_rows)
+                    if csv_repr:
+                        text_content += "\n[CSV_CANONICAL]\n" + csv_repr + "\n"
+                        preview_lines = int(os.getenv("CSV_REVIEW_PREVIEW_LINES", "12") or 12)
+                        preview = _csv_preview(csv_repr, max_lines=max(3, preview_lines))
+                        logger.info(
+                            " CSV canonical review source=%s rows=%s cols=%s\n%s",
+                            doc_instance.title,
+                            csv_rows,
+                            csv_cols,
+                            preview,
+                        )
+                    # Simpan JSON canonical ringkas untuk retrieval dengan format terstruktur.
+                    json_preview_limit = int(os.getenv("JSON_CANONICAL_EMBED_ROWS", "300") or 300)
+                    if schedule_rows:
+                        try:
+                            json_blob = json.dumps(schedule_rows[:max(20, json_preview_limit)], ensure_ascii=True)
+                            text_content += "\n[JSON_CANONICAL]\n" + json_blob + "\n"
+                        except Exception:
+                            pass
 
                 if table_text:
                     text_content += table_text + "\n"
@@ -549,7 +1113,10 @@ def process_document(doc_instance) -> bool:
         # 2) CHUNKING
         # =========================
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=120)
-        chunks = splitter.split_text(text_content)
+        chunks = list(row_chunks)
+        chunks.extend(splitter.split_text(text_content))
+        # dedup chunk agar embedding tidak boros untuk konten identik
+        chunks = [c for c in dict.fromkeys([_norm(c) for c in chunks if _norm(c)])]
 
         if not chunks:
             logger.warning(" CHUNKING GAGAL: Tidak ada potongan teks untuk %s.", doc_instance.title)
@@ -576,15 +1143,19 @@ def process_document(doc_instance) -> bool:
                 for r in schedule_rows:
                     if isinstance(r, dict) and "semester" not in r:
                         r["semester"] = str(semester_num)
-            # simpan lebih banyak (mis 220) supaya jadwal tidak kepotong,
-            # tapi tetap aman (PDF KRS biasanya <= 50 baris)
-            base_meta["schedule_rows"] = json.dumps(schedule_rows[:220], ensure_ascii=True)
+            # simpan lebih banyak agar dokumen jadwal besar tidak banyak terpotong.
+            base_meta["schedule_rows"] = json.dumps(schedule_rows[:1200], ensure_ascii=True)
+            # Tandai mode hybrid agar mudah audit hasil ingest.
+            hybrid_enabled = (os.environ.get("PDF_HYBRID_LLM_REPAIR", "1") or "1").strip() in {"1", "true", "yes"}
+            base_meta["hybrid_repair"] = "on" if hybrid_enabled else "off"
 
         if semester_num is not None:
             base_meta["semester"] = int(semester_num)
 
         doc_type = _detect_doc_type(detected_columns, schedule_rows)
         base_meta["doc_type"] = doc_type
+        if row_chunks:
+            base_meta["table_format"] = "csv_canonical"
 
         metadatas = [base_meta for _ in chunks]
 
