@@ -2,7 +2,19 @@ import { useEffect, useRef } from "react";
 import ChatBubble from "@/components/molecules/ChatBubble";
 import type { ChatItem } from "@/components/molecules/ChatBubble";
 
-export default function ChatThread({ items }: { items: ChatItem[] }) {
+export default function ChatThread({
+  items,
+  mode = "chat",
+  activePlannerOptionMessageId,
+  optionsLocked = false,
+  onSelectPlannerOption,
+}: {
+  items: ChatItem[];
+  mode?: "chat" | "planner";
+  activePlannerOptionMessageId?: string | null;
+  optionsLocked?: boolean;
+  onSelectPlannerOption?: (optionId: number, label: string) => void;
+}) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll ke pesan terakhir
@@ -39,7 +51,18 @@ export default function ChatThread({ items }: { items: ChatItem[] }) {
             ChatItem sekarang boleh punya `sources?: [...]`.
             ChatBubble sudah handle itu, jadi di sini tidak perlu ubah desain/markup. */}
         {items.map((it) => (
-          <ChatBubble key={it.id} item={it} />
+          <ChatBubble
+            key={it.id}
+            item={it}
+            showPlannerOptions={mode === "planner"}
+            optionsEnabled={
+              mode === "planner" &&
+              !optionsLocked &&
+              !!activePlannerOptionMessageId &&
+              activePlannerOptionMessageId === it.id
+            }
+            onSelectOption={onSelectPlannerOption}
+          />
         ))}
 
         {/* Dummy element scroll target */}

@@ -11,7 +11,7 @@ import Toast from "@/components/molecules/Toast";
 
 // API & Types
 import { sendChat, uploadDocuments, getDocuments, getSessions, createSession, deleteSession, getSessionHistory, renameSession, deleteDocument } from "@/lib/api";
-import type { DocumentDto, DocumentsResponse, ChatSessionDto } from "@/lib/api";
+import type { DocumentDto, DocumentsResponse, ChatSessionDto, ChatResponse, PlannerModeResponse } from "@/lib/api";
 import type { ChatItem } from "@/components/molecules/ChatBubble";
 
 // --- Types ---
@@ -42,6 +42,14 @@ function uid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
+function isPlannerResponse(res: ChatResponse): res is PlannerModeResponse {
+  return (
+    (res as PlannerModeResponse)?.type === "planner_step" ||
+    (res as PlannerModeResponse)?.type === "planner_output" ||
+    (res as PlannerModeResponse)?.type === "planner_generate"
+  );
+}
+
 export default function Index() {
   const SESSIONS_PAGE_SIZE = 20;
   const { props } = usePage<PageProps>();
@@ -56,11 +64,15 @@ export default function Index() {
   const [sessionsPage, setSessionsPage] = useState(1);
   const [sessionsHasNext, setSessionsHasNext] = useState(false);
   const [sessionsLoadingMore, setSessionsLoadingMore] = useState(false);
+  const [mode, setMode] = useState<"chat" | "planner">("chat");
+  const [plannerState, setPlannerState] = useState<Record<string, unknown> | null>(null);
+  const [activePlannerOptionMessageId, setActivePlannerOptionMessageId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [confirmDeleteDocId, setConfirmDeleteDocId] = useState<number | null>(null);
   const [deletingDocId, setDeletingDocId] = useState<number | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   // ✅ scroll container ref
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -218,28 +230,109 @@ export default function Index() {
     return () => clearTimeout(t);
   }, [items, composerH]);
 
-  // --- Handlers ---
-  const onSend = async (message: string) => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  useEffect(() => {
+    if (mode !== "planner") return;
+    ensurePlannerStarted().catch(() => {
+      // ignore
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  const resetPlannerLocalUI = () => {
+    setPlannerState(null);
+    setActivePlannerOptionMessageId(null);
+  };
+
+  const pushAssistantResponse = (res: ChatResponse, timeStr: string) => {
+    const aiText = (res as any).answer ?? (res as any).error ?? "Maaf, tidak ada jawaban.";
+    const messageId = uid();
+
+    if (isPlannerResponse(res)) {
+      setPlannerState((res.session_state as Record<string, unknown>) ?? null);
+      setActivePlannerOptionMessageId((res.options?.length ?? 0) > 0 ? messageId : null);
+      setItems((prev) => [
+        ...prev,
+        {
+          id: messageId,
+          role: "assistant",
+          text: aiText,
+          time: timeStr,
+          response_type: res.type,
+          planner_step: res.planner_step,
+          planner_options: res.options ?? [],
+          allow_custom: res.allow_custom,
+          session_state: res.session_state as Record<string, unknown>,
+        },
+      ]);
+      return;
+    }
 
     setItems((prev) => [
       ...prev,
-      { id: uid(), role: "user", text: message, time: timeStr },
+      {
+        id: messageId,
+        role: "assistant",
+        text: aiText,
+        time: timeStr,
+        sources: (res as any).sources ?? [],
+        response_type: "chat",
+      },
     ]);
+  };
+
+  const handleFilesUpload = async (files: FileList | File[]) => {
+    const normalized = Array.isArray(files) ? files : Array.from(files);
+    if (!normalized.length) return;
+    const dt = new DataTransfer();
+    normalized.forEach((f) => dt.items.add(f));
+
+    setLoading(true);
+    setMobileMenuOpen(false);
+    try {
+      const res = await uploadDocuments(dt.files);
+      setToast({ open: true, kind: res.status === "success" ? "success" : "error", msg: res.msg });
+      await refreshDocuments();
+    } catch (err: any) {
+      const msg = err?.response?.data?.msg ?? err?.message ?? "Upload gagal.";
+      setToast({ open: true, kind: "error", msg });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendMessage = async ({
+    message,
+    optionId,
+    echoUser = true,
+    userEchoText,
+  }: {
+    message: string;
+    optionId?: number;
+    echoUser?: boolean;
+    userEchoText?: string;
+  }) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    if (echoUser) {
+      const userText = userEchoText ?? message;
+      if (userText.trim()) {
+        setItems((prev) => [...prev, { id: uid(), role: "user", text: userText, time: timeStr }]);
+      }
+    }
 
     setLoading(true);
     try {
-      const res = await sendChat(message, activeSession);
-      const aiText = res.answer ?? res.error ?? "Maaf, tidak ada jawaban.";
-      setItems((prev) => [
-        ...prev,
-        { id: uid(), role: "assistant", text: aiText, time: timeStr },
-      ]);
-      if (res.session_id && res.session_id !== activeSession) {
-        setActiveSession(res.session_id);
+      const res = await sendChat({
+        message,
+        mode,
+        option_id: optionId,
+        session_id: activeSession,
+      });
+      pushAssistantResponse(res, timeStr);
+      if (!isPlannerResponse(res) && (res as any).session_id && (res as any).session_id !== activeSession) {
+        setActiveSession((res as any).session_id);
       }
-      // refresh session list to update title/updated_at
       try {
         const s = await getSessions(1, SESSIONS_PAGE_SIZE);
         setSessions(s.sessions ?? []);
@@ -256,26 +349,44 @@ export default function Index() {
     }
   };
 
+  const ensurePlannerStarted = async () => {
+    if (mode !== "planner") return;
+    const hasPlannerStep = !!(plannerState && (plannerState as any).current_step);
+    if (hasPlannerStep) return;
+    await sendMessage({ message: "", echoUser: false });
+  };
+
+  // --- Handlers ---
+  const onSend = async (message: string) => {
+    await sendMessage({ message, echoUser: true });
+  };
+
+  const onSelectPlannerOption = async (optionId: number, label: string) => {
+    if (mode !== "planner" || loading) return;
+    await sendMessage({
+      message: "",
+      optionId,
+      echoUser: true,
+      userEchoText: `Pilih opsi ${optionId}: ${label}`,
+    });
+  };
+
+  const onToggleMode = async (nextMode: "chat" | "planner") => {
+    if (nextMode === mode || loading) return;
+    setMode(nextMode);
+    if (nextMode === "chat") {
+      resetPlannerLocalUI();
+      return;
+    }
+  };
+
   const onUploadClick = () => fileInputRef.current?.click();
 
   const onUploadChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
-    setLoading(true);
-    setMobileMenuOpen(false);
-
-    try {
-      const res = await uploadDocuments(files);
-      setToast({ open: true, kind: res.status === "success" ? "success" : "error", msg: res.msg });
-      await refreshDocuments();
-    } catch (err: any) {
-      const msg = err?.response?.data?.msg ?? err?.message ?? "Upload gagal.";
-      setToast({ open: true, kind: "error", msg });
-    } finally {
-      setLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
+    await handleFilesUpload(files);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const onDeleteDocument = async (docId: number) => {
@@ -301,6 +412,7 @@ export default function Index() {
           time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
+      resetPlannerLocalUI();
       setMobileMenuOpen(false);
     } catch (e: any) {
       setToast({ open: true, kind: "error", msg: e?.message ?? "Gagal membuat chat." });
@@ -310,6 +422,7 @@ export default function Index() {
   const onSelectSession = async (sessionId: number) => {
     if (sessionId === activeSession) return;
     setActiveSession(sessionId);
+    resetPlannerLocalUI();
     setLoading(true);
     try {
       const res = await getSessionHistory(sessionId);
@@ -374,6 +487,28 @@ export default function Index() {
     }
   };
 
+  const onDragOverChat: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    if (loading || deletingDocId !== null) return;
+    setDragActive(true);
+  };
+
+  const onDragLeaveChat: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    const related = e.relatedTarget as Node | null;
+    if (related && e.currentTarget.contains(related)) return;
+    setDragActive(false);
+  };
+
+  const onDropChat: React.DragEventHandler<HTMLDivElement> = async (e) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (loading || deletingDocId !== null) return;
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+    await handleFilesUpload(files);
+  };
+
   // ✅ padding bawah final: composer + safe area (CSS env) + sedikit ekstra
   // `env(safe-area-inset-bottom)` akan bekerja di iOS Safari.
   const chatPaddingBottom = `calc(${composerH}px + env(safe-area-inset-bottom) + ${safeBottom}px + 12px)`;
@@ -388,7 +523,14 @@ export default function Index() {
 
       {/* 2. HEADER */}
       <div className="relative z-10 flex-none">
-        <AppHeader dark={dark} onToggleDark={setDark} user={user} />
+        <AppHeader
+          dark={dark}
+          onToggleDark={setDark}
+          mode={mode}
+          onModeChange={onToggleMode}
+          modeDisabled={loading || deletingDocId !== null}
+          user={user}
+        />
       </div>
 
       {/* 3. MAIN LAYOUT */}
@@ -466,7 +608,24 @@ export default function Index() {
         </div>
 
         {/* --- CHAT AREA --- */}
-        <main className="relative z-0 flex h-full flex-1 min-h-0 min-w-0 flex-col">
+        <main
+          data-testid="chat-drop-target"
+          className="relative z-0 flex h-full flex-1 min-h-0 min-w-0 flex-col"
+          onDragOver={onDragOverChat}
+          onDragLeave={onDragLeaveChat}
+          onDrop={onDropChat}
+        >
+          {dragActive && (
+            <div
+              data-testid="chat-drop-overlay"
+              className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-zinc-900/10 backdrop-blur-[1px]"
+            >
+              <div className="rounded-2xl border-2 border-dashed border-zinc-500 bg-white/80 px-6 py-4 text-center shadow-lg">
+                <div className="text-sm font-semibold text-zinc-800">Drop file di sini</div>
+                <div className="mt-1 text-xs text-zinc-500">PDF/XLSX/CSV/MD/TXT</div>
+              </div>
+            </div>
+          )}
           {/* Mobile Menu Trigger */}
           <button
             onClick={() => setMobileMenuOpen(true)}
@@ -481,7 +640,13 @@ export default function Index() {
             className="flex-1 min-h-0 min-w-0 w-full overflow-y-auto overscroll-contain touch-pan-y scrollbar-hide pt-20 md:pt-4"
             style={{ paddingBottom: chatPaddingBottom }}
           >
-            <ChatThread items={items} />
+            <ChatThread
+              items={items}
+              mode={mode}
+              activePlannerOptionMessageId={activePlannerOptionMessageId}
+              optionsLocked={loading || deletingDocId !== null}
+              onSelectPlannerOption={onSelectPlannerOption}
+            />
           </div>
 
           {/* Composer */}

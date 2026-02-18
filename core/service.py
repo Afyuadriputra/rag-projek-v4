@@ -1,5 +1,6 @@
 # core/service.py
 import time
+import logging
 from typing import Any, Dict, List, Tuple
 
 from django.contrib.auth.models import User
@@ -9,6 +10,23 @@ from .models import AcademicDocument, ChatHistory, ChatSession, UserQuota
 from .ai_engine.ingest import process_document
 from .ai_engine.retrieval import ask_bot
 from .ai_engine.vector_ops import delete_vectors_for_doc, delete_vectors_for_doc_strict
+from .ai_engine.config import get_vectorstore
+from .ai_engine.retrieval.llm import (
+    build_llm,
+    get_backup_models,
+    get_runtime_openrouter_config,
+    invoke_text,
+)
+from .ai_engine.retrieval.prompt import PLANNER_OUTPUT_TEMPLATE
+from .ai_engine.retrieval.rules import extract_grade_calc_input, is_grade_rescue_query
+from .academic import planner as planner_engine
+from .academic.grade_calculator import (
+    analyze_transcript_risks,
+    calculate_required_score,
+)
+
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -235,6 +253,143 @@ def _maybe_update_session_title(session: ChatSession, message: str) -> None:
         session.save(update_fields=["title", "updated_at"])
 
 
+def _build_grade_rescue_response(parsed: Dict[str, Any], calc: Dict[str, Any]) -> str:
+    current_score = float(parsed.get("current_score", 0) or 0)
+    current_weight = float(parsed.get("current_weight", 0) or 0)
+    target_score = float(parsed.get("target_score", 70) or 70)
+    remaining_weight = float(parsed.get("remaining_weight", 0) or 0)
+
+    required = calc.get("required")
+    possible = bool(calc.get("possible"))
+    required_text = "-"
+    if required is not None:
+        required_text = f"{float(required):.2f}"
+
+    status_text = "Masih memungkinkan." if possible else "Target ini sulit/tidak memungkinkan pada bobot tersisa."
+
+    return (
+        "## Ringkasan Grade Rescue\n"
+        f"- Nilai saat ini: **{current_score:.2f}** (bobot **{current_weight:.0f}%**)\n"
+        f"- Target akhir: **{target_score:.2f}**\n"
+        f"- Bobot tersisa: **{remaining_weight:.0f}%**\n"
+        f"- Nilai minimal pada komponen tersisa: **{required_text}**\n\n"
+        "## Insight\n"
+        f"- Status: **{status_text}**\n"
+        f"- Poin yang masih dibutuhkan: **{float(calc.get('needed_points', 0) or 0):.2f}**\n\n"
+        "## Opsi Lanjut\n"
+        "1. Kirim detail komponen nilai (tugas/UTS/UAS) agar simulasi lebih akurat.\n"
+        "2. Saya bisa bantu strategi belajar 2-4 minggu untuk kejar target."
+    )
+
+
+def _build_grade_rescue_markdown(calc_input: Dict[str, Any] | None, calc_result: Dict[str, Any] | None) -> str:
+    if not calc_input or not calc_result:
+        return "- Tidak ada data grade rescue spesifik dari input user."
+
+    required = calc_result.get("required")
+    required_text = "-" if required is None else f"{float(required):.2f}"
+    possible_text = "Ya" if calc_result.get("possible") else "Tidak"
+
+    return (
+        f"- Nilai saat ini: {float(calc_input.get('current_score', 0) or 0):.2f}\n"
+        f"- Bobot saat ini: {float(calc_input.get('current_weight', 0) or 0):.0f}%\n"
+        f"- Target akhir: {float(calc_input.get('target_score', 70) or 70):.2f}\n"
+        f"- Bobot tersisa: {float(calc_input.get('remaining_weight', 0) or 0):.0f}%\n"
+        f"- Minimal nilai komponen tersisa: {required_text}\n"
+        f"- Target mungkin dicapai: {possible_text}"
+    )
+
+
+def _append_verified_grade_rescue(
+    answer: str,
+    calc_input: Dict[str, Any] | None,
+    calc_result: Dict[str, Any] | None,
+) -> str:
+    if not calc_input or not calc_result:
+        return answer
+
+    required = calc_result.get("required")
+    required_text = "-" if required is None else f"{float(required):.2f}"
+    possible_text = "Ya" if calc_result.get("possible") else "Tidak"
+    verified_block = (
+        "\n\n## Grade Rescue (Kalkulasi Sistem)\n"
+        f"- Nilai saat ini: **{float(calc_input.get('current_score', 0) or 0):.2f}** "
+        f"(bobot **{float(calc_input.get('current_weight', 0) or 0):.0f}%**)\n"
+        f"- Target akhir: **{float(calc_input.get('target_score', 70) or 70):.2f}**\n"
+        f"- Bobot tersisa: **{float(calc_input.get('remaining_weight', 0) or 0):.0f}%**\n"
+        f"- Nilai minimal komponen tersisa: **{required_text}**\n"
+        f"- Target mungkin dicapai: **{possible_text}**"
+    )
+
+    # Hindari duplikasi jika block sudah ada.
+    if "Grade Rescue (Kalkulasi Sistem)" in (answer or ""):
+        return answer
+    return (answer or "").rstrip() + verified_block
+
+
+def _planner_context_for_user(user: User, query: str) -> str:
+    try:
+        vectorstore = get_vectorstore()
+        docs = vectorstore.similarity_search(query or "rencana studi", k=8, filter={"user_id": str(user.id)})
+    except Exception:
+        return ""
+
+    if not docs:
+        return ""
+
+    parts: List[str] = []
+    for i, doc in enumerate(docs[:5], start=1):
+        content = (getattr(doc, "page_content", "") or "").strip()
+        if not content:
+            continue
+        content = content[:1200]
+        parts.append(f"[Doc {i}]\n{content}")
+    return "\n\n".join(parts)
+
+
+def _generate_planner_with_llm(
+    user: User,
+    collected: Dict[str, Any],
+    grade_rescue_data: str,
+    request_id: str = "-",
+) -> str:
+    runtime_cfg = get_runtime_openrouter_config()
+    api_key = (runtime_cfg.get("api_key") or "").strip()
+    if not api_key:
+        return ""
+
+    prompt = PLANNER_OUTPUT_TEMPLATE.format(
+        jurusan=collected.get("jurusan") or "-",
+        semester=collected.get("semester") or "-",
+        goal=collected.get("goal") or "-",
+        career=collected.get("career") or "-",
+        time_pref=collected.get("time_pref") or "-",
+        free_day=collected.get("free_day") or "-",
+        balance_pref="merata" if collected.get("balance_load") else "fleksibel",
+        context=_planner_context_for_user(user, "rencana studi dan jadwal"),
+        grade_rescue_data=grade_rescue_data,
+    )
+
+    backup_models = get_backup_models(
+        str(runtime_cfg.get("model") or ""),
+        runtime_cfg.get("backup_models"),
+    )
+    last_error = ""
+    for model_name in backup_models:
+        try:
+            llm = build_llm(model_name, runtime_cfg)
+            answer = invoke_text(llm, prompt).strip()
+            if answer:
+                return answer
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+    if last_error:
+        logger.warning("planner llm failed request_id=%s err=%s", request_id, last_error)
+    return ""
+
+
 def chat_and_save(user: User, message: str, request_id: str = "-", session_id: int | None = None) -> Dict[str, Any]:
     """
     [USE-CASE UTAMA: CHAT RAG + SIMPAN HISTORY]
@@ -255,7 +410,16 @@ def chat_and_save(user: User, message: str, request_id: str = "-", session_id: i
     if not session:
         session = ChatSession.objects.create(user=user, title="Chat Baru")
 
-    result = ask_bot(user.id, message, request_id=request_id)
+    parsed_grade = extract_grade_calc_input(message) if is_grade_rescue_query(message) else None
+    if parsed_grade:
+        calc = calculate_required_score(
+            achieved_components=parsed_grade.get("achieved_components") or [],
+            target_final_score=float(parsed_grade.get("target_final_score", 70) or 70),
+            remaining_weight=float(parsed_grade.get("remaining_weight", 0) or 0),
+        )
+        result: Dict[str, Any] = {"answer": _build_grade_rescue_response(parsed_grade, calc), "sources": []}
+    else:
+        result = ask_bot(user.id, message, request_id=request_id)
 
     # Normalisasi output (biar backward compatible kalau suatu saat ask_bot return string)
     if isinstance(result, dict):
@@ -409,3 +573,164 @@ def delete_document_for_user(user: User, doc_id: int) -> bool:
         pass
     doc.delete()
     return True
+
+
+def planner_start(user: User) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    data_level = planner_engine.detect_data_level(user)
+    state = planner_engine.build_initial_state(data_level=data_level)
+    payload = planner_engine.get_step_payload(state)
+    payload["planner_meta"] = {
+        **(payload.get("planner_meta") or {}),
+        "data_level": data_level,
+        "mode": "planner",
+    }
+    return payload, state
+
+
+def _build_planner_markdown(
+    collected: Dict[str, Any],
+    scenario: str | None = None,
+    grade_rescue_md: str | None = None,
+) -> str:
+    jurusan = collected.get("jurusan") or "-"
+    semester = collected.get("semester") or "-"
+    goal = collected.get("goal") or "-"
+    career = collected.get("career") or "-"
+    time_pref = collected.get("time_pref") or "fleksibel"
+    free_day = collected.get("free_day") or "tidak ada"
+
+    scenario_text = ""
+    if scenario == "dense":
+        scenario_text = "Mode skenario: **Padat / Lulus Cepat**"
+    elif scenario == "relaxed":
+        scenario_text = "Mode skenario: **Santai / Beban Ringan**"
+
+    return (
+        "## 📅 Jadwal\n"
+        "| Hari | Mata Kuliah | Jam | SKS |\n"
+        "|---|---|---|---|\n"
+        "| Senin | Mata Kuliah Inti | 08:00-10:00 | 3 |\n"
+        "| Selasa | Mata Kuliah Wajib | 10:00-12:00 | 3 |\n"
+        "| Rabu | Mata Kuliah Pilihan | 13:00-15:00 | 3 |\n\n"
+        "## 🎯 Rekomendasi Mata Kuliah\n"
+        f"- Prioritaskan mata kuliah inti untuk jurusan **{jurusan}** semester **{semester}**.\n"
+        f"- Tujuan saat ini: **{goal}**.\n\n"
+        "## 💼 Keselarasan Karir\n"
+        f"- Target karir: **{career}**.\n"
+        "- Fokuskan proyek/mata kuliah yang mendekatkan ke role tersebut.\n\n"
+        "## ⚖️ Distribusi Beban\n"
+        f"- Preferensi waktu: **{time_pref}**.\n"
+        f"- Hari kosong: **{free_day}**.\n"
+        f"- Skenario: {scenario_text or 'Mode normal'}.\n\n"
+        "## ⚠️ Grade Rescue\n"
+        f"{grade_rescue_md or '- Tidak ada input grade rescue khusus.'}\n\n"
+        "## Selanjutnya\n"
+        "1. 🔄 Buat opsi Padat\n"
+        "2. 🔄 Buat opsi Santai\n"
+        "3. ✏️ Ubah sesuatu\n"
+        "4. ✅ Simpan rencana ini\n"
+    ).strip()
+
+
+def _ensure_planner_required_sections(answer: str, grade_rescue_md: str) -> str:
+    text = (answer or "").strip()
+    if not text:
+        text = "## 📅 Jadwal\n- Belum ada output."
+
+    checks = {
+        "jadwal": "## 📅 Jadwal\n- Jadwal belum tersedia.",
+        "rekomendasi mata kuliah": "## 🎯 Rekomendasi Mata Kuliah\n- Rekomendasi belum tersedia.",
+        "keselarasan karir": "## 💼 Keselarasan Karir\n- Keselarasan karir belum tersedia.",
+        "distribusi beban": "## ⚖️ Distribusi Beban\n- Distribusi beban belum tersedia.",
+        "grade rescue": f"## ⚠️ Grade Rescue\n{grade_rescue_md}",
+        "selanjutnya": (
+            "## Selanjutnya\n"
+            "1. 🔄 Buat opsi Padat\n"
+            "2. 🔄 Buat opsi Santai\n"
+            "3. ✏️ Ubah sesuatu\n"
+            "4. ✅ Simpan rencana ini"
+        ),
+    }
+
+    low = text.lower()
+    for key, block in checks.items():
+        if key not in low:
+            text = f"{text}\n\n{block}"
+            low = text.lower()
+    return text
+
+
+def planner_generate(user: User, state: Dict[str, Any], request_id: str = "-") -> Dict[str, Any]:
+    collected = dict(state.get("collected_data") or {})
+    scenario = str(collected.get("iterate_action") or "").strip().lower()
+    grade_calc_input = collected.get("grade_calc_input")
+    grade_calc_result = collected.get("grade_calc_result")
+    grade_rescue_md = _build_grade_rescue_markdown(grade_calc_input, grade_calc_result)
+
+    answer = _generate_planner_with_llm(
+        user=user,
+        collected=collected,
+        grade_rescue_data=grade_rescue_md,
+        request_id=request_id,
+    )
+    if not answer:
+        # fallback deterministic agar planner tetap jalan tanpa LLM.
+        _ = analyze_transcript_risks([])
+        answer = _build_planner_markdown(collected, scenario=scenario, grade_rescue_md=grade_rescue_md)
+    answer = _ensure_planner_required_sections(answer, grade_rescue_md=grade_rescue_md)
+    answer = _append_verified_grade_rescue(answer, grade_calc_input, grade_calc_result)
+
+    return {
+        "type": "planner_output",
+        "answer": answer,
+        "options": [
+            {"id": 1, "label": "🔄 Buat opsi Padat", "value": "dense"},
+            {"id": 2, "label": "🔄 Buat opsi Santai", "value": "relaxed"},
+            {"id": 3, "label": "✏️ Ubah sesuatu", "value": "edit"},
+            {"id": 4, "label": "✅ Simpan rencana ini", "value": "save"},
+        ],
+        "allow_custom": False,
+        "planner_meta": {"step": "iterate", "mode": "planner", "request_id": request_id},
+    }
+
+
+def planner_continue(
+    user: User,
+    planner_state: Dict[str, Any],
+    message: str = "",
+    option_id: int | None = None,
+    request_id: str = "-",
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    working_state = dict(planner_state or {})
+    collected_data = dict(working_state.get("collected_data") or {})
+
+    if message and is_grade_rescue_query(message):
+        parsed = extract_grade_calc_input(message)
+        if parsed:
+            calc = calculate_required_score(
+                achieved_components=parsed.get("achieved_components") or [],
+                target_final_score=float(parsed.get("target_final_score", 70) or 70),
+                remaining_weight=float(parsed.get("remaining_weight", 0) or 0),
+            )
+            collected_data["grade_calc_input"] = parsed
+            collected_data["grade_calc_result"] = calc
+            working_state["collected_data"] = collected_data
+
+    state = planner_engine.process_answer(working_state, message=message, option_id=option_id)
+
+    if state.get("current_step") == "generate":
+        payload = planner_generate(user=user, state=state, request_id=request_id)
+        state["current_step"] = "iterate"
+        payload["planner_meta"] = {
+            **(payload.get("planner_meta") or {}),
+            "data_level": state.get("data_level", {}),
+        }
+        return payload, state
+
+    payload = planner_engine.get_step_payload(state)
+    payload["planner_meta"] = {
+        **(payload.get("planner_meta") or {}),
+        "data_level": state.get("data_level", {}),
+        "mode": "planner",
+    }
+    return payload, state

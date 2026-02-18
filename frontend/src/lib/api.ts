@@ -23,13 +23,47 @@ export interface ChatSource {
   snippet: string;  // cuplikan konteks yang dipakai
 }
 
-// ✅ Chat API
-export interface ChatResponse {
+export interface PlannerOption {
+  id: number;
+  label: string;
+  value: string;
+}
+
+export interface PlannerSessionState {
+  current_step?: string;
+  data_level?: Record<string, unknown>;
+  collected_data?: Record<string, unknown>;
+}
+
+// ✅ Chat API (mode=chat)
+export interface ChatModeResponse {
+  type?: "chat";
   answer?: string; // backend sukses -> {answer}
   sources?: ChatSource[];
   session_id?: number;
   error?: string;  // backend error -> {error}
 }
+
+// ✅ Planner API (mode=planner)
+export interface PlannerModeResponse {
+  type: "planner_step" | "planner_output" | "planner_generate";
+  answer: string;
+  options: PlannerOption[];
+  allow_custom: boolean;
+  planner_step: string;
+  session_state: PlannerSessionState;
+  planner_meta?: Record<string, unknown>;
+  error?: string;
+}
+
+export type ChatResponse = ChatModeResponse | PlannerModeResponse;
+
+export type SendChatPayload = {
+  message: string;
+  session_id?: number;
+  mode?: "chat" | "planner";
+  option_id?: number;
+};
 
 // ✅ Upload API
 export interface UploadResponse {
@@ -84,12 +118,24 @@ export interface SessionsResponse {
  * Mengirim pesan chat ke AI
  * URL Backend: POST /api/chat/
  */
-export const sendChat = async (message: string, sessionId?: number) => {
-  // Payload harus match dengan `json.loads(request.body)` di views.py
-  const response = await apiClient.post<ChatResponse>("/chat/", {
-    message,
-    session_id: sessionId,
-  });
+export const sendChat = async (
+  messageOrPayload: string | SendChatPayload,
+  sessionId?: number
+) => {
+  // Backward-compatible:
+  // - sendChat("halo", sessionId)
+  // - sendChat({ message, mode, option_id, session_id })
+  const payload: SendChatPayload =
+    typeof messageOrPayload === "string"
+      ? { message: messageOrPayload, session_id: sessionId, mode: "chat" }
+      : {
+          message: messageOrPayload.message,
+          session_id: messageOrPayload.session_id,
+          mode: messageOrPayload.mode ?? "chat",
+          option_id: messageOrPayload.option_id,
+        };
+
+  const response = await apiClient.post<ChatResponse>("/chat/", payload);
   return response.data;
 };
 

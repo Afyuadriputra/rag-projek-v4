@@ -47,6 +47,27 @@ def _get_client_ip(request):
     return request.META.get("REMOTE_ADDR")
 
 
+def _planner_session_state(state: dict) -> dict:
+    s = state or {}
+    return {
+        "current_step": s.get("current_step"),
+        "data_level": s.get("data_level", {}),
+        "collected_data": s.get("collected_data", {}),
+    }
+
+
+def _normalize_planner_payload(payload: dict, state: dict) -> dict:
+    out = dict(payload or {})
+    planner_meta = out.get("planner_meta") or {}
+    out.setdefault("type", "planner_step")
+    out.setdefault("answer", "")
+    out.setdefault("options", [])
+    out.setdefault("allow_custom", False)
+    out["planner_step"] = planner_meta.get("step") or state.get("current_step")
+    out["session_state"] = _planner_session_state(state)
+    return out
+
+
 def _is_registration_enabled() -> bool:
     try:
         cfg = SystemSetting.objects.first()
@@ -414,23 +435,52 @@ def chat_api(request):
             return JsonResponse({"error": "Invalid JSON"}, status=400)
 
         query = data.get("message")
+        mode = str(data.get("mode") or "chat").strip().lower()
+        option_id_raw = data.get("option_id")
+        if option_id_raw is not None and (not str(option_id_raw).isdigit()):
+            return JsonResponse({"error": "option_id tidak valid"}, status=400)
+        option_id = int(option_id_raw) if str(option_id_raw).isdigit() else None
         session_id_raw = data.get("session_id")
         if session_id_raw is not None and (not str(session_id_raw).isdigit()):
             return JsonResponse({"error": "session_id tidak valid"}, status=400)
         session_id = int(session_id_raw) if str(session_id_raw).isdigit() else None
-        if not query:
+        if mode not in {"chat", "planner"}:
+            return JsonResponse({"error": "mode tidak valid"}, status=400)
+
+        if mode == "chat" and not query:
             logger.warning(f" [CHAT] Pesan kosong user={user.username}(id={user.id}) ip={ip}", extra=_log_extra(request))
             return JsonResponse({"error": "Pesan kosong"}, status=400)
 
-        q_preview = query if len(query) <= 120 else query[:120] + "..."
-        logger.info(f" [CHAT REQUEST] user={user.username}(id={user.id}) ip={ip} q='{q_preview}'", extra=_log_extra(request))
+        q_preview = (query or "") if len((query or "")) <= 120 else (query or "")[:120] + "..."
+        logger.info(
+            f" [CHAT REQUEST] user={user.username}(id={user.id}) ip={ip} mode={mode} q='{q_preview}'",
+            extra=_log_extra(request),
+        )
 
-        payload = service.chat_and_save(user=user, message=query, request_id=_rid(request), session_id=session_id)
+        if mode == "planner":
+            planner_state = request.session.get("planner_state")
+            if not planner_state:
+                payload, new_state = service.planner_start(user=user)
+            else:
+                payload, new_state = service.planner_continue(
+                    user=user,
+                    planner_state=planner_state,
+                    message=query or "",
+                    option_id=option_id,
+                    request_id=_rid(request),
+                )
+            payload = _normalize_planner_payload(payload, new_state)
+            request.session["planner_state"] = new_state
+            request.session.modified = True
+        else:
+            payload = service.chat_and_save(user=user, message=query, request_id=_rid(request), session_id=session_id)
+            if isinstance(payload, dict):
+                payload.setdefault("type", "chat")
 
         src_count = len(payload.get("sources") or [])
         logger.info(
             f" [CHAT RESPONSE] user={user.username}(id={user.id}) ip={ip} "
-            f"len={len(payload.get('answer',''))} sources={src_count}",
+            f"mode={mode} len={len(payload.get('answer',''))} sources={src_count}",
             extra=_log_extra(request),
         )
         return JsonResponse(payload)

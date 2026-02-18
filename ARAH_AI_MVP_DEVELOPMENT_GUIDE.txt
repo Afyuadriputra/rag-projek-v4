@@ -1,0 +1,1899 @@
+================================================================================
+                     ARAH.AI — MVP DEVELOPMENT GUIDE
+              Panduan Lengkap untuk Tim Developer (v1.0)
+              Tanggal: 18 Februari 2026
+================================================================================
+
+DAFTAR ISI:
+  1. APA ITU ARAH.AI?
+  2. SIAPA YANG AKAN PAKAI?
+  3. KONDISI CODEBASE SAAT INI
+  4. ARSITEKTUR SISTEM YANG DITUJU
+  5. DUA MODE UTAMA: CHATBOT & PLANNER
+  6. TIGA MASALAH PENTING YANG HARUS DIPAHAMI
+  7. ENAM FITUR MVP — PENJELASAN LENGKAP
+  8. ALUR USER (USER FLOW) — STEP BY STEP
+  9. APA YANG HARUS DIKERJAKAN (TASK BREAKDOWN)
+ 10. DETAIL TEKNIS PER TASK
+ 11. FILE-FILE YANG PERLU DIUBAH
+ 12. CONTOH KODE & PSEUDOCODE
+ 13. TESTING & VALIDASI
+ 14. HAL YANG TIDAK PERLU DIKERJAKAN (OUT OF SCOPE)
+ 15. GLOSARIUM (ISTILAH-ISTILAH)
+
+================================================================================
+1. APA ITU ARAH.AI?
+================================================================================
+
+arah.ai adalah AI asisten akademik untuk mahasiswa perguruan tinggi.
+
+Tujuan MVP ini:
+- Deploy secara PUBLIK dan GRATIS
+- Siapa saja bisa mencoba (mahasiswa dari kampus mana pun)
+- Tujuan utama: MARKETING — bikin orang tertarik dan bilang "ini berguna"
+- Bukan product final, tapi demo yang fungsional dan impresif
+
+Apa yang bisa dilakukan arah.ai:
+- Menjawab pertanyaan tentang perkuliahan dan pendidikan tinggi
+- Membaca dokumen akademik yang di-upload mahasiswa
+- Menyusun rencana perkuliahan (jadwal, rekomendasi mata kuliah, dll)
+- Menghitung nilai yang dibutuhkan untuk lulus/perbaikan
+- Memberikan saran berdasarkan target karir mahasiswa
+
+================================================================================
+2. SIAPA YANG AKAN PAKAI?
+================================================================================
+
+TARGET: Mahasiswa aktif dari kampus MANA PUN di Indonesia.
+
+Implikasi penting:
+- Sistem harus GENERAL, tidak terikat ke kampus tertentu
+- Data akademik tiap kampus BERBEDA formatnya
+- Tidak semua mahasiswa punya dokumen akademik lengkap
+- Sistem harus tetap berguna WALAU data tidak lengkap
+
+================================================================================
+3. KONDISI CODEBASE SAAT INI
+================================================================================
+
+Kita sudah punya codebase bernama "academic_rag_project" yang menjadi fondasi.
+Repository: https://github.com/Afyuadriputra/academic_rag_project
+
+3.1 TECH STACK YANG SUDAH ADA
+-------------------------------
+
+Backend:
+  - Django 6.0.1 (Python web framework)
+  - Django REST Framework (untuk API)
+  - ChromaDB (vector database — menyimpan embedding dokumen)
+  - LangChain (orchestration untuk RAG)
+  - HuggingFace Embeddings model: all-MiniLM-L6-v2
+  - OpenRouter API (untuk akses LLM — model AI bahasa)
+  - Inertia.js (penghubung Django ↔ React)
+  - SQLite (database relasional)
+
+Frontend:
+  - React 19 + TypeScript
+  - Vite (build tool)
+  - TailwindCSS 4 (styling)
+  - Framer Motion (animasi)
+  - Radix UI (komponen UI)
+  - Axios (HTTP client)
+
+3.2 FITUR YANG SUDAH JALAN
+----------------------------
+
+  ✅ User registration & login (session-based auth)
+  ✅ Upload dokumen (PDF, Excel, CSV, MD, TXT)
+  ✅ Document parsing & embedding ke ChromaDB
+  ✅ Chat dengan AI (RAG — jawab berdasarkan dokumen yang di-upload)
+  ✅ Multi-session chat (bisa buat beberapa percakapan)
+  ✅ Knowledge base sidebar (daftar dokumen yang di-upload)
+  ✅ Storage quota management (limit 10MB per user)
+  ✅ Rate limiting login (django-axes)
+  ✅ Audit logging
+
+3.3 STRUKTUR FOLDER PENTING
+-----------------------------
+
+  academic_rag_project/
+  ├── config/
+  │   ├── settings.py          ← Konfigurasi Django (database, middleware, dll)
+  │   ├── urls.py              ← Root routing
+  │   └── logging_filters.py   ← Custom logging
+  │
+  ├── core/
+  │   ├── models.py            ← Data models (AcademicDocument, ChatSession, dll)
+  │   ├── views.py             ← API endpoints (HTTP handling)
+  │   ├── service.py           ← Business logic (SEMUA logika bisnis di sini)
+  │   ├── urls.py              ← App routing (daftar semua API endpoints)
+  │   ├── middleware.py        ← Request context & access logging
+  │   ├── admin.py             ← Django admin registration
+  │   │
+  │   └── ai_engine/           ← Otak AI sistem
+  │       ├── config.py        ← Setup ChromaDB + embedding model
+  │       ├── ingest.py        ← Proses dokumen → parsing → embedding
+  │       ├── vector_ops.py    ← Operasi CRUD di vector database
+  │       └── retrieval/       ← Logika RAG (cari dokumen + jawab pertanyaan)
+  │           ├── main.py      ← Fungsi utama: ask_bot()
+  │           ├── llm.py       ← Konfigurasi LLM (model AI + fallback)
+  │           ├── prompt.py    ← Template prompt untuk AI
+  │           ├── rules.py     ← Deteksi tipe query (jadwal/transkrip/umum)
+  │           └── utils.py     ← Helper functions
+  │
+  ├── frontend/
+  │   ├── src/
+  │   │   ├── main.tsx         ← Entry point React + Inertia bootstrap
+  │   │   ├── pages/
+  │   │   │   ├── Auth/Login.tsx      ← Halaman login
+  │   │   │   ├── Auth/Register.tsx   ← Halaman register
+  │   │   │   └── Chat/Index.tsx      ← Halaman utama chat (PALING PENTING)
+  │   │   ├── lib/
+  │   │   │   ├── api.ts       ← Semua fungsi API call ke backend
+  │   │   │   └── utils.ts     ← Utility functions
+  │   │   └── components/
+  │   │       ├── organisms/   ← Komponen besar (AppHeader, ChatThread, dll)
+  │   │       ├── molecules/   ← Komponen sedang (ChatBubble, ChatComposer, dll)
+  │   │       └── atoms/       ← Komponen kecil (Avatar, Badge, dll)
+  │   └── package.json         ← Dependencies frontend
+  │
+  └── manage.py                ← Django management command
+
+3.4 POLA ARSITEKTUR YANG SUDAH ADA (WAJIB DIIKUTI)
+-----------------------------------------------------
+
+Sistem ini sudah punya pola yang jelas. JANGAN ubah pola ini:
+
+  VIEWS (views.py)
+    → Hanya handle HTTP: parse request, validasi, kirim response
+    → TIDAK boleh ada logika bisnis di sini
+    → Contoh: parse JSON, cek authentication, return JsonResponse
+
+  SERVICE (service.py)
+    → SEMUA logika bisnis ada di sini
+    → Fungsi-fungsi pure (tidak tahu tentang HTTP)
+    → Bisa dipanggil dan di-test tanpa web server
+    → Contoh: upload_files_batch(), chat_and_save(), get_dashboard_props()
+
+  AI ENGINE (ai_engine/)
+    → Khusus untuk hal-hal AI: embedding, retrieval, prompting
+    → Dipanggil oleh service.py, BUKAN langsung oleh views.py
+
+  MODELS (models.py)
+    → Definisi struktur data (tabel database)
+    → Tidak ada logika bisnis di models
+
+  Alur request:  User → URL → views.py → service.py → ai_engine/ → response
+
+3.5 API ENDPOINTS YANG SUDAH ADA
+----------------------------------
+
+  POST   /api/chat/                ← Kirim pesan chat, terima jawaban AI
+  POST   /api/upload/              ← Upload dokumen (batch)
+  GET    /api/documents/           ← Daftar dokumen + info storage
+  DELETE /api/documents/<id>/      ← Hapus dokumen
+  GET    /api/sessions/            ← Daftar chat sessions
+  POST   /api/sessions/            ← Buat session baru
+  GET    /api/sessions/<id>/       ← History chat dalam session
+  PATCH  /api/sessions/<id>/       ← Rename session
+  DELETE /api/sessions/<id>/       ← Hapus session
+  POST   /api/reingest/            ← Re-embed dokumen
+
+3.6 CARA AI MENJAWAB PERTANYAAN (SEKARANG)
+--------------------------------------------
+
+  1. User kirim pesan via POST /api/chat/
+  2. views.py terima → panggil service.chat_and_save()
+  3. service.py panggil ask_bot(user_id, query)
+  4. ask_bot() di retrieval/main.py:
+     a. Cari dokumen relevan di ChromaDB (filter by user_id)
+     b. Ambil top-20 dokumen mirip
+     c. Kirim ke LLM dengan prompt template
+     d. LLM generate jawaban berdasarkan konteks
+     e. Return {answer, sources}
+  5. Jawaban disimpan ke ChatHistory
+  6. Dikirim ke frontend sebagai JSON
+
+  LLM yang dipakai: OpenRouter API (model gratis)
+  Fallback: Kalau model pertama gagal, otomatis coba model berikutnya
+  Model saat ini: qwen3, nemotron, trinity, llama-3.3
+
+3.7 PROMPT SAAT INI
+---------------------
+
+  File: core/ai_engine/retrieval/prompt.py
+
+  Prompt sekarang SANGAT SEDERHANA — hanya bilang:
+  "Anda adalah asisten akademik. Jawab pertanyaan berdasarkan konteks."
+
+  Format output wajib:
+  ## Ringkasan
+  ## Tabel
+  ## Insight Singkat
+  ## Pertanyaan Lanjutan
+  ## Opsi Cepat
+
+  MASALAH: Prompt ini terlalu generic. AI tidak tahu cara menyusun jadwal,
+  menghitung nilai, atau memberikan rekomendasi mata kuliah secara terstruktur.
+
+================================================================================
+4. ARSITEKTUR SISTEM YANG DITUJU
+================================================================================
+
+Sistem akan punya SATU TAMPILAN UTAMA (halaman chat) dengan DUA MODE:
+
+  ┌─────────────────────────────────────────────┐
+  │  arah.ai                                    │
+  │                                              │
+  │  ┌──────────┐   ┌──────────┐                │
+  │  │ 💬 Chat  │   │ 📋 Plan  │  ← toggle     │
+  │  └──────────┘   └──────────┘                │
+  │                                              │
+  │  ┌──────────────────────────────────────┐   │
+  │  │                                      │   │
+  │  │    Area chat (sama untuk kedua mode) │   │
+  │  │                                      │   │
+  │  │    Mode Chat: tanya jawab bebas      │   │
+  │  │    Mode Plan: wizard step-by-step    │   │
+  │  │                                      │   │
+  │  └──────────────────────────────────────┘   │
+  │  ┌──────────────────────────────────────┐   │
+  │  │  📎  Ketik pesan...          Kirim ▶ │   │
+  │  └──────────────────────────────────────┘   │
+  └─────────────────────────────────────────────┘
+
+PENTING:
+- Kedua mode berada di HALAMAN YANG SAMA
+- Hanya switch dengan tombol toggle (seperti ChatGPT biasa vs Deep Research)
+- Area chat SAMA — pesan muncul di thread yang sama
+- Data (dokumen yang di-upload) SHARED antara kedua mode
+- Upload dokumen bisa dilakukan LANGSUNG di chat (tombol 📎 atau drag & drop)
+
+================================================================================
+5. DUA MODE UTAMA: CHATBOT & PLANNER
+================================================================================
+
+5.1 MODE CHATBOT (💬)
+-----------------------
+
+Apa ini:
+  - Tanya jawab BEBAS tentang pendidikan tinggi dan perkuliahan
+  - Ini tampilan DEFAULT yang dilihat user pertama kali
+  - Seperti ChatGPT tapi khusus akademik
+
+Apa yang bisa dilakukan:
+  - Jawab pertanyaan umum: "Apa itu SKS?", "Bagaimana cara menghitung IPK?"
+  - Jawab berdasarkan dokumen yang di-upload: "Jadwal kuliah saya hari Senin apa?"
+  - Upload dokumen langsung di chat
+  - Tetap berguna TANPA upload dokumen (jawab dari pengetahuan umum)
+
+Apa yang perlu dikerjakan:
+  - Perkuat prompt agar lebih pintar soal akademik
+  - Tambah kemampuan adaptif (lihat Section 6 — Tiga Masalah)
+
+Secara teknis:
+  - Ini SUDAH ADA di codebase sekarang
+  - Yang berubah: prompt di prompt.py menjadi lebih cerdas
+  - Endpoint tetap: POST /api/chat/
+
+5.2 MODE PLANNER (📋)
+-----------------------
+
+Apa ini:
+  - Fitur perencanaan perkuliahan dengan panduan step-by-step
+  - Semua 6 fitur MVP ada di sini
+  - AI memandu user lewat pertanyaan-pertanyaan, kasih opsi bernomor
+  - Di akhir, AI generate rencana perkuliahan lengkap
+
+Cara kerjanya:
+  - User klik tombol "📋 Plan"
+  - AI mulai bertanya step by step DI DALAM CHAT (bukan halaman baru)
+  - Setiap pertanyaan punya opsi bernomor yang bisa dipilih
+  - User bisa juga ketik jawaban custom
+  - Setelah data terkumpul, AI generate rencana lengkap
+  - User bisa minta revisi atau opsi alternatif
+
+CONTOH ALUR PLANNER (ini yang muncul di area chat):
+
+  ┌────────────────────────────────────────────────────┐
+  │ AI: Halo! Mari susun rencana perkuliahanmu 📋      │
+  │                                                    │
+  │     Pertama, apakah kamu punya dokumen akademik?   │
+  │                                                    │
+  │     1. 📎 Ya, saya mau upload file                 │
+  │     2. ✍️ Tidak, saya isi manual saja               │
+  │     3. 🤷 Saya tidak yakin apa yang diperlukan      │
+  └────────────────────────────────────────────────────┘
+
+  User pilih: 2
+
+  ┌────────────────────────────────────────────────────┐
+  │ AI: Tidak masalah! Saya bantu step by step.        │
+  │                                                    │
+  │     Jurusan kamu apa?                              │
+  │                                                    │
+  │     1. Teknik Informatika                          │
+  │     2. Sistem Informasi                            │
+  │     3. Manajemen                                   │
+  │     4. Akuntansi                                   │
+  │     5. Hukum                                       │
+  │     6. ✏️ Ketik sendiri                             │
+  └────────────────────────────────────────────────────┘
+
+  User pilih: 1
+
+  ┌────────────────────────────────────────────────────┐
+  │ AI: Semester berapa sekarang?                      │
+  │                                                    │
+  │     1. Semester 1-2 (awal)                         │
+  │     2. Semester 3-4 (tengah)                       │
+  │     3. Semester 5-6 (atas)                         │
+  │     4. Semester 7+ (akhir)                         │
+  └────────────────────────────────────────────────────┘
+
+  User pilih: 3
+
+  ┌────────────────────────────────────────────────────┐
+  │ AI: Apa tujuan utamamu semester ini?               │
+  │                                                    │
+  │     1. 🚀 Lulus cepat (ambil SKS maksimal)         │
+  │     2. 📈 IPK tinggi (pilih yang bisa dapat A)     │
+  │     3. ⚖️ Seimbang (kuliah + kehidupan)            │
+  │     4. 💼 Fokus karir tertentu                     │
+  └────────────────────────────────────────────────────┘
+
+  User pilih: 4
+
+  ┌────────────────────────────────────────────────────┐
+  │ AI: Karir apa yang kamu targetkan?                 │
+  │                                                    │
+  │     1. 💻 Software Engineer                        │
+  │     2. 📊 Data Scientist / Analyst                 │
+  │     3. 🔒 Cybersecurity Specialist                 │
+  │     4. 📱 Mobile Developer                         │
+  │     5. 🎮 Game Developer                           │
+  │     6. ✏️ Ketik sendiri                             │
+  └────────────────────────────────────────────────────┘
+
+  User pilih: 2
+
+  ┌────────────────────────────────────────────────────┐
+  │ AI: Preferensi jadwal?                             │
+  │                                                    │
+  │     1. 🌅 Pagi (08:00-12:00)                       │
+  │     2. ☀️ Siang-sore (12:00-17:00)                 │
+  │     3. 🔄 Fleksibel                                │
+  │                                                    │
+  │     Ada hari yang ingin dikosongkan?               │
+  │     1. Jumat libur                                 │
+  │     2. Sabtu libur                                 │
+  │     3. Tidak ada preferensi                        │
+  └────────────────────────────────────────────────────┘
+
+  ... dan seterusnya sampai data cukup.
+
+  Lalu AI GENERATE RENCANA LENGKAP (lihat Section 8 untuk contoh output).
+
+Secara teknis — yang perlu dibangun:
+  - Backend: Planner state machine (track user ada di step mana)
+  - Backend: Prompt khusus per step
+  - Backend: Endpoint baru POST /api/planner/ (atau extend /api/chat/)
+  - Frontend: Render opsi bernomor sebagai tombol yang bisa diklik
+  - Frontend: Toggle Chat ↔ Plan
+
+================================================================================
+6. TIGA MASALAH PENTING YANG HARUS DIPAHAMI
+================================================================================
+
+Ini adalah CONSTRAINT utama yang menentukan keberhasilan MVP.
+Setiap keputusan desain harus mempertimbangkan ketiga masalah ini.
+
+MASALAH 1: TIDAK SEMUA MAHASISWA PUNYA DATA
+---------------------------------------------
+
+Realita:
+  - Ada yang punya transkrip PDF lengkap → bagus
+  - Ada yang cuma punya foto jadwal dari WhatsApp → parsial
+  - Ada yang cuma ingat "saya semester 5, jurusan Informatika" → minimal
+  - Ada yang tidak punya apa-apa → zero data
+
+Solusi: SISTEM BERLAPIS (Graceful Degradation)
+
+  Level 3 (data lengkap):
+    User upload transkrip + jadwal induk + kurikulum
+    → AI bisa jawab SEMUA pertanyaan dengan akurat
+    → Planner generate rencana paling lengkap
+
+  Level 2 (data sebagian):
+    User upload sebagian (misal cuma jadwal)
+    → AI bantu sesuai data yang ada
+    → Planner generate rencana parsial + sarankan "upload juga transkrip"
+
+  Level 1 (data dari chat):
+    User tidak upload tapi ceritakan info lewat chat
+    → AI kumpulkan info dari percakapan
+    → Planner tanya step-by-step, gunakan jawaban user
+
+  Level 0 (tidak ada data):
+    User baru masuk, belum apa-apa
+    → Chatbot tetap bisa jawab pertanyaan umum
+    → Planner guide user untuk memberikan info minimal
+
+  ATURAN EMAS: AI TIDAK BOLEH MENOLAK.
+  AI harus SELALU membantu, sebisa mungkin, dengan data yang ada.
+  Kalau data kurang, AI TANYA BALIK — bukan bilang "upload dulu".
+
+
+MASALAH 2: FORMAT DATA BERBEDA TIAP KAMPUS
+--------------------------------------------
+
+Realita:
+  - Transkrip UI berbeda format dari UGM, berbeda dari Binus
+  - Ada yang pakai nilai huruf (A/B/C), ada angka (0-100), ada skala 4.0
+  - Jadwal induk tiap kampus tata letaknya beda
+  - Bahasa bisa Indonesia atau Inggris
+
+Solusi: AI YANG FLEKSIBEL, BUKAN PARSER YANG KAKU
+
+  JANGAN hard-code format tertentu.
+  JANGAN expect kolom harus bernama persis "Mata Kuliah" atau "Kode MK".
+
+  Sebaliknya:
+  - Prompt AI untuk MENGENALI POLA: "Kalau ada tabel dengan kolom nilai,
+    itu kemungkinan transkrip"
+  - Sistem ingest yang sudah ada punya header normalization (_HEADER_MAP di
+    ingest.py) — ini sudah cukup bagus, tapi perlu diperluas
+  - Setelah AI baca dokumen, SELALU KONFIRMASI:
+    "Saya menemukan 12 mata kuliah di transkrip Anda. IPK 3.2. Benar?"
+  - Kalau salah, user bisa koreksi lewat chat
+
+
+MASALAH 3: HARUS TETAP BERGUNA WALAU DATA TERBATAS
+-----------------------------------------------------
+
+Ini yang paling penting untuk MARKETING MVP.
+
+  AI yang buruk ❌                  AI arah.ai ✅
+  ─────────────────────────────    ─────────────────────────────────────
+  "Upload dokumen dulu"            "Hai! Ceritakan jurusan dan semester
+                                    kamu, saya bantu sebisa mungkin"
+
+  "Saya butuh transkrip juga"      "Dari jadwal Anda, saya lihat ada 6
+                                    mata kuliah. Mau saya analisis beban
+                                    belajarnya?"
+
+  "Data tidak tersedia"            "Berapa nilai UTS dan bobotnya? Saya
+                                    hitung berapa yang Anda butuhkan"
+
+  "File tidak didukung"            "Saya tangkap beberapa info dari
+                                    file ini. Coba ceritakan isinya?"
+
+  PRINSIP: Selalu tawarkan ALTERNATIF, jangan pernah dead-end.
+
+  Untuk Planner khususnya:
+  - Output harus punya DISCLAIMER kalau data tidak lengkap
+  - Contoh: "⚠️ Rencana ini berdasarkan info yang Anda berikan.
+    Cocokkan dengan jadwal resmi kampus Anda."
+  - AI PROAKTIF sarankan data apa yang perlu dilengkapi
+
+TENTANG JADWAL INDUK (PENTING!):
+  Jadwal Induk = daftar SEMUA kelas yang ditawarkan kampus per semester
+  (mata kuliah, kelas, jam, ruang, dosen, kuota).
+
+  Ini data kunci untuk fitur Automated Scheduler.
+  MASALAHNYA: Tidak semua kampus memberikan ini ke mahasiswa.
+
+  Solusi untuk MVP:
+  - Kalau user PUNYA jadwal induk → upload → AI baca → scheduling optimal
+  - Kalau user TIDAK PUNYA → AI tetap bisa:
+    a. Tanya via chat: "Mata kuliah apa saja yang tersedia semester ini?"
+    b. User sebut yang dia tahu
+    c. AI susun rencana dari info yang ada
+    d. Output + disclaimer: "Rencana ini berdasarkan info parsial"
+
+================================================================================
+7. ENAM FITUR MVP — PENJELASAN LENGKAP
+================================================================================
+
+Semua fitur ini ada di MODE PLANNER.
+(Mode Chatbot tetap tanya-jawab bebas, bukan fitur-fitur ini)
+
+┌──────────────────────────────────────────────────────────────────┐
+│  FITUR 1: AUTOMATED SCHEDULER                                   │
+│  "Susun jadwal kuliah otomatis tanpa bentrok"                    │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Apa yang dilakukan:                                             │
+│  - Menyusun jadwal kuliah satu semester                          │
+│  - Memastikan tidak ada bentrok waktu                            │
+│  - Memenuhi kuota SKS                                            │
+│  - Menyesuaikan dengan preferensi user                           │
+│                                                                  │
+│  Cara kerja di MVP:                                              │
+│  - Jika ada jadwal induk → AI baca dan susun kombinasi           │
+│  - Jika tidak ada → AI tanya mata kuliah + jam yang tersedia     │
+│  - AI generate jadwal dalam format tabel                         │
+│                                                                  │
+│  Implementasi:                                                   │
+│  - PROMPT-BASED (bukan algoritma)                                │
+│  - Prompt instruksikan AI: "Susun jadwal dari data berikut,      │
+│    pastikan tidak ada bentrok waktu, maksimal X SKS"             │
+│  - Untuk MVP ini cukup — production nanti pakai algoritma        │
+│                                                                  │
+│  Trade-off MVP:                                                  │
+│  - AI mungkin TIDAK menemukan solusi optimal dari ribuan          │
+│    kombinasi, tapi untuk demo marketing ini acceptable            │
+│  - Disclaimer: "Jadwal ini disusun berdasarkan data yang         │
+│    Anda berikan. Silakan verifikasi kembali."                    │
+│                                                                  │
+│  Contoh output:                                                  │
+│  ┌──────┬──────────────────┬───────────┬─────┐                   │
+│  │ Hari │ Mata Kuliah      │ Jam       │ SKS │                   │
+│  ├──────┼──────────────────┼───────────┼─────┤                   │
+│  │ Sen  │ Machine Learning │ 08:00-10  │ 3   │                   │
+│  │ Sen  │ Basis Data II    │ 13:00-15  │ 3   │                   │
+│  │ Sel  │ Statistika       │ 10:00-12  │ 3   │                   │
+│  │ Sel  │ Kalkulus III     │ 13:00-15  │ 3   │                   │
+│  │ Rab  │ Jarkom           │ 08:00-10  │ 3   │                   │
+│  │ Rab  │ PBO              │ 13:00-15  │ 3   │                   │
+│  │ Kam  │ Bahasa Inggris   │ 10:00-12  │ 2   │                   │
+│  └──────┴──────────────────┴───────────┴─────┘                   │
+│  Total: 20 SKS | 4 hari aktif | Jumat libur ✅                   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  FITUR 2: COURSE RECOMMENDATION                                 │
+│  "Saran mata kuliah berdasarkan transkrip & prasyarat"           │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Apa yang dilakukan:                                             │
+│  - Analisis mata kuliah yang sudah diambil                       │
+│  - Identifikasi mata kuliah yang BOLEH diambil (prasyarat met)   │
+│  - Prioritaskan yang paling relevan untuk semester ini            │
+│                                                                  │
+│  Cara kerja di MVP:                                              │
+│  - Jika ada transkrip → AI baca dan analisis                     │
+│  - Jika tidak → AI tanya: "Mata kuliah apa yang sudah Anda       │
+│    ambil? Nilai apa?"                                            │
+│  - AI cocokkan dengan kurikulum umum jurusan tersebut            │
+│                                                                  │
+│  Implementasi:                                                   │
+│  - PROMPT-BASED + RAG                                            │
+│  - Prompt: "Berdasarkan transkrip berikut, rekomendasikan        │
+│    mata kuliah untuk semester depan. Perhatikan prasyarat."       │
+│  - RAG menyediakan konteks dari dokumen kurikulum (jika ada)     │
+│                                                                  │
+│  Contoh output:                                                  │
+│  🎯 Rekomendasi Mata Kuliah Semester 5:                          │
+│  • Machine Learning (wajib, prasyarat: Statistika ✅)             │
+│  • Data Mining (pilihan, mendukung karir Data Scientist)         │
+│  • Basis Data II (wajib, prasyarat: Basis Data I ✅)              │
+│  ❌ Kecerdasan Buatan (prasyarat belum terpenuhi: Kalkulus III)   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  FITUR 3: CAREER ALIGNMENT                                      │
+│  "Pemetaan mata kuliah ke target karir"                          │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Apa yang dilakukan:                                             │
+│  - User pilih target karir (Data Scientist, Software Engineer)   │
+│  - AI prioritaskan mata kuliah pilihan yang mendukung karir      │
+│  - Kasih rating relevansi per mata kuliah                        │
+│                                                                  │
+│  Cara kerja di MVP:                                              │
+│  - PURE PROMPT-BASED — ini cocok untuk AI karena                 │
+│    semantic matching (mencocokkan makna, bukan hitungan)          │
+│  - AI sudah "tahu" mata kuliah mana yang relevan untuk karir     │
+│    tertentu berdasarkan pengetahuan umumnya                      │
+│                                                                  │
+│  Implementasi:                                                   │
+│  - Prompt: "User ingin menjadi {karir}. Dari mata kuliah         │
+│    yang tersedia, prioritaskan yang mendukung karir tersebut.    │
+│    Beri rating relevansi ★."                                     │
+│                                                                  │
+│  Contoh output:                                                  │
+│  💼 Keselarasan Karir — Data Scientist:                          │
+│  • Machine Learning    ★★★ (sangat relevan — core skill)         │
+│  • Statistika          ★★★ (sangat relevan — fundamental)        │
+│  • Data Mining         ★★☆ (relevan — complementary skill)       │
+│  • Basis Data II       ★★☆ (relevan — data management)           │
+│  • Bahasa Inggris      ★☆☆ (supporting — publication & docs)     │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  FITUR 4: COGNITIVE LOAD BALANCING                               │
+│  "Distribusi mata kuliah berat secara merata"                    │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Apa yang dilakukan:                                             │
+│  - Sebar mata kuliah berat (SKS tinggi, sulit) merata per hari   │
+│  - Hindari hari yang terlalu padat                               │
+│  - Sesuaikan dengan preferensi waktu user                        │
+│                                                                  │
+│  Cara kerja di MVP:                                              │
+│  - Ini BAGIAN dari output scheduling                             │
+│  - Bukan fitur terpisah, tapi aspek dari cara AI menyusun jadwal │
+│  - Prompt instruksikan: "Sebar mata kuliah berat merata.         │
+│    Jangan jadwalkan lebih dari 4 jam berturut-turut."            │
+│                                                                  │
+│  Implementasi:                                                   │
+│  - Ditanamkan di prompt scheduling                               │
+│  - Visualisasi beban per hari di output                          │
+│                                                                  │
+│  Contoh output (bagian dari rencana):                            │
+│  ⚖️ Distribusi Beban:                                            │
+│  • Senin:  ██████░░  berat  (6 SKS: ML + Basis Data)            │
+│  • Selasa: ████░░░░  ringan (3 SKS: Bahasa Inggris)             │
+│  • Rabu:   █████░░░  sedang (5 SKS: Jarkom + Lab)               │
+│  • Kamis:  ████░░░░  ringan (3 SKS: PBO)                        │
+│  → Mata kuliah berat sudah disebar merata ✅                      │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  FITUR 5: MULTI-SCENARIO PLANNING                                │
+│  "Beberapa opsi rencana: Padat / Seimbang / Custom"              │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Apa yang dilakukan:                                             │
+│  - Tidak cuma kasih 1 rencana, tapi beberapa OPSI               │
+│  - Opsi A: Jadwal Padat / Lulus Cepat (SKS maksimal)            │
+│  - Opsi B: Jadwal Seimbang / IPK Maksimal (beban merata)        │
+│  - Opsi C: Custom sesuai permintaan user                        │
+│                                                                  │
+│  Cara kerja di MVP:                                              │
+│  - Setelah AI generate rencana pertama, tawarkan opsi lain       │
+│  - User bisa minta: "Coba yang lebih padat" atau "Coba tanpa    │
+│    hari Jumat"                                                   │
+│  - AI generate ulang dengan parameter berbeda                    │
+│                                                                  │
+│  Implementasi:                                                   │
+│  - Di akhir output rencana, tampilkan opsi:                      │
+│    1. 🔄 Buat opsi Padat (lulus lebih cepat, 24 SKS)            │
+│    2. 🔄 Buat opsi Santai (4 hari, 18 SKS)                      │
+│    3. ✏️ Ubah sesuatu dari rencana ini                           │
+│    4. ✅ Simpan rencana ini                                      │
+│  - Ketika user pilih opsi, AI regenerate dengan instruksi baru   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│  FITUR 6: GRADE RESCUE CALCULATOR                                │
+│  "Hitung berapa nilai yang dibutuhkan untuk perbaikan"           │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ⚠️ INI SATU-SATUNYA FITUR YANG HARUS PAKAI RUMUS PYTHON        │
+│  Alasan: Perhitungan matematika HARUS 100% akurat.              │
+│  LLM sering salah hitung. Untuk data akademik, ini tidak boleh. │
+│                                                                  │
+│  Apa yang dilakukan:                                             │
+│  - Jika AI deteksi ada mata kuliah dengan nilai rendah           │
+│    di transkrip user, otomatis tampilkan perhitungan             │
+│  - Hitung: "Untuk naik dari C ke B, Anda butuh nilai X di UAS"  │
+│  - Juga bisa dipanggil via chat: "Berapa nilai yang saya         │
+│    butuhkan supaya dapat B?"                                     │
+│                                                                  │
+│  Cara kerja:                                                     │
+│  1. Grade calculator = FUNGSI PYTHON (bukan AI)                  │
+│  2. Fungsi ini dipanggil otomatis dari output Planner            │
+│  3. Juga bisa dipanggil dari Chatbot ketika user tanya           │
+│  4. Hasil hitungan (angka) dikirim ke AI untuk DIJELASKAN        │
+│                                                                  │
+│  Rumus dasar:                                                    │
+│  required = (target - current_total) / remaining_weight          │
+│                                                                  │
+│  Contoh:                                                         │
+│  - UTS: 60, bobot 40%                                            │
+│  - Target akhir: B (70)                                          │
+│  - Sisa bobot: UAS 60%                                           │
+│  - required = (70 - (60 * 0.4)) / 0.6 = 76.67                   │
+│                                                                  │
+│  Implementasi:                                                   │
+│  - Buat fungsi Python di core/academic/grade_calculator.py       │
+│  - Dipanggil oleh service.py                                     │
+│  - Input bisa dari dokumen (parsed) ATAU dari jawaban chat user  │
+│  - Output: angka yang akurat + AI jelaskan strateginya           │
+│                                                                  │
+│  Contoh output di Planner:                                       │
+│  ⚠️ Perhatian — Nilai yang Perlu Diperbaiki:                     │
+│  • Statistika (nilai C semester lalu)                            │
+│    → Untuk naik ke B: butuh minimal 78.3 di UAS                 │
+│    → Untuk naik ke A: butuh minimal 93.3 di UAS                 │
+│  • Kalkulus II (nilai D)                                         │
+│    → Tidak bisa diperbaiki semester ini, perlu mengulang         │
+│                                                                  │
+│  Contoh output di Chatbot:                                       │
+│  User: "Nilai UTS saya 55, bobot 40%. Berapa UAS supaya B?"     │
+│  AI: "Dengan target B (70), Anda butuhkan minimal 80.0 di UAS   │
+│       (bobot 60%). Ini cukup menantang tapi masih mungkin! 💪"   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+CATATAN: EARLY WARNING SYSTEM (deteksi risiko akademik + kirim email)
+dari product profile arah.ai TIDAK termasuk di MVP ini.
+Fitur itu untuk versi production nanti.
+
+================================================================================
+8. ALUR USER (USER FLOW) — STEP BY STEP
+================================================================================
+
+8.1 ALUR PERTAMA KALI MASUK
+-----------------------------
+
+  1. User buka arah.ai
+  2. Tampil halaman Register/Login
+  3. User daftar/login
+  4. Masuk ke halaman utama: MODE CHATBOT aktif
+  5. AI menyapa:
+
+     "Halo! Saya arah.ai, asisten akademik Anda 👋
+
+      Saya bisa membantu dengan atau tanpa dokumen:
+
+      📄 Punya dokumen akademik? Kirim langsung di sini!
+         (transkrip, jadwal, kurikulum — PDF/Excel/gambar)
+
+      💬 Tidak punya? Tidak masalah!
+         Ceritakan jurusan dan semester Anda, saya tetap bisa bantu.
+
+      📋 Mau langsung susun rencana kuliah? Klik tombol 'Plan' di atas.
+
+      Mau mulai dari mana?"
+
+8.2 ALUR CHATBOT
+------------------
+
+  1. User ketik pertanyaan / upload dokumen
+  2. Backend terima → cek apakah ada dokumen di knowledge base
+  3. RAG search dokumen yang relevan
+  4. Prompt + konteks dikirim ke LLM
+  5. LLM generate jawaban
+  6. Jawaban ditampilkan di chat
+
+  Itu saja. Sama seperti sekarang, tapi dengan PROMPT yang lebih pintar.
+
+8.3 ALUR PLANNER (DETAIL)
+---------------------------
+
+  1. User klik tombol "📋 Plan"
+  2. Backend set mode = "planner", create planner session
+  3. AI kirim pertanyaan Step 1 (dengan opsi bernomor)
+
+  STEP 1: DATA
+  AI cek: apakah user sudah punya dokumen di knowledge base?
+
+    Kalau SUDAH ada dokumen:
+      "Saya sudah punya data Anda:
+       • Transkrip (12 mata kuliah, IPK 3.2) ✅
+       • Jadwal Induk Semester 5 ✅
+
+       Mau langsung lanjut atau upload data tambahan?
+       1. ▶️ Lanjut dengan data ini
+       2. 📎 Upload data tambahan
+       3. ✏️ Ada yang perlu dikoreksi"
+
+    Kalau BELUM ada dokumen:
+      "Apakah kamu punya dokumen akademik?
+       1. 📎 Ya, saya mau upload
+       2. ✍️ Tidak, saya isi manual
+       3. 🤷 Bantu saya tanpa data lengkap"
+
+  STEP 2: PROFIL AKADEMIK (skip kalau sudah ada dari dokumen)
+    "Jurusan kamu apa?"
+    → opsi bernomor + ketik sendiri
+
+    "Semester berapa?"
+    → opsi bernomor
+
+    "Mata kuliah yang sudah diambil?" (kalau tidak ada transkrip)
+    → user bisa sebutkan beberapa atau bilang "saya tidak ingat semua"
+
+  STEP 3: TUJUAN
+    "Apa tujuan utamamu semester ini?"
+    → opsi: lulus cepat / IPK tinggi / seimbang / fokus karir
+
+    Kalau pilih "fokus karir":
+    "Karir apa yang kamu targetkan?"
+    → opsi karrirs + ketik sendiri
+
+  STEP 4: PREFERENSI JADWAL
+    "Preferensi waktu?"
+    → pagi / siang-sore / fleksibel
+
+    "Hari yang ingin dikosongkan?"
+    → Jumat / Sabtu / tidak ada
+
+    "Sebar mata kuliah berat merata?"
+    → Ya / Terserah AI
+
+  STEP 5: REVIEW & KONFIRMASI
+    AI tampilkan ringkasan semua data:
+    "Saya akan susun rencana dengan data berikut:
+     • Jurusan: Teknik Informatika
+     • Semester: 5
+     • Tujuan: Fokus karir Data Scientist
+     • Preferensi: Pagi, Jumat libur
+     • Data: Transkrip + Jadwal Induk
+
+     1. ✅ Benar, susun rencana!
+     2. ✏️ Ada yang perlu diubah"
+
+  STEP 6: GENERATE OUTPUT (lihat contoh di bawah)
+
+8.4 CONTOH OUTPUT PLANNER LENGKAP
+------------------------------------
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📋 RENCANA PERKULIAHAN SEMESTER 5
+  Teknik Informatika | Target: Data Scientist
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  📅 JADWAL                              [Fitur 1: Automated Scheduler]
+  ┌──────┬──────────────────┬───────────┬─────┐
+  │ Hari │ Mata Kuliah      │ Jam       │ SKS │
+  ├──────┼──────────────────┼───────────┼─────┤
+  │ Sen  │ Machine Learning │ 08:00-10  │ 3   │
+  │ Sen  │ Basis Data II    │ 13:00-15  │ 3   │
+  │ Sel  │ Statistika       │ 10:00-12  │ 3   │
+  │ Sel  │ Data Mining      │ 13:00-15  │ 3   │
+  │ Rab  │ Jarkom           │ 08:00-10  │ 3   │
+  │ Rab  │ PBO              │ 13:00-15  │ 3   │
+  │ Kam  │ Bahasa Inggris   │ 10:00-12  │ 2   │
+  └──────┴──────────────────┴───────────┴─────┘
+  Total: 20 SKS | 4 hari aktif | Jumat libur ✅
+
+  🎯 REKOMENDASI                         [Fitur 2: Course Recommendation]
+  Mata kuliah di atas dipilih karena:
+  • Machine Learning — wajib semester 5, prasyarat: Statistika ✅
+  • Data Mining — pilihan, sangat relevan untuk karir
+  • Basis Data II — wajib, prasyarat: Basis Data I ✅
+  ❌ AI tidak rekomendasikan "Kecerdasan Buatan" karena prasyarat
+     Kalkulus III belum Anda ambil
+
+  💼 KESELARASAN KARIR                    [Fitur 3: Career Alignment]
+  Target: Data Scientist
+  • Machine Learning    ★★★ (core skill)
+  • Statistika          ★★★ (fundamental)
+  • Data Mining         ★★☆ (complementary)
+  • Basis Data II       ★★☆ (data management)
+  • Bahasa Inggris      ★☆☆ (supporting)
+
+  ⚖️ DISTRIBUSI BEBAN                     [Fitur 4: Cognitive Load]
+  • Senin:  ██████░░  berat  (6 SKS — tapi ada jeda 3 jam)
+  • Selasa: ██████░░  berat  (6 SKS — topik serumpun, efisien)
+  • Rabu:   ██████░░  berat  (6 SKS — ada jeda 3 jam)
+  • Kamis:  ██░░░░░░  ringan (2 SKS — hari santai)
+  → Beban sudah disebar. Kamis jadi hari recovery. ✅
+
+  ⚠️ PERHATIAN NILAI                      [Fitur 6: Grade Rescue]
+  AI mendeteksi nilai rendah dari transkrip Anda:
+  • Statistika (nilai C semester 3)
+    → Untuk naik ke B: butuh minimal 78.3 di UAS
+    → Untuk naik ke A: butuh minimal 93.3 di UAS
+    → Saran: Fokus di semester ini karena Statistika jadi prasyarat ML
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Mau apa selanjutnya?                    [Fitur 5: Multi-Scenario]
+  1. 🔄 Buat opsi Padat (24 SKS, lulus lebih cepat)
+  2. 🔄 Buat opsi Santai (16 SKS, 3 hari kuliah)
+  3. 📊 Hitung detail target nilai untuk semua mata kuliah
+  4. ✏️ Ubah sesuatu dari rencana ini
+  5. ✅ Simpan rencana ini
+
+  ⚠️ Rencana ini berdasarkan data yang Anda berikan.
+  Cocokkan dengan jadwal resmi kampus Anda.
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+================================================================================
+9. APA YANG HARUS DIKERJAKAN (TASK BREAKDOWN)
+================================================================================
+
+Total 10 task, estimasi 18 hari kerja.
+Urutan HARUS diikuti (ada dependensi).
+
+  ┌─────┬────────────────────────────────────┬────────┬─────────────┐
+  │  #  │ Task                               │ Durasi │ Dependensi  │
+  ├─────┼────────────────────────────────────┼────────┼─────────────┤
+  │  1  │ Chatbot prompt upgrade             │ 2 hari │ -           │
+  │  2  │ Grade calculator (Python)          │ 1 hari │ -           │
+  │  3  │ Planner state machine (backend)    │ 2 hari │ -           │
+  │  4  │ Planner prompts per step           │ 3 hari │ Task 3      │
+  │  5  │ Planner output generator           │ 2 hari │ Task 2, 4   │
+  │  6  │ Data level detection               │ 1 hari │ Task 3      │
+  │  7  │ Frontend: opsi bernomor di chat    │ 2 hari │ Task 4      │
+  │  8  │ Frontend: render output rencana    │ 2 hari │ Task 5, 7   │
+  │  9  │ Frontend: upload inline + toggle   │ 2 hari │ -           │
+  │ 10  │ Testing semua skenario             │ 2 hari │ Semua       │
+  └─────┴────────────────────────────────────┴────────┴─────────────┘
+
+  Bisa dikerjakan paralel:
+  - Task 1, 2, 3, 9 bisa BERSAMAAN (tidak ada dependensi)
+  - Task 4, 6 bersamaan setelah Task 3 selesai
+  - Task 5 setelah Task 2 dan 4 selesai
+  - Task 7 setelah Task 4 selesai
+  - Task 8 setelah Task 5 dan 7 selesai
+
+  Timeline optimal (dengan 2 developer):
+
+  Minggu 1: Task 1 + 2 + 3 + 9 (paralel)
+  Minggu 2: Task 4 + 6 (paralel), lalu Task 5
+  Minggu 3: Task 7 + 8 (paralel)
+  Minggu 4: Task 10 (testing) + bugfix
+
+================================================================================
+10. DETAIL TEKNIS PER TASK
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 1: CHATBOT PROMPT UPGRADE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tujuan: Buat AI chatbot lebih pintar soal akademik.
+
+File yang diubah:
+  core/ai_engine/retrieval/prompt.py  ← UBAH prompt template
+
+Apa yang harus dilakukan:
+
+  1. Ganti LLM_FIRST_TEMPLATE dengan prompt baru yang:
+
+     a. Punya PERSONA yang jelas:
+        "Kamu adalah arah.ai, asisten akademik yang ramah dan proaktif."
+
+     b. Punya ATURAN adaptif berdasarkan data:
+        - Jika konteks dari dokumen ada → jawab berdasarkan dokumen
+        - Jika konteks kosong → jawab dari pengetahuan umum
+        - Jika butuh info tambahan → TANYA BALIK ke user
+        - JANGAN PERNAH bilang "saya tidak bisa membantu"
+
+     c. Paham terminologi akademik:
+        - SKS, IPK, IPS, KRS, prasyarat, transkrip, jadwal induk
+        - Sistem nilai: A=4, B=3, C=2, D=1, E=0
+        - Aturan umum perkuliahan di Indonesia
+
+     d. Format output FLEKSIBEL (bukan wajib pakai semua heading):
+        - Gunakan tabel kalau ada data tabel
+        - Gunakan bullet point kalau list
+        - Gunakan paragraf kalau penjelasan
+        - Selalu akhiri dengan opsi follow-up
+
+  2. Tambahkan ONBOARDING PROMPT terpisah untuk user baru:
+     - Sapa user
+     - Jelaskan kemampuan sistem
+     - Tawarkan upload dokumen ATAU chat langsung
+     - Mention fitur Planner
+
+  3. Update rules.py kalau perlu:
+     - Tambah keyword detection untuk query akademik spesifik
+     - Misal: "hitung nilai", "berapa yang dibutuhkan" → trigger grade calc
+
+Contoh prompt baru (garis besar, perlu di-refine):
+
+  """
+  Kamu adalah arah.ai, asisten akademik yang cerdas, ramah, dan proaktif.
+
+  IDENTITAS:
+  - Nama: arah.ai
+  - Peran: Navigator akademik untuk mahasiswa perguruan tinggi Indonesia
+  - Gaya: Ramah, mendukung, tidak menghakimi, selalu menawarkan solusi
+
+  KEMAMPUAN:
+  - Menjawab pertanyaan tentang perkuliahan dan pendidikan tinggi
+  - Membaca dan menganalisis dokumen akademik (transkrip, jadwal, kurikulum)
+  - Menghitung nilai yang dibutuhkan (Grade Rescue)
+  - Memberikan rekomendasi mata kuliah dan strategi belajar
+  - Untuk perencanaan lengkap, sarankan fitur Planner
+
+  ATURAN UTAMA:
+  1. SELALU bantu, sebisa mungkin, dengan data yang ada
+  2. Jika data kurang, TANYA BALIK — jangan menolak
+  3. Jika tidak yakin, bilang dengan jujur dan kasih alternatif
+  4. Jangan hallucinate data — kalau tidak tahu, bilang tidak tahu
+  5. Selalu akhiri dengan opsi tindak lanjut
+
+  KONTEKS DOKUMEN USER:
+  {context}
+
+  PERTANYAAN:
+  {input}
+
+  JAWABAN (Markdown, format sesuai kebutuhan):
+  """
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 2: GRADE CALCULATOR (PYTHON)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tujuan: Fungsi Python yang menghitung nilai yang dibutuhkan. 100% akurat.
+
+File baru yang dibuat:
+  core/academic/__init__.py           ← file kosong (agar jadi Python package)
+  core/academic/grade_calculator.py   ← fungsi kalkulasi
+
+Apa yang harus ada di grade_calculator.py:
+
+  Fungsi 1: calculate_required_score
+  -----------------------------------
+  Input:
+    - components: list komponen nilai yang SUDAH ada
+      Contoh: [{"name": "UTS", "weight": 40, "score": 60}]
+    - target_grade: target nilai akhir (misal 70 untuk B)
+    - remaining_components: list komponen yang BELUM ada
+      Contoh: [{"name": "UAS", "weight": 60}]
+
+  Output:
+    - dict per remaining component: {"UAS": {"required": 76.67, "possible": True}}
+
+  Logika:
+    achieved = sum(comp.score * comp.weight / 100 for comp in components)
+    remaining_weight = sum(comp.weight for comp in remaining_components)
+    required_total = target_grade - achieved
+    required_avg = required_total / (remaining_weight / 100)
+    possible = required_avg <= 100
+
+  Fungsi 2: get_grade_letter
+  ---------------------------
+  Input: numeric score
+  Output: letter grade (A/B/C/D/E) berdasarkan skala umum Indonesia
+
+  Skala default:
+    A  = 80-100 (4.0)
+    B  = 70-79  (3.0)
+    C  = 56-69  (2.0)
+    D  = 45-55  (1.0)
+    E  = 0-44   (0.0)
+
+  CATATAN: Skala bisa beda per kampus. Buat parameter opsional.
+
+  Fungsi 3: analyze_transcript_risks
+  ------------------------------------
+  Input: list mata kuliah + nilai
+  Output: list mata kuliah yang "berisiko" (nilai < C atau D)
+    + perhitungan perbaikan per mata kuliah
+
+Integrasi:
+  - Di service.py, tambah fungsi yang memanggil grade_calculator
+  - Fungsi ini dipanggil dari:
+    a. Planner output generator (otomatis deteksi nilai rendah)
+    b. Chatbot (ketika user tanya soal nilai)
+  - Cara detect dari chat: rules.py tambah pattern untuk "hitung nilai",
+    "berapa yang dibutuhkan", "grade rescue", dll
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 3: PLANNER STATE MACHINE (BACKEND)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tujuan: Backend yang track posisi user di wizard Planner.
+
+Konsep:
+  Planner = serangkaian pertanyaan (steps).
+  Setiap step punya:
+  - Pertanyaan yang ditampilkan
+  - Opsi jawaban (numbered)
+  - Data yang dikumpulkan dari jawaban user
+
+  Backend perlu INGAT:
+  - User ada di step berapa
+  - Data apa yang sudah dikumpulkan
+  - Dokumen apa yang sudah tersedia
+
+File baru yang dibuat:
+  core/academic/planner.py   ← State machine logic
+
+Apa yang harus ada:
+
+  PLANNER_STEPS = [
+    "data",        # Step 1: Cek / upload data
+    "profile",     # Step 2: Jurusan, semester
+    "goals",       # Step 3: Tujuan + karir
+    "preferences", # Step 4: Preferensi jadwal
+    "review",      # Step 5: Konfirmasi
+    "generate",    # Step 6: Generate rencana
+    "iterate",     # Step 7: Revisi / scenario lain
+  ]
+
+  Class atau dict: PlannerSession
+    - user_id
+    - current_step: string (nama step saat ini)
+    - collected_data: dict (data dari jawaban user)
+      {
+        "jurusan": "Teknik Informatika",
+        "semester": 5,
+        "goal": "career",
+        "career": "Data Scientist",
+        "time_pref": "morning",
+        "free_day": "friday",
+        "balance_load": True,
+        "has_transcript": True,
+        "has_schedule": False,
+      }
+    - available_documents: list dokumen yang sudah di-upload
+
+  Penyimpanan state:
+  Opsi 1 (SIMPLE, recommended untuk MVP):
+    Simpan di Django session (request.session["planner"])
+    Pro: Tidak perlu model baru, cepat
+    Kontra: Hilang kalau session expire
+
+  Opsi 2:
+    Buat model PlannerSession di models.py
+    Pro: Persistent
+    Kontra: Lebih kompleks
+
+  RECOMMEND: Opsi 1 (session) untuk MVP.
+
+  Fungsi utama:
+
+    def get_current_step(session_data) -> dict:
+      """Return pertanyaan + opsi untuk step saat ini"""
+
+    def process_answer(session_data, user_answer) -> dict:
+      """Proses jawaban user, update data, pindah ke step berikutnya"""
+
+    def should_skip_step(step, session_data) -> bool:
+      """Cek apakah step bisa di-skip (misal profil sudah ada dari dokumen)"""
+
+    def generate_plan(session_data, user_id) -> dict:
+      """Generate rencana lengkap dari semua data yang terkumpul"""
+
+API Endpoint:
+  Opsi A (SIMPLE, recommended):
+    Extend POST /api/chat/ — tambah field "mode": "planner"
+    Backend cek mode → kalau planner, route ke planner logic
+    Pro: Tidak perlu endpoint baru, frontend cuma tambah field
+
+  Opsi B:
+    Buat POST /api/planner/ terpisah
+    Pro: Separation of concerns
+    Kontra: Lebih banyak kode
+
+  RECOMMEND: Opsi A — extend /api/chat/ dengan parameter mode.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 4: PLANNER PROMPTS PER STEP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tujuan: Prompt template khusus untuk setiap step wizard Planner.
+
+File yang diubah/ditambah:
+  core/ai_engine/retrieval/prompt.py  ← Tambah prompt templates
+
+Apa yang harus dibuat:
+
+  Untuk setiap step, buat template prompt yang menghasilkan:
+  - Teks pertanyaan yang ramah dan jelas
+  - Opsi bernomor (numbered list)
+  - Opsi terakhir selalu "ketik sendiri" atau "skip"
+
+  Format output dari LLM harus STRUCTURED agar frontend bisa parse:
+
+  Opsi 1 (SIMPLE, recommended):
+    Backend TIDAK pakai LLM untuk generate pertanyaan step.
+    Pertanyaan dan opsi di-hardcode di planner.py.
+    LLM hanya dipakai di step terakhir (generate rencana).
+
+    Pro: Cepat, deterministic, gratis (tidak pakai token LLM)
+    Kontra: Kurang fleksibel
+
+  Opsi 2:
+    LLM generate pertanyaan adaptive per step.
+    Pro: Bisa adapt berdasarkan konteks user
+    Kontra: Lambat, costly, bisa inconsistent
+
+  RECOMMEND: Opsi 1 untuk MVP — hardcode pertanyaan, LLM hanya untuk output.
+
+  Kalau pilih Opsi 1, di planner.py buat dict:
+
+    STEP_QUESTIONS = {
+      "data": {
+        "question": "Apakah kamu punya dokumen akademik?",
+        "options": [
+          {"id": 1, "label": "📎 Ya, saya mau upload file", "action": "upload"},
+          {"id": 2, "label": "✍️ Tidak, saya isi manual", "action": "manual"},
+          {"id": 3, "label": "🤷 Bantu tanpa data lengkap", "action": "no_data"},
+        ],
+        "allow_custom": False,
+      },
+      "profile_jurusan": {
+        "question": "Jurusan kamu apa?",
+        "options": [
+          {"id": 1, "label": "Teknik Informatika"},
+          {"id": 2, "label": "Sistem Informasi"},
+          {"id": 3, "label": "Manajemen"},
+          {"id": 4, "label": "Akuntansi"},
+          {"id": 5, "label": "Hukum"},
+        ],
+        "allow_custom": True,  # bisa ketik jurusan sendiri
+      },
+      ... dst untuk setiap sub-step
+    }
+
+  Untuk step GENERATE (step terakhir), baru pakai LLM prompt:
+
+    PLANNER_OUTPUT_TEMPLATE = """
+    Kamu adalah arah.ai. Susun rencana perkuliahan berdasarkan data berikut.
+
+    DATA USER:
+    - Jurusan: {jurusan}
+    - Semester: {semester}
+    - Tujuan: {goal}
+    - Target karir: {career}
+    - Preferensi waktu: {time_pref}
+    - Hari libur: {free_day}
+
+    DOKUMEN USER (dari knowledge base):
+    {context}
+
+    INSTRUKSI OUTPUT:
+    Susun rencana dengan format WAJIB berikut:
+
+    ## 📅 Jadwal
+    (tabel: Hari | Mata Kuliah | Jam | SKS)
+    (pastikan TIDAK ada bentrok waktu)
+    (total SKS dan jumlah hari aktif)
+
+    ## 🎯 Rekomendasi Mata Kuliah
+    (mengapa mata kuliah ini dipilih)
+    (cek prasyarat jika info tersedia)
+
+    ## 💼 Keselarasan Karir
+    (rating ★ per mata kuliah terhadap karir target)
+
+    ## ⚖️ Distribusi Beban
+    (visualisasi beban per hari)
+    (konfirmasi apakah sudah seimbang)
+
+    ## ⚠️ Perhatian Nilai
+    (jika ada nilai rendah dari transkrip, tampilkan)
+    (gunakan data perhitungan berikut: {grade_rescue_data})
+    (jika tidak ada data nilai, skip section ini)
+
+    ## Selanjutnya
+    Tampilkan opsi:
+    1. 🔄 Buat opsi Padat
+    2. 🔄 Buat opsi Santai
+    3. ✏️ Ubah sesuatu
+    4. ✅ Simpan rencana ini
+
+    CATATAN: Selalu akhiri dengan disclaimer jika data tidak lengkap.
+    """
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 5: PLANNER OUTPUT GENERATOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tujuan: Generate rencana perkuliahan lengkap dari data yang dikumpulkan wizard.
+
+File yang diubah/ditambah:
+  core/academic/planner.py      ← Tambah generate_plan()
+  core/service.py               ← Tambah fungsi orchestration
+  core/ai_engine/retrieval/     ← Panggil LLM dengan prompt planner
+
+Apa yang harus dilakukan:
+
+  1. Kumpulkan semua data dari planner session
+  2. Ambil dokumen relevan dari ChromaDB (kalau ada)
+  3. Panggil grade_calculator (kalau ada data nilai)
+  4. Kirim semua ke LLM dengan PLANNER_OUTPUT_TEMPLATE
+  5. Parse output → kirim ke frontend
+
+  Alur kode:
+
+    def generate_plan(user, session_data) -> dict:
+      # 1. Ambil konteks dari knowledge base
+      context = get_relevant_context(user.id, session_data)
+
+      # 2. Hitung grade rescue (kalau ada transkrip)
+      grade_data = ""
+      if has_transcript_data(session_data):
+        grade_data = calculate_all_risks(user)
+
+      # 3. Susun prompt
+      prompt = PLANNER_OUTPUT_TEMPLATE.format(
+        jurusan=session_data["jurusan"],
+        semester=session_data["semester"],
+        goal=session_data["goal"],
+        career=session_data.get("career", "tidak ditentukan"),
+        time_pref=session_data.get("time_pref", "fleksibel"),
+        free_day=session_data.get("free_day", "tidak ada"),
+        context=context,
+        grade_rescue_data=grade_data,
+      )
+
+      # 4. Panggil LLM
+      answer = call_llm(prompt)
+
+      return {"answer": answer, "type": "planner_output"}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 6: DATA LEVEL DETECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tujuan: Backend cek dokumen apa yang user sudah punya, tentukan level.
+
+File yang diubah:
+  core/academic/planner.py  ← Tambah detect_data_level()
+  core/service.py           ← Panggil saat planner mulai
+
+Apa yang harus dilakukan:
+
+  def detect_data_level(user) -> dict:
+    docs = AcademicDocument.objects.filter(user=user, is_embedded=True)
+
+    has_transcript = any(is_transcript(d) for d in docs)
+    has_schedule = any(is_schedule(d) for d in docs)
+    has_curriculum = any(is_curriculum(d) for d in docs)
+
+    level = 0
+    if has_transcript or has_schedule:
+      level = 2
+    if has_transcript and has_schedule:
+      level = 3
+
+    return {
+      "level": level,
+      "has_transcript": has_transcript,
+      "has_schedule": has_schedule,
+      "has_curriculum": has_curriculum,
+      "documents": [d.title for d in docs],
+    }
+
+  Cara detect tipe dokumen:
+  - Cek metadata doc_type yang sudah di-set saat ingest
+  - Atau cek judul/nama file (transkrip, jadwal, kurikulum)
+
+  Ini dipakai di Step 1 Planner:
+  - Kalau level 3 → "Saya sudah punya data lengkap, mau lanjut?"
+  - Kalau level 2 → "Saya punya sebagian data, ada yang kurang"
+  - Kalau level 0-1 → "Upload atau isi manual"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 7: FRONTEND — OPSI BERNOMOR DI CHAT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tujuan: Chat bubble AI bisa menampilkan opsi bernomor yang BISA DIKLIK.
+
+File yang diubah:
+  frontend/src/components/molecules/ChatBubble.tsx  ← Tambah render opsi
+  frontend/src/pages/Chat/Index.tsx                 ← Handle klik opsi
+
+Apa yang harus dilakukan:
+
+  1. Backend kirim response dengan format:
+    {
+      "answer": "Jurusan kamu apa?",
+      "type": "planner_step",          // BARU: tipe pesan
+      "options": [                      // BARU: opsi bernomor
+        {"id": 1, "label": "Teknik Informatika"},
+        {"id": 2, "label": "Sistem Informasi"},
+        {"id": 3, "label": "Manajemen"},
+      ],
+      "allow_custom": true              // BARU: boleh ketik sendiri?
+    }
+
+  2. Frontend ChatBubble detect "options" field:
+    - Kalau ada → render sebagai tombol/card bernomor
+    - Kalau tidak ada → render sebagai markdown biasa (seperti sekarang)
+
+  3. Ketika user klik opsi:
+    - Tampilkan jawaban user di chat (sebagai bubble user)
+    - Kirim ke backend: POST /api/chat/ dengan body:
+      {"message": "1", "mode": "planner", "option_id": 1}
+    - Backend proses jawaban → return step berikutnya
+
+  4. Styling opsi:
+    - Card dengan nomor, bisa diklik
+    - Hover effect
+    - Warna berbeda untuk opsi yang dipilih
+    - Responsive mobile
+
+  Referensi desain: Lihat screenshot yang diberikan — menggunakan
+  numbered list dengan highlight pada yang dipilih (mirip quick pick menu).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 8: FRONTEND — RENDER OUTPUT RENCANA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tujuan: Tampilkan output rencana lengkap Planner secara visual di chat.
+
+File yang diubah:
+  frontend/src/components/molecules/ChatBubble.tsx  ← Enhanced rendering
+  (mungkin komponen baru di molecules/ atau organisms/)
+
+Apa yang harus dilakukan:
+
+  Output rencana dari LLM sudah dalam format Markdown.
+  Sistem sekarang sudah render Markdown di chat (react-markdown + remark-gfm).
+
+  Yang perlu ditambah/diperbaiki:
+  1. Tabel Markdown harus render dengan baik (bordered, responsive)
+  2. Section headers (##) harus punya styling berbeda
+  3. Emoji harus tampil
+  4. Progress bar untuk distribusi beban (opsional — bisa pakai emoji ████)
+  5. Rating bintang ★★★ harus tampil
+  6. Opsi di akhir output harus jadi tombol yang bisa diklik (sama seperti Task 7)
+
+  Markdown rendering sudah ada:
+  - react-markdown di dependencies ✅
+  - remark-gfm (support tabel GitHub Flavored Markdown) ✅
+  - rehype-sanitize (security) ✅
+
+  Yang mungkin perlu:
+  - Custom CSS untuk tabel agar lebih bagus
+  - Custom component untuk render section khusus (jadwal, beban)
+  - Responsive design (tabel tidak overflow di mobile)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 9: FRONTEND — UPLOAD INLINE + TOGGLE MODE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tujuan: (A) Upload file langsung di chat, (B) Tombol switch Chat ↔ Plan.
+
+File yang diubah:
+  frontend/src/components/molecules/ChatComposer.tsx  ← Tambah tombol 📎
+  frontend/src/pages/Chat/Index.tsx                   ← Handle upload + mode
+  frontend/src/components/organisms/AppHeader.tsx      ← Toggle button
+
+BAGIAN A: UPLOAD INLINE
+
+  1. Tambah tombol 📎 (clip/attachment) di samping input chat
+  2. Klik → buka file picker (accept: .pdf,.xlsx,.xls,.csv,.md,.txt)
+  3. ATAU drag & drop file ke area chat
+  4. Setelah file dipilih:
+    - Tampilkan preview nama file di chat ("Uploading transkrip.pdf...")
+    - Panggil uploadDocuments() dari api.ts (sudah ada!)
+    - Setelah sukses: "✅ transkrip.pdf berhasil di-upload dan diproses"
+    - AI otomatis baca: "Saya menemukan 12 mata kuliah di transkrip Anda..."
+
+  Upload logic SUDAH ADA di codebase:
+  - api.ts: uploadDocuments() ✅
+  - views.py: upload_api() ✅
+  - service.py: upload_files_batch() ✅
+  - ingest.py: process_document() ✅
+
+  Yang perlu: cuma UI di chat (tombol 📎 + drag area).
+
+BAGIAN B: TOGGLE MODE
+
+  1. Di header (AppHeader), tambah toggle button:
+    ┌──────────┐  ┌──────────┐
+    │ 💬 Chat  │  │ 📋 Plan  │
+    └──────────┘  └──────────┘
+
+  2. Ketika klik "📋 Plan":
+    - Set state mode = "planner"
+    - Kalau pertama kali → kirim request ke backend untuk mulai planner
+    - Backend return Step 1 question
+    - Tampilkan di chat
+
+  3. Ketika klik "💬 Chat":
+    - Set state mode = "chat"
+    - Kembali ke mode chat biasa
+    - Planner state tetap disimpan (bisa lanjut nanti)
+
+  4. Mode mempengaruhi:
+    - Apa yang dikirim ke backend (tambah "mode" field di request body)
+    - Bagaimana response ditampilkan (opsi bernomor vs text biasa)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TASK 10: TESTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tujuan: Pastikan semua fitur berjalan di semua skenario.
+
+Test scenarios:
+
+  A. CHATBOT TESTS
+  1. Chat tanpa dokumen → AI harus tetap jawab, tanya balik
+  2. Upload transkrip → chat tanya "jadwal saya?" → AI jawab dari dokumen
+  3. Upload format aneh → AI harus handle gracefully
+  4. Tanya "berapa nilai yang saya butuhkan?" tanpa data → AI tanya balik
+  5. Tanya "berapa nilai yang saya butuhkan?" dengan data → grade calculator jalan
+
+  B. PLANNER TESTS — LEVEL 3 (data lengkap)
+  6. Upload transkrip + jadwal induk → mulai planner → skip step data →
+     pilih tujuan → generate rencana lengkap (semua 6 section harus ada)
+
+  C. PLANNER TESTS — LEVEL 2 (data sebagian)
+  7. Upload cuma transkrip → mulai planner → AI notice "jadwal induk belum ada"
+     → tawarkan upload atau manual → generate rencana parsial + disclaimer
+
+  D. PLANNER TESTS — LEVEL 0 (tanpa data)
+  8. Tidak upload apa-apa → mulai planner → isi manual step by step →
+     generate rencana + disclaimer
+
+  E. PLANNER TESTS — FITUR SPESIFIK
+  9. Multi-scenario: Setelah rencana, klik "Buat opsi Padat" → generate ulang
+  10. Grade rescue: Transkrip ada nilai C → output otomatis tampilkan perhitungan
+  11. Career alignment: Pilih karir → output ada rating ★ per mata kuliah
+
+  F. EDGE CASES
+  12. Switch Chat ↔ Planner di tengah jalan → state harus preserved
+  13. Upload file di tengah planner wizard → data level berubah → step adapt
+  14. User ketik jawaban custom (bukan pilih opsi) → harus tetap diterima
+
+  G. MOBILE
+  15. Semua fitur harus usable di layar HP (responsive)
+
+================================================================================
+11. FILE-FILE YANG PERLU DIUBAH
+================================================================================
+
+LEGEND:
+  [NEW]    = File baru yang perlu dibuat
+  [MODIFY] = File yang sudah ada, perlu diubah
+  [READ]   = File yang perlu dipahami tapi tidak diubah
+
+BACKEND:
+  [NEW]    core/academic/__init__.py
+  [NEW]    core/academic/grade_calculator.py       ← Task 2
+  [NEW]    core/academic/planner.py                ← Task 3, 4, 5, 6
+  [MODIFY] core/ai_engine/retrieval/prompt.py      ← Task 1, 4
+  [MODIFY] core/ai_engine/retrieval/rules.py       ← Task 1
+  [MODIFY] core/ai_engine/retrieval/main.py        ← Task 5 (minor)
+  [MODIFY] core/service.py                         ← Task 2, 3, 5, 6
+  [MODIFY] core/views.py                           ← Task 3 (extend chat API)
+  [MODIFY] core/urls.py                            ← Task 3 (kalau endpoint baru)
+  [READ]   core/ai_engine/config.py                ← Pahami ChromaDB setup
+  [READ]   core/ai_engine/ingest.py                ← Pahami document processing
+  [READ]   core/ai_engine/retrieval/llm.py         ← Pahami LLM config
+  [READ]   core/models.py                          ← Pahami data models
+
+FRONTEND:
+  [MODIFY] frontend/src/lib/api.ts                 ← Task 7, 9
+  [MODIFY] frontend/src/pages/Chat/Index.tsx        ← Task 7, 8, 9
+  [MODIFY] frontend/src/components/molecules/ChatBubble.tsx    ← Task 7, 8
+  [MODIFY] frontend/src/components/molecules/ChatComposer.tsx  ← Task 9
+  [MODIFY] frontend/src/components/organisms/AppHeader.tsx     ← Task 9
+
+TESTS:
+  [NEW]    core/test/test_grade_calculator.py       ← Task 10
+  [NEW]    core/test/test_planner.py                ← Task 10
+
+================================================================================
+12. CONTOH KODE & PSEUDOCODE
+================================================================================
+
+12.1 GRADE CALCULATOR (Python lengkap)
+----------------------------------------
+
+  # core/academic/grade_calculator.py
+
+  def calculate_required_score(
+      achieved_components,   # [{"name": "UTS", "weight": 40, "score": 60}]
+      target_final_score,    # 70 (untuk B)
+      remaining_weight       # 60 (bobot UAS)
+  ):
+      """
+      Hitung berapa nilai yang dibutuhkan di komponen yang tersisa.
+
+      Contoh:
+        UTS = 60, bobot 40%
+        Target = 70 (B)
+        Sisa = UAS, bobot 60%
+
+        achieved = 60 * 0.40 = 24
+        needed = 70 - 24 = 46
+        required = 46 / 0.60 = 76.67
+      """
+      achieved = sum(
+          c["score"] * (c["weight"] / 100.0)
+          for c in achieved_components
+      )
+
+      needed = target_final_score - achieved
+      if remaining_weight <= 0:
+          return {"required": None, "possible": False, "reason": "Tidak ada komponen tersisa"}
+
+      required = needed / (remaining_weight / 100.0)
+
+      return {
+          "required": round(required, 2),
+          "possible": 0 <= required <= 100,
+          "achieved_so_far": round(achieved, 2),
+          "needed_points": round(needed, 2),
+      }
+
+  # Contoh penggunaan:
+  # result = calculate_required_score(
+  #     achieved_components=[{"name": "UTS", "weight": 40, "score": 60}],
+  #     target_final_score=70,
+  #     remaining_weight=60
+  # )
+  # result = {"required": 76.67, "possible": True, ...}
+
+
+12.2 PLANNER STATE MACHINE (Pseudocode)
+------------------------------------------
+
+  # core/academic/planner.py
+
+  STEPS = ["data", "profile", "goals", "preferences", "review", "generate"]
+
+  def start_planner(user):
+      data_level = detect_data_level(user)
+      session_data = {
+          "current_step": "data",
+          "collected_data": {},
+          "data_level": data_level,
+      }
+
+      # Skip step data kalau sudah ada dokumen lengkap
+      if data_level["level"] >= 3:
+          session_data["current_step"] = "goals"  # skip data & profile
+          session_data["collected_data"].update(extract_profile_from_docs(user))
+
+      return get_step_content(session_data)
+
+  def process_planner_message(user, message, session_data):
+      current = session_data["current_step"]
+
+      # Parse jawaban user
+      answer = parse_answer(message, current)
+      session_data["collected_data"].update(answer)
+
+      # Pindah ke step berikutnya
+      next_step = get_next_step(current, session_data)
+
+      if next_step == "generate":
+          return generate_plan(user, session_data)
+
+      session_data["current_step"] = next_step
+      return get_step_content(session_data)
+
+  def get_step_content(session_data):
+      step = session_data["current_step"]
+
+      if step == "data":
+          return {
+              "answer": "Apakah kamu punya dokumen akademik?",
+              "type": "planner_step",
+              "options": [
+                  {"id": 1, "label": "📎 Ya, saya mau upload file"},
+                  {"id": 2, "label": "✍️ Tidak, saya isi manual"},
+                  {"id": 3, "label": "🤷 Bantu tanpa data lengkap"},
+              ],
+          }
+      elif step == "profile":
+          return {
+              "answer": "Jurusan kamu apa?",
+              "type": "planner_step",
+              "options": [...],
+              "allow_custom": True,
+          }
+      # ... dst
+
+
+12.3 EXTEND CHAT API (Pseudocode)
+------------------------------------
+
+  # Di views.py, ubah chat_api:
+
+  def chat_api(request):
+      data = json.loads(request.body)
+      message = data.get("message")
+      mode = data.get("mode", "chat")  # BARU: default "chat"
+      session_id = data.get("session_id")
+
+      if mode == "planner":
+          # Ambil planner state dari session
+          planner_data = request.session.get("planner", None)
+
+          if not planner_data:
+              # Pertama kali → mulai planner
+              result = planner.start_planner(request.user)
+              request.session["planner"] = result["session_data"]
+          else:
+              # Lanjutkan step
+              result = planner.process_planner_message(
+                  request.user, message, planner_data
+              )
+              request.session["planner"] = result.get("session_data", planner_data)
+
+          return JsonResponse(result)
+
+      else:
+          # Mode chat biasa → alur yang sudah ada
+          result = service.chat_and_save(request.user, message, session_id)
+          return JsonResponse(result)
+
+
+12.4 FRONTEND — CHAT BUBBLE DENGAN OPSI (Pseudocode JSX)
+-----------------------------------------------------------
+
+  // Di ChatBubble.tsx, tambah rendering opsi:
+
+  function ChatBubble({ message, onOptionClick }) {
+    return (
+      <div className="chat-bubble">
+        {/* Render teks pesan (markdown) */}
+        <ReactMarkdown>{message.answer}</ReactMarkdown>
+
+        {/* Render opsi bernomor kalau ada */}
+        {message.options && (
+          <div className="options-list">
+            {message.options.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => onOptionClick(opt)}
+                className="option-button"
+              >
+                <span className="option-number">{opt.id}</span>
+                <span className="option-label">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input custom kalau allow_custom */}
+        {message.allow_custom && (
+          <input placeholder="Atau ketik sendiri..." />
+        )}
+      </div>
+    );
+  }
+
+
+12.5 FRONTEND — MODE TOGGLE (Pseudocode JSX)
+-----------------------------------------------
+
+  // Di AppHeader.tsx atau komponen baru:
+
+  function ModeToggle({ mode, onModeChange }) {
+    return (
+      <div className="mode-toggle">
+        <button
+          className={mode === "chat" ? "active" : ""}
+          onClick={() => onModeChange("chat")}
+        >
+          💬 Chat
+        </button>
+        <button
+          className={mode === "planner" ? "active" : ""}
+          onClick={() => onModeChange("planner")}
+        >
+          📋 Plan
+        </button>
+      </div>
+    );
+  }
+
+  // Di Chat/Index.tsx:
+  const [mode, setMode] = useState("chat");
+
+  const handleSend = async (message) => {
+    const response = await sendChat(message, activeSession, mode);
+    // response bisa punya "options" field kalau mode planner
+    addMessageToChat(response);
+  };
+
+================================================================================
+13. TESTING & VALIDASI
+================================================================================
+
+Cara menjalankan test:
+
+  Backend:
+    cd academic_rag_project
+    python manage.py test core.test
+
+  Frontend:
+    cd frontend
+    npx playwright test          # E2E tests
+    npm run lint                 # Lint check
+
+Kriteria LULUS untuk MVP:
+
+  ✅ User bisa register, login, logout
+  ✅ User bisa chat bebas tentang akademik (tanpa upload)
+  ✅ User bisa upload dokumen di chat (📎 button)
+  ✅ User bisa chat berdasarkan dokumen yang di-upload
+  ✅ User bisa switch ke mode Planner
+  ✅ Planner wizard step-by-step berjalan di chat
+  ✅ Planner adaptif: skip step kalau data sudah ada
+  ✅ Planner generate output lengkap (6 fitur terlihat)
+  ✅ Grade calculator akurat (test manual: hitung sendiri, bandingkan)
+  ✅ User bisa minta opsi alternatif dari Planner
+  ✅ Disclaimer muncul kalau data tidak lengkap
+  ✅ Responsive di mobile
+  ✅ Tidak ada error 500 di happy path
+
+================================================================================
+14. HAL YANG TIDAK PERLU DIKERJAKAN (OUT OF SCOPE MVP)
+================================================================================
+
+  ❌ Integrasi SIAKAD (koneksi ke sistem kampus)
+  ❌ Early Warning System (email otomatis ke mahasiswa/dosen)
+  ❌ Scheduling algorithm (backtracking/genetic) — cukup prompt-based
+  ❌ Database mata kuliah per kampus — pakai upload user
+  ❌ Admin dashboard
+  ❌ Payment / subscription
+  ❌ Multi-language (cukup Bahasa Indonesia)
+  ❌ PWA / mobile app
+  ❌ Real-time collaboration
+  ❌ Export PDF rencana (nice to have, tapi bukan MVP)
+  ❌ Prerequisite graph algorithm — cukup prompt-based
+  ❌ Data model baru di models.py (Course, MasterSchedule, dll) — tidak perlu
+     karena semua data dari upload user, bukan database kita
+
+================================================================================
+15. GLOSARIUM (ISTILAH-ISTILAH)
+================================================================================
+
+  RAG (Retrieval-Augmented Generation):
+    Teknik AI dimana sistem "cari dulu dokumen yang relevan" sebelum
+    menjawab pertanyaan. Jadi AI tidak asal jawab dari pengetahuan umum,
+    tapi berdasarkan data spesifik user.
+
+  LLM (Large Language Model):
+    Model AI bahasa besar seperti ChatGPT, Llama, Qwen. Ini yang
+    "berpikir" dan generate jawaban. Kita akses via OpenRouter API.
+
+  ChromaDB:
+    Database vektor. Menyimpan dokumen dalam bentuk angka-angka
+    (embedding) supaya bisa dicari berdasarkan kemiripan makna.
+
+  Embedding:
+    Proses mengubah teks menjadi deretan angka (vektor) yang
+    merepresentasikan maknanya. Teks yang mirip maknanya akan punya
+    embedding yang mirip nilainya.
+
+  Ingest:
+    Proses memasukkan dokumen ke sistem: baca file → pecah jadi
+    potongan kecil (chunks) → ubah jadi embedding → simpan ke ChromaDB.
+
+  Prompt:
+    Instruksi yang diberikan ke LLM. Seperti "brief" yang menjelaskan
+    siapa dia, apa yang harus dilakukan, dan bagaimana format jawabannya.
+
+  State Machine:
+    Sistem yang "ingat" posisi user saat ini. Seperti form multi-step:
+    step 1 → step 2 → step 3. Backend harus tahu user ada di step mana.
+
+  Graceful Degradation:
+    Sistem yang tetap berfungsi walau kondisi tidak ideal. Kalau data
+    lengkap → hasil sempurna. Kalau data kurang → hasil seadanya tapi
+    tetap berguna.
+
+  Endpoint:
+    URL yang bisa diakses oleh frontend untuk mengirim/menerima data.
+    Contoh: POST /api/chat/ adalah endpoint untuk mengirim pesan.
+
+  Service Layer:
+    Lapisan kode yang berisi logika bisnis. Terpisah dari HTTP handling
+    (views) dan database (models). Ini supaya kode rapi dan testable.
+
+  Inertia.js:
+    Library yang menghubungkan Django (backend) dengan React (frontend)
+    tanpa perlu bikin API terpisah untuk rendering halaman.
+
+  Django Session:
+    Cara Django menyimpan data per user di server. Seperti "memori
+    sementara" yang hidup selama user login. Dipakai untuk simpan
+    state planner.
+
+  Knowledge Base:
+    Kumpulan dokumen yang sudah di-upload dan di-embed user.
+    Ini "memori" AI tentang data akademik user.
+
+  Token (LLM context):
+    Satuan teks yang diproses LLM. Kira-kira 1 token = 0.75 kata.
+    Semakin banyak token, semakin mahal (uang) dan lambat.
+
+  Fallback:
+    Rencana cadangan. Kalau model AI pertama gagal, otomatis coba
+    model kedua. Kalau filter terlalu ketat, coba tanpa filter.
+
+================================================================================
+END OF DOCUMENT
+================================================================================
+
+Disusun berdasarkan diskusi product planning arah.ai, 18 Februari 2026.
+Referensi: Product Profile arah.ai (Untitled design.pdf), codebase
+academic_rag_project (GitHub: Afyuadriputra/academic_rag_project).

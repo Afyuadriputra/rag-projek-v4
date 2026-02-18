@@ -1,8 +1,7 @@
 ﻿import os
 from django.conf import settings
-# PERBAIKAN: Gunakan paket baru langchain_huggingface
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 
 CHROMA_PERSIST_DIR = os.path.join(settings.BASE_DIR, "chroma_db")
 

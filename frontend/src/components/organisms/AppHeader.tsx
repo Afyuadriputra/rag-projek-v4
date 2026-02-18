@@ -8,10 +8,16 @@ import { cn } from "@/lib/utils";
 export default function AppHeader({
   dark,
   onToggleDark,
+  mode,
+  onModeChange,
+  modeDisabled = false,
   user, // Update: Menerima object user lengkap, bukan cuma username
 }: {
   dark: boolean;
   onToggleDark: (v: boolean) => void;
+  mode: "chat" | "planner";
+  onModeChange: (mode: "chat" | "planner") => void;
+  modeDisabled?: boolean;
   user: { username: string; email: string };
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -37,12 +43,68 @@ export default function AppHeader({
       </div>
 
       {/* --- CENTER SECTION (Nav) --- */}
-      <div className="absolute left-1/2 hidden -translate-x-1/2 md:block">
+      <div className="absolute left-1/2 hidden -translate-x-1/2 md:flex md:items-center md:gap-3">
         <NavTabs active="Chat" />
+        <div className="flex items-center rounded-full border border-white/40 bg-white/55 p-1 shadow-sm backdrop-blur-md">
+          <button
+            data-testid="mode-chat"
+            type="button"
+            disabled={modeDisabled}
+            onClick={() => onModeChange("chat")}
+            className={cn(
+              "rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide transition",
+              mode === "chat" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:text-zinc-900",
+              modeDisabled && "cursor-not-allowed opacity-60"
+            )}
+          >
+            💬 Chat
+          </button>
+          <button
+            data-testid="mode-planner"
+            type="button"
+            disabled={modeDisabled}
+            onClick={() => onModeChange("planner")}
+            className={cn(
+              "rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide transition",
+              mode === "planner" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:text-zinc-900",
+              modeDisabled && "cursor-not-allowed opacity-60"
+            )}
+          >
+            📋 Plan
+          </button>
+        </div>
       </div>
 
       {/* --- RIGHT SECTION (Actions) --- */}
       <div className="flex items-center gap-3 md:gap-5">
+        <div className="flex items-center rounded-full border border-white/40 bg-white/55 p-1 shadow-sm backdrop-blur-md md:hidden">
+          <button
+            data-testid="mode-chat-mobile"
+            type="button"
+            disabled={modeDisabled}
+            onClick={() => onModeChange("chat")}
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[10px] font-semibold transition",
+              mode === "chat" ? "bg-zinc-900 text-white" : "text-zinc-600",
+              modeDisabled && "cursor-not-allowed opacity-60"
+            )}
+          >
+            💬
+          </button>
+          <button
+            data-testid="mode-planner-mobile"
+            type="button"
+            disabled={modeDisabled}
+            onClick={() => onModeChange("planner")}
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[10px] font-semibold transition",
+              mode === "planner" ? "bg-zinc-900 text-white" : "text-zinc-600",
+              modeDisabled && "cursor-not-allowed opacity-60"
+            )}
+          >
+            📋
+          </button>
+        </div>
         
         {/* Control Group */}
         <div className="flex items-center gap-1 rounded-full border border-white/40 bg-white/40 p-1 pr-3 backdrop-blur-md shadow-sm">

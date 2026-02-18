@@ -1,6 +1,6 @@
 {
   "node_modules/@locator/runtime/dist/components/Runtime.js": {
-    "file": "Runtime-05_t3dwg.js",
+    "file": "Runtime-B0MPrqqV.js",
     "name": "Runtime",
     "src": "node_modules/@locator/runtime/dist/components/Runtime.js",
     "isDynamicEntry": true,
@@ -8,16 +8,23 @@
       "src/main.tsx"
     ]
   },
+  "node_modules/magic-string/dist/magic-string.es.mjs": {
+    "file": "magic-string.es-DjU5CGuV.js",
+    "name": "magic-string.es",
+    "src": "node_modules/magic-string/dist/magic-string.es.mjs",
+    "isDynamicEntry": true
+  },
   "src/main.tsx": {
-    "file": "main-C_m0CYju.js",
+    "file": "main-RggbxOa5.js",
     "name": "main",
     "src": "src/main.tsx",
     "isEntry": true,
     "dynamicImports": [
+      "node_modules/magic-string/dist/magic-string.es.mjs",
       "node_modules/@locator/runtime/dist/components/Runtime.js"
     ],
     "css": [
-      "main-BY8-k_e3.css"
+      "main-DinfhEhx.css"
     ]
   }
 }

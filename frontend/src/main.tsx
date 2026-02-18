@@ -24,7 +24,15 @@ axios.defaults.xsrfCookieName = "csrftoken";
 const el = document.getElementById("app");
 
 if (el?.dataset?.page) {
-  const pages = import.meta.glob("./pages/**/*.tsx", { eager: true });
+  const pages = import.meta.glob(
+    [
+      "./pages/**/*.tsx",
+      "!./pages/**/*.test.tsx",
+      "!./pages/**/*.spec.tsx",
+      "!./pages/**/__tests__/**",
+    ],
+    { eager: true }
+  );
 
   createInertiaApp({
     resolve: (name) => {

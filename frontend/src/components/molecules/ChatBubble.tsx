@@ -11,12 +11,23 @@ export type ChatSource = {
   snippet: string;
 };
 
+export type PlannerOptionItem = {
+  id: number;
+  label: string;
+  value: string;
+};
+
 export type ChatItem = {
   id: string;
   role: ChatRole;
   text: string;
   time?: string; // "HH:MM"
   sources?: ChatSource[]; // ✅ NEW: rujukan dari backend (optional)
+  response_type?: "chat" | "planner_step" | "planner_output" | "planner_generate";
+  planner_step?: string;
+  planner_options?: PlannerOptionItem[];
+  allow_custom?: boolean;
+  session_state?: Record<string, unknown>;
 };
 
 function normalizeText(text: string) {
@@ -99,7 +110,17 @@ const animationStyles = `
   .dot-3 { animation: bounce-slow 1s infinite 400ms; }
 `;
 
-export default function ChatBubble({ item }: { item: ChatItem }) {
+export default function ChatBubble({
+  item,
+  onSelectOption,
+  optionsEnabled = false,
+  showPlannerOptions = false,
+}: {
+  item: ChatItem;
+  onSelectOption?: (optionId: number, label: string) => void;
+  optionsEnabled?: boolean;
+  showPlannerOptions?: boolean;
+}) {
   const isUser = item.role === "user";
   const raw = normalizeText(item.text);
 
@@ -125,6 +146,9 @@ export default function ChatBubble({ item }: { item: ChatItem }) {
 
   // ✅ NEW: toggle panel rujukan (default tertutup)
   const [showSources, setShowSources] = useState(false);
+  const plannerOptions = item.planner_options ?? [];
+  const canShowPlannerOptions =
+    !isUser && showPlannerOptions && plannerOptions.length > 0;
 
   // Fallback: kalau model kirim "tabel plaintext" (tab/spaces) -> tampilkan pre-block rapi
   const showPlainTableFallback = !isUser && looksLikeTabularPlaintext(content) && !content.includes("|");
@@ -293,6 +317,43 @@ export default function ChatBubble({ item }: { item: ChatItem }) {
                   >
                     {content}
                   </ReactMarkdown>
+                )}
+
+                {canShowPlannerOptions && (
+                  <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-600">
+                        Pilihan Step
+                      </span>
+                      {item.planner_step && (
+                        <span className="text-[10px] font-semibold text-zinc-400">
+                          {item.planner_step}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {plannerOptions.map((opt) => (
+                        <button
+                          key={`${item.id}-${opt.id}`}
+                          data-testid={`planner-option-${opt.id}`}
+                          type="button"
+                          disabled={!optionsEnabled}
+                          onClick={() => onSelectOption?.(opt.id, opt.label)}
+                          className={cn(
+                            "w-full rounded-lg border px-3 py-2 text-left text-[12px] font-medium transition",
+                            optionsEnabled
+                              ? "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-800 hover:text-zinc-900 active:scale-[0.99]"
+                              : "cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400"
+                          )}
+                        >
+                          <span className="mr-2 inline-flex size-5 items-center justify-center rounded-full border border-zinc-300 text-[10px] font-bold">
+                            {opt.id}
+                          </span>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* Footer Actions */}
