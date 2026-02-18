@@ -150,6 +150,32 @@ describe("Phase 4 frontend interactions", () => {
     });
   });
 
+  it("planner menampilkan label terdeteksi dari dokumen untuk pertanyaan dan opsi", async () => {
+    sendChatMock.mockResolvedValueOnce({
+      type: "planner_step",
+      answer: "Kami mendeteksi jurusan kamu kemungkinan Teknik Informatika. Benar?",
+      options: [{ id: 1, label: "Teknik Informatika", value: "Teknik Informatika", detected: true }],
+      allow_custom: true,
+      planner_step: "profile_jurusan",
+      profile_hints: {
+        question_candidates: [
+          {
+            step: "profile_jurusan",
+            question: "Kami mendeteksi jurusan kamu kemungkinan Teknik Informatika. Benar?",
+            mode: "confirm",
+          },
+        ],
+      },
+      session_state: { current_step: "profile_jurusan" },
+    } as ChatResponse);
+
+    render(<Index />);
+    await userEvent.click(await screen.findByTestId("mode-planner"));
+
+    expect(await screen.findByTestId("planner-doc-detected-question")).toBeInTheDocument();
+    expect(await screen.findByTestId("planner-option-detected-1")).toHaveTextContent("Terdeteksi dari dokumen");
+  });
+
   it("drag-drop upload memanggil uploadDocuments", async () => {
     render(<Index />);
     const dropTarget = await screen.findByTestId("chat-drop-target");

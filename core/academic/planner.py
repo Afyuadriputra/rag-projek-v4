@@ -124,6 +124,13 @@ def build_dynamic_step_definitions(state: Dict[str, Any]) -> Dict[str, Dict[str,
     hints = dict(state.get("profile_hints") or {})
     major_candidates = hints.get("major_candidates") or []
     career_candidates = hints.get("career_candidates") or []
+    detected_fields = [str(x).strip().lower() for x in (hints.get("detected_fields") or [])]
+    question_candidates = hints.get("question_candidates") or []
+    question_map = {
+        str(q.get("step") or "").strip(): str(q.get("question") or "").strip()
+        for q in question_candidates
+        if isinstance(q, dict)
+    }
 
     def _compose_options(
         hint_candidates: List[Dict[str, Any]],
@@ -177,6 +184,30 @@ def build_dynamic_step_definitions(state: Dict[str, Any]) -> Dict[str, Dict[str,
         career_candidates,
         STEP_DEFINITIONS["career"]["options"],
     )
+
+    # Dynamic question text agar planner tidak hardcode ketika dokumen user terbaca jelas.
+    if question_map.get("profile_jurusan"):
+        defs["profile_jurusan"]["question"] = question_map["profile_jurusan"]
+    if question_map.get("career"):
+        defs["career"]["question"] = question_map["career"]
+    if question_map.get("profile_semester"):
+        defs["profile_semester"]["question"] = question_map["profile_semester"]
+    if question_map.get("preferences_time"):
+        defs["preferences_time"]["question"] = question_map["preferences_time"]
+    if question_map.get("preferences_free_day"):
+        defs["preferences_free_day"]["question"] = question_map["preferences_free_day"]
+
+    # If schedule-like table fields terdeteksi, tanya preferensi berbasis struktur user.
+    if ("hari" in detected_fields or "jam" in detected_fields) and not question_map.get("preferences_time"):
+        defs["preferences_time"]["question"] = (
+            "Kami membaca struktur jadwal (hari/jam) dari dokumen kamu. "
+            "Slot waktu mana yang ingin kamu prioritaskan?"
+        )
+    if ("hari" in detected_fields or "kelas" in detected_fields) and not question_map.get("preferences_free_day"):
+        defs["preferences_free_day"]["question"] = (
+            "Dari struktur jadwal kelas yang terdeteksi, hari mana yang ingin kamu kosongkan?"
+        )
+
     return defs
 
 

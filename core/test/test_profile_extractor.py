@@ -29,6 +29,7 @@ class ProfileExtractorTests(TestCase):
         majors = hints.get("major_candidates", [])
         self.assertTrue(any(m.get("value") == "Teknik Informatika" for m in majors))
         self.assertIn(hints.get("confidence_summary"), {"medium", "high"})
+        self.assertIn("question_candidates", hints)
 
     @patch("core.academic.profile_extractor.get_vectorstore")
     def test_profile_extractor_detects_career_from_keywords(self, vs_mock):
@@ -85,3 +86,21 @@ class ProfileExtractorTests(TestCase):
         self.assertGreaterEqual(len(majors), 2)
         self.assertIsNotNone(hints.get("warning"))
 
+    @patch("core.academic.profile_extractor.get_vectorstore")
+    def test_profile_extractor_detects_schedule_fields_from_tabular_text(self, vs_mock):
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="Jadwal KRS.pdf",
+            file=SimpleUploadedFile("jadwal.pdf", b"x"),
+            is_embedded=True,
+        )
+        doc = MagicMock()
+        doc.page_content = "Hari\tJam\tRuang\tKelas\nSenin\t08:00-10:00\tLab 1\tA"
+        doc.metadata = {"source": "jadwal.pdf"}
+        vs_mock.return_value.similarity_search.return_value = [doc]
+
+        hints = extract_profile_hints(self.user)
+        fields = hints.get("detected_fields") or []
+        self.assertIn("hari", fields)
+        self.assertIn("jam", fields)
+        self.assertTrue(any((q.get("step") == "preferences_time") for q in (hints.get("question_candidates") or [])))

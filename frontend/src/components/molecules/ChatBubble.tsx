@@ -161,6 +161,23 @@ export default function ChatBubble({
   // ✅ NEW: toggle panel rujukan (default tertutup)
   const [showSources, setShowSources] = useState(false);
   const plannerOptions = item.planner_options ?? [];
+  const plannerStep = String(item.planner_meta?.step ?? item.planner_step ?? "");
+  const questionCandidates = useMemo(() => {
+    const hints = item.profile_hints as Record<string, unknown> | undefined;
+    const rawCandidates = hints?.question_candidates;
+    if (!Array.isArray(rawCandidates)) return [];
+    return rawCandidates
+      .filter((q): q is Record<string, unknown> => !!q && typeof q === "object")
+      .map((q) => ({
+        step: String(q.step ?? "").trim(),
+      }))
+      .filter((q) => q.step.length > 0);
+  }, [item.profile_hints]);
+  const isQuestionDetectedFromDocument =
+    !isUser &&
+    item.response_type === "planner_step" &&
+    plannerStep.length > 0 &&
+    questionCandidates.some((q) => q.step === plannerStep);
   const canShowPlannerOptions =
     !isUser && showPlannerOptions && plannerOptions.length > 0;
 
@@ -334,6 +351,14 @@ export default function ChatBubble({
                     {content}
                   </ReactMarkdown>
                 )}
+                {isQuestionDetectedFromDocument && (
+                  <div
+                    data-testid="planner-doc-detected-question"
+                    className="mt-3 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700"
+                  >
+                    Terdeteksi dari dokumen
+                  </div>
+                )}
 
                 {canShowPlannerOptions && (
                   <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
@@ -367,8 +392,11 @@ export default function ChatBubble({
                           </span>
                           {opt.label}
                           {opt.detected && (
-                            <span className="ml-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                              Terdeteksi
+                            <span
+                              data-testid={`planner-option-detected-${opt.id}`}
+                              className="ml-2 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                            >
+                              Terdeteksi dari dokumen
                             </span>
                           )}
                         </button>

@@ -9,6 +9,25 @@ from core.models import AcademicDocument, PlannerHistory, ChatHistory
 from core.academic import planner as planner_engine
 
 
+class _FakePdfPage:
+    def __init__(self, tables):
+        self._tables = tables
+
+    def extract_tables(self):
+        return self._tables
+
+
+class _FakePdfDoc:
+    def __init__(self, tables):
+        self.pages = [_FakePdfPage(tables)]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
 class PlannerEngineTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="planner_u", password="pass123")
@@ -58,6 +77,29 @@ class PlannerEngineTests(TestCase):
         self.assertEqual(state["current_step"], "profile_jurusan")
         state = planner_engine.process_answer(state, message="Teknik Informatika")
         self.assertEqual(state["current_step"], "profile_semester")
+
+    def test_dynamic_question_uses_profile_hints_question_candidates(self):
+        state = planner_engine.build_initial_state(
+            {
+                "level": 0,
+                "has_transcript": False,
+                "has_schedule": False,
+                "has_curriculum": False,
+                "documents": [],
+            }
+        )
+        state["profile_hints"] = {
+            "question_candidates": [
+                {
+                    "step": "profile_jurusan",
+                    "question": "Kami mendeteksi jurusan kamu kemungkinan Teknik Informatika. Benar?",
+                    "mode": "confirm",
+                }
+            ]
+        }
+        state["current_step"] = "profile_jurusan"
+        payload = planner_engine.get_step_payload(state)
+        self.assertIn("Kami mendeteksi jurusan", payload.get("answer", ""))
 
 
 class PlannerApiTests(TestCase):
@@ -243,6 +285,106 @@ class PlannerApiTests(TestCase):
         self.assertEqual(body.get("planner_step"), "career")
         labels = [str(o.get("label")) for o in body.get("options", [])]
         self.assertIn("Software Engineer", labels)
+
+    @patch("core.academic.profile_extractor.pdfplumber.open")
+    @patch("core.academic.profile_extractor.get_vectorstore")
+    def test_planner_flow_dynamic_question_for_campus_pdf_format_indonesia(self, vs_mock, pdf_open_mock):
+        vs_mock.return_value.similarity_search.return_value = []
+        pdf_open_mock.return_value = _FakePdfDoc(
+            tables=[
+                [["Hari", "Jam", "Ruang", "Kelas"], ["Senin", "08:00-09:40", "A1-201", "IF-A"]],
+            ]
+        )
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="Jadwal Perkuliahan Kampus A.pdf",
+            file=SimpleUploadedFile("kampus-a.pdf", b"%PDF-1.4"),
+            is_embedded=True,
+        )
+
+        self.client.post(
+            "/api/chat/",
+            data=json.dumps({"mode": "planner", "message": ""}),
+            content_type="application/json",
+        )
+        self.client.post(
+            "/api/chat/",
+            data=json.dumps({"mode": "planner", "message": "1", "option_id": 1}),
+            content_type="application/json",
+        )
+        self.client.post(
+            "/api/chat/",
+            data=json.dumps({"mode": "planner", "message": "1", "option_id": 1}),
+            content_type="application/json",
+        )
+        self.client.post(
+            "/api/chat/",
+            data=json.dumps({"mode": "planner", "message": "1", "option_id": 1}),
+            content_type="application/json",
+        )
+        resp = self.client.post(
+            "/api/chat/",
+            data=json.dumps({"mode": "planner", "message": "1", "option_id": 1}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.content.decode())
+        self.assertEqual(body.get("planner_step"), "preferences_time")
+        self.assertIn("tabel jadwal", str(body.get("answer") or "").lower())
+        fields = (body.get("profile_hints") or {}).get("detected_fields") or []
+        self.assertIn("hari", fields)
+        self.assertIn("jam", fields)
+
+    @patch("core.academic.profile_extractor.pdfplumber.open")
+    @patch("core.academic.profile_extractor.get_vectorstore")
+    def test_planner_flow_dynamic_question_for_campus_pdf_format_english_headers(self, vs_mock, pdf_open_mock):
+        vs_mock.return_value.similarity_search.return_value = []
+        pdf_open_mock.return_value = _FakePdfDoc(
+            tables=[
+                [["Day", "Time", "Room", "Class"], ["Monday", "13:00-14:40", "B2-301", "SE-B"]],
+            ]
+        )
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="Campus B Schedule.pdf",
+            file=SimpleUploadedFile("campus-b.pdf", b"%PDF-1.4"),
+            is_embedded=True,
+        )
+
+        self.client.post(
+            "/api/chat/",
+            data=json.dumps({"mode": "planner", "message": ""}),
+            content_type="application/json",
+        )
+        self.client.post(
+            "/api/chat/",
+            data=json.dumps({"mode": "planner", "message": "1", "option_id": 1}),
+            content_type="application/json",
+        )
+        self.client.post(
+            "/api/chat/",
+            data=json.dumps({"mode": "planner", "message": "1", "option_id": 1}),
+            content_type="application/json",
+        )
+        self.client.post(
+            "/api/chat/",
+            data=json.dumps({"mode": "planner", "message": "1", "option_id": 1}),
+            content_type="application/json",
+        )
+        resp = self.client.post(
+            "/api/chat/",
+            data=json.dumps({"mode": "planner", "message": "1", "option_id": 1}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.content.decode())
+        self.assertEqual(body.get("planner_step"), "preferences_time")
+        self.assertIn("tabel jadwal", str(body.get("answer") or "").lower())
+        fields = (body.get("profile_hints") or {}).get("detected_fields") or []
+        self.assertIn("hari", fields)
+        self.assertIn("jam", fields)
 
     def test_planner_refreshes_hints_after_new_upload(self):
         self.client.post(
