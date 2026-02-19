@@ -45,6 +45,14 @@ class ConcurrentLimitState:
     staff_bypass: bool
 
 
+@dataclass(frozen=True)
+class AdminDashboardState:
+    poll_seconds: int
+    max_rows: int
+    retention_days: int
+    locale: str
+
+
 def _iso(dt) -> Optional[str]:
     return dt.isoformat() if dt is not None else None
 
@@ -115,4 +123,26 @@ def get_concurrent_limit_state() -> ConcurrentLimitState:
         max_concurrent_logins=max(int(cfg.max_concurrent_logins or 0), 1),
         message=cfg.get_effective_concurrent_limit_message() or DEFAULT_CONCURRENT_LIMIT_MESSAGE,
         staff_bypass=bool(cfg.staff_bypass_concurrent_limit),
+    )
+
+
+def get_admin_dashboard_state() -> AdminDashboardState:
+    cfg = _get_cfg()
+    if cfg is None:
+        return AdminDashboardState(
+            poll_seconds=5,
+            max_rows=100,
+            retention_days=7,
+            locale="id",
+        )
+
+    poll_seconds = max(int(getattr(cfg, "admin_realtime_poll_seconds", 5) or 5), 3)
+    max_rows = max(min(int(getattr(cfg, "admin_realtime_max_rows", 100) or 100), 500), 10)
+    retention_days = max(int(getattr(cfg, "admin_metrics_retention_days", 7) or 7), 1)
+    locale = (getattr(cfg, "admin_dashboard_locale", "id") or "id").strip() or "id"
+    return AdminDashboardState(
+        poll_seconds=poll_seconds,
+        max_rows=max_rows,
+        retention_days=retention_days,
+        locale=locale,
     )

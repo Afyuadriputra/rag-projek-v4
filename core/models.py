@@ -143,6 +143,11 @@ class SystemSetting(models.Model):
     concurrent_limit_message = models.TextField(blank=True, default="")
     staff_bypass_concurrent_limit = models.BooleanField(default=True)
 
+    admin_realtime_poll_seconds = models.PositiveIntegerField(default=5)
+    admin_realtime_max_rows = models.PositiveIntegerField(default=100)
+    admin_metrics_retention_days = models.PositiveIntegerField(default=7)
+    admin_dashboard_locale = models.CharField(max_length=16, default="id")
+
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
@@ -183,7 +188,9 @@ class SystemSetting(models.Model):
             f"maintenance_enabled={self.maintenance_enabled}, "
             f"allow_staff_bypass={self.allow_staff_bypass}, "
             f"registration_limit_enabled={self.registration_limit_enabled}, "
-            f"concurrent_login_limit_enabled={self.concurrent_login_limit_enabled}"
+            f"concurrent_login_limit_enabled={self.concurrent_login_limit_enabled}, "
+            f"admin_realtime_poll_seconds={self.admin_realtime_poll_seconds}, "
+            f"admin_realtime_max_rows={self.admin_realtime_max_rows}"
             ")"
         )
 
@@ -208,3 +215,60 @@ class UserLoginPresence(models.Model):
     def __str__(self):
         state = "active" if self.is_active else "inactive"
         return f"{self.user.username} [{state}] {self.session_key[:10]}"
+
+
+class SystemHealthSnapshot(models.Model):
+    captured_at = models.DateTimeField(auto_now_add=True)
+    cpu_percent = models.FloatField(default=0.0)
+    memory_percent = models.FloatField(default=0.0)
+    disk_percent = models.FloatField(default=0.0)
+    load_1m = models.FloatField(default=0.0)
+    active_sessions = models.PositiveIntegerField(default=0)
+    online_users_non_staff = models.PositiveIntegerField(default=0)
+    notes = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        ordering = ["-captured_at"]
+        indexes = [
+            models.Index(fields=["captured_at"]),
+            models.Index(fields=["captured_at", "cpu_percent"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"Health {self.captured_at.isoformat()} "
+            f"cpu={self.cpu_percent:.1f}% mem={self.memory_percent:.1f}% disk={self.disk_percent:.1f}%"
+        )
+
+
+class RagRequestMetric(models.Model):
+    request_id = models.CharField(max_length=64, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="rag_metrics")
+    mode = models.CharField(max_length=32, default="dense")
+    query_len = models.PositiveIntegerField(default=0)
+    dense_hits = models.PositiveIntegerField(default=0)
+    bm25_hits = models.PositiveIntegerField(default=0)
+    final_docs = models.PositiveIntegerField(default=0)
+    retrieval_ms = models.PositiveIntegerField(default=0)
+    rerank_ms = models.PositiveIntegerField(default=0)
+    llm_model = models.CharField(max_length=255, blank=True, default="")
+    llm_time_ms = models.PositiveIntegerField(default=0)
+    fallback_used = models.BooleanField(default=False)
+    source_count = models.PositiveIntegerField(default=0)
+    status_code = models.PositiveIntegerField(default=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["status_code", "created_at"]),
+            models.Index(fields=["fallback_used", "created_at"]),
+        ]
+
+    def __str__(self):
+        user_part = self.user.username if self.user_id else "anon"
+        return (
+            f"RAG {self.request_id} user={user_part} mode={self.mode} "
+            f"retrieval={self.retrieval_ms}ms llm={self.llm_time_ms}ms status={self.status_code}"
+        )

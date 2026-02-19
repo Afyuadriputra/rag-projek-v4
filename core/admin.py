@@ -13,6 +13,8 @@ from pathlib import Path
 from datetime import datetime
 import shutil
 import logging
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 from .models import (
     AcademicDocument,
     ChatHistory,
@@ -22,23 +24,67 @@ from .models import (
     LLMConfiguration,
     SystemSetting,
     UserLoginPresence,
+    RagRequestMetric,
+    SystemHealthSnapshot,
+)
+from .monitoring import (
+    build_realtime_infra_payload,
+    build_realtime_overview_payload,
+    build_realtime_rag_payload,
 )
 from .presence import build_presence_summary, cleanup_stale_presence
-from .system_settings import get_concurrent_limit_state, get_maintenance_state, get_registration_limit_state
+from .system_settings import (
+    get_admin_dashboard_state,
+    get_concurrent_limit_state,
+    get_maintenance_state,
+    get_registration_limit_state,
+)
+
+try:
+    from rangefilter.filters import DateTimeRangeFilter
+except Exception:  # pragma: no cover
+    DateTimeRangeFilter = None
+
+try:
+    from unfold.admin import ModelAdmin as BaseAdmin
+except Exception:  # pragma: no cover
+    BaseAdmin = admin.ModelAdmin
 
 audit_logger = logging.getLogger("audit")
+
+
+def _dt_filter(field: str):
+    if DateTimeRangeFilter:
+        return (field, DateTimeRangeFilter)
+    return field
+
+
+class UserRolePresenceFilter(admin.SimpleListFilter):
+    title = "Role User"
+    parameter_name = "role"
+
+    def lookups(self, request, model_admin):
+        return (("staff", "Staff"), ("user", "Non-Staff"))
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == "staff":
+            return queryset.filter(user__is_staff=True)
+        if value == "user":
+            return queryset.filter(user__is_staff=False, user__is_superuser=False)
+        return queryset
 # --- KONFIGURASI HEADER ADMIN ---
 admin.site.site_header = "Academic AI Administration"
 admin.site.site_title = "Academic Admin Portal"
 admin.site.index_title = "Welcome to RAG System Management"
 
 @admin.register(AcademicDocument)
-class AcademicDocumentAdmin(admin.ModelAdmin):
+class AcademicDocumentAdmin(BaseAdmin):
     # Kolom yang muncul di tabel daftar
     list_display = ('title', 'user', 'file_link', 'is_embedded', 'uploaded_at')
     
     # Filter sidebar di sebelah kanan
-    list_filter = ('is_embedded', 'uploaded_at', 'user')
+    list_filter = ('is_embedded', _dt_filter('uploaded_at'), 'user')
     
     # Kotak pencarian (bisa cari judul file atau nama user)
     search_fields = ('title', 'user__username', 'user__email')
@@ -65,12 +111,12 @@ class AcademicDocumentAdmin(admin.ModelAdmin):
     file_link.short_description = "File Path"
 
 @admin.register(ChatHistory)
-class ChatHistoryAdmin(admin.ModelAdmin):
+class ChatHistoryAdmin(BaseAdmin):
     # Kolom yang muncul (kita potong pertanyaan biar gak kepanjangan)
     list_display = ('user', 'short_question', 'short_answer', 'timestamp')
     
     # Filter berdasarkan user dan waktu
-    list_filter = ('timestamp', 'user')
+    list_filter = (_dt_filter('timestamp'), 'user')
     
     # Search bar (bisa cari isi chattingan)
     search_fields = ('question', 'answer', 'user__username')
@@ -89,10 +135,18 @@ class ChatHistoryAdmin(admin.ModelAdmin):
     short_answer.short_description = "AI Answer"
 
 
+@admin.register(ChatSession)
+class ChatSessionAdmin(BaseAdmin):
+    list_display = ("id", "user", "title", "created_at", "updated_at")
+    list_filter = ("user", _dt_filter("created_at"), _dt_filter("updated_at"))
+    search_fields = ("title", "user__username", "user__email")
+    readonly_fields = ("created_at", "updated_at")
+
+
 @admin.register(PlannerHistory)
-class PlannerHistoryAdmin(admin.ModelAdmin):
+class PlannerHistoryAdmin(BaseAdmin):
     list_display = ("user", "session", "event_type", "planner_step", "short_text", "created_at")
-    list_filter = ("event_type", "planner_step", "created_at")
+    list_filter = ("event_type", "planner_step", _dt_filter("created_at"))
     search_fields = ("user__username", "text", "option_label")
     readonly_fields = (
         "user",
@@ -112,10 +166,10 @@ class PlannerHistoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(UserQuota)
-class UserQuotaAdmin(admin.ModelAdmin):
+class UserQuotaAdmin(BaseAdmin):
     list_display = ("user", "quota_bytes", "updated_at")
     search_fields = ("user__username", "user__email")
-    list_filter = ("updated_at",)
+    list_filter = (_dt_filter("updated_at"),)
     form = None
 
     def save_model(self, request, obj, form, change):
@@ -164,7 +218,7 @@ UserQuotaAdmin.form = UserQuotaForm
 
 
 @admin.register(UserLoginPresence)
-class UserLoginPresenceAdmin(admin.ModelAdmin):
+class UserLoginPresenceAdmin(BaseAdmin):
     list_display = (
         "user",
         "session_key_short",
@@ -174,7 +228,7 @@ class UserLoginPresenceAdmin(admin.ModelAdmin):
         "last_seen_at",
         "logged_out_at",
     )
-    list_filter = ("is_active", "logged_in_at", "last_seen_at")
+    list_filter = ("is_active", UserRolePresenceFilter, _dt_filter("logged_in_at"), _dt_filter("last_seen_at"))
     search_fields = ("user__username", "session_key", "ip_address", "user_agent")
     readonly_fields = (
         "user",
@@ -197,6 +251,94 @@ class UserLoginPresenceAdmin(admin.ModelAdmin):
         return f"{obj.session_key[:12]}..." if obj.session_key else "-"
 
     session_key_short.short_description = "Session"
+
+    actions = ("mark_selected_inactive",)
+
+    @admin.action(description="Tandai session terpilih sebagai non-aktif")
+    def mark_selected_inactive(self, request, queryset):
+        now = timezone.now()
+        updated = queryset.filter(is_active=True).update(is_active=False, logged_out_at=now)
+        self.message_user(request, f"{updated} session berhasil dinonaktifkan.", level=messages.SUCCESS)
+
+
+@admin.register(RagRequestMetric)
+class RagRequestMetricAdmin(BaseAdmin):
+    list_display = (
+        "created_at",
+        "request_id",
+        "username",
+        "mode",
+        "retrieval_ms",
+        "llm_time_ms",
+        "fallback_used",
+        "source_count",
+        "status_code",
+    )
+    list_filter = (
+        "mode",
+        "fallback_used",
+        "status_code",
+        _dt_filter("created_at"),
+    )
+    search_fields = ("request_id", "user__username", "llm_model")
+    readonly_fields = (
+        "request_id",
+        "user",
+        "mode",
+        "query_len",
+        "dense_hits",
+        "bm25_hits",
+        "final_docs",
+        "retrieval_ms",
+        "rerank_ms",
+        "llm_model",
+        "llm_time_ms",
+        "fallback_used",
+        "source_count",
+        "status_code",
+        "created_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def username(self, obj):
+        return obj.user.username if obj.user_id else "-"
+
+    username.short_description = "User"
+
+
+@admin.register(SystemHealthSnapshot)
+class SystemHealthSnapshotAdmin(BaseAdmin):
+    list_display = (
+        "captured_at",
+        "cpu_percent",
+        "memory_percent",
+        "disk_percent",
+        "load_1m",
+        "active_sessions",
+        "online_users_non_staff",
+    )
+    list_filter = (_dt_filter("captured_at"),)
+    readonly_fields = (
+        "captured_at",
+        "cpu_percent",
+        "memory_percent",
+        "disk_percent",
+        "load_1m",
+        "active_sessions",
+        "online_users_non_staff",
+        "notes",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 class LLMConfigurationAdminForm(forms.ModelForm):
@@ -228,7 +370,7 @@ class LLMConfigurationAdminForm(forms.ModelForm):
 
 
 @admin.register(LLMConfiguration)
-class LLMConfigurationAdmin(admin.ModelAdmin):
+class LLMConfigurationAdmin(BaseAdmin):
     form = LLMConfigurationAdminForm
     list_display = (
         "id",
@@ -242,7 +384,7 @@ class LLMConfigurationAdmin(admin.ModelAdmin):
         "openrouter_temperature",
         "updated_at",
     )
-    list_filter = ("is_active", "updated_at")
+    list_filter = ("is_active", _dt_filter("updated_at"))
     search_fields = ("name", "openrouter_model")
     readonly_fields = ("updated_at",)
 
@@ -283,13 +425,33 @@ class LLMConfigurationAdmin(admin.ModelAdmin):
         js = ("admin/js/api_key_toggle.js",)
 
 
+class SystemSettingAdminForm(forms.ModelForm):
+    class Meta:
+        model = SystemSetting
+        fields = "__all__"
+
+    def clean_admin_realtime_poll_seconds(self):
+        value = int(self.cleaned_data.get("admin_realtime_poll_seconds") or 5)
+        if value < 3:
+            raise ValidationError("Interval realtime minimal 3 detik.")
+        return value
+
+    def clean_admin_realtime_max_rows(self):
+        value = int(self.cleaned_data.get("admin_realtime_max_rows") or 100)
+        if value < 10 or value > 500:
+            raise ValidationError("Maksimal baris harus di rentang 10 sampai 500.")
+        return value
+
+
 @admin.register(SystemSetting)
-class SystemSettingAdmin(admin.ModelAdmin):
+class SystemSettingAdmin(BaseAdmin):
+    form = SystemSettingAdminForm
     list_display = (
         "id",
         "registration_enabled",
         "registration_limit_enabled",
         "concurrent_login_limit_enabled",
+        "admin_realtime_poll_seconds",
         "maintenance_enabled",
         "allow_staff_bypass",
         "updated_at",
@@ -326,6 +488,18 @@ class SystemSettingAdmin(admin.ModelAdmin):
             "description": (
                 "Atur kapasitas tahap uji coba: batas total user non-staff terdaftar dan batas "
                 "jumlah user online bersamaan."
+            ),
+        }),
+        ("Admin Realtime Dashboard", {
+            "fields": (
+                "admin_realtime_poll_seconds",
+                "admin_realtime_max_rows",
+                "admin_metrics_retention_days",
+                "admin_dashboard_locale",
+            ),
+            "description": (
+                "Konfigurasi monitoring realtime command center. "
+                "Disarankan polling 5 detik untuk beban server yang seimbang."
             ),
         }),
     )
@@ -409,7 +583,11 @@ def _build_dashboard_metrics() -> dict:
     maintenance_message = (maintenance.message or "").strip()
     registration_limit = get_registration_limit_state()
     concurrent_limit = get_concurrent_limit_state()
-    presence = build_presence_summary(limit=100)
+    admin_dash = get_admin_dashboard_state()
+    presence = build_presence_summary(limit=admin_dash.max_rows)
+    overview = build_realtime_overview_payload().get("summary", {})
+    rag_live = build_realtime_rag_payload(limit=min(20, admin_dash.max_rows))
+    infra_live = build_realtime_infra_payload(limit=min(20, admin_dash.max_rows))
 
     reg_limit = max(registration_limit.max_registered_users, 1)
     conc_limit = max(concurrent_limit.max_concurrent_logins, 1)
@@ -451,6 +629,18 @@ def _build_dashboard_metrics() -> dict:
         "kpi_concurrent_capacity_status": _cap_status(conc_pct),
         "kpi_online_users": presence.online_users,
         "kpi_recent_registered_users": presence.recent_registered_users,
+        "kpi_admin_poll_seconds": admin_dash.poll_seconds,
+        "kpi_alert_state": overview.get("alert_state", "Normal"),
+        "kpi_rag_error_rate_pct": overview.get("rag_error_rate_pct", 0),
+        "kpi_rag_fallback_rate_pct": overview.get("rag_fallback_rate_pct", 0),
+        "kpi_avg_retrieval_ms": overview.get("avg_retrieval_ms", 0),
+        "kpi_avg_llm_ms": overview.get("avg_llm_ms", 0),
+        "kpi_cpu_percent": overview.get("cpu_percent", 0),
+        "kpi_memory_percent": overview.get("memory_percent", 0),
+        "kpi_disk_percent": overview.get("disk_percent", 0),
+        "kpi_rag_events": rag_live.get("events", []),
+        "kpi_rag_p95_retrieval_ms": rag_live.get("p95_retrieval_ms", 0),
+        "kpi_infra_snapshots": infra_live.get("snapshots", []),
     }
 
 
@@ -471,9 +661,10 @@ def system_logs_tail_api(request):
 
 def realtime_users_api(request):
     cleanup_stale_presence()
+    admin_dash = get_admin_dashboard_state()
     registration_limit = get_registration_limit_state()
     concurrent_limit = get_concurrent_limit_state()
-    presence = build_presence_summary(limit=100)
+    presence = build_presence_summary(limit=admin_dash.max_rows)
     registered_non_staff_count = get_user_model().objects.filter(is_staff=False, is_superuser=False).count()
 
     payload = {
@@ -488,6 +679,23 @@ def realtime_users_api(request):
         "online_users": presence.online_users,
         "recent_registered_users": presence.recent_registered_users,
     }
+    return JsonResponse(payload)
+
+
+def realtime_overview_api(request):
+    payload = build_realtime_overview_payload()
+    return JsonResponse(payload)
+
+
+def realtime_rag_api(request):
+    max_rows = get_admin_dashboard_state().max_rows
+    payload = build_realtime_rag_payload(limit=min(50, max_rows))
+    return JsonResponse(payload)
+
+
+def realtime_infra_api(request):
+    max_rows = get_admin_dashboard_state().max_rows
+    payload = build_realtime_infra_payload(limit=min(30, max_rows))
     return JsonResponse(payload)
 
 
@@ -571,6 +779,21 @@ def _custom_admin_get_urls():
             name="realtime_users",
         ),
         path(
+            "realtime-overview/",
+            admin.site.admin_view(realtime_overview_api),
+            name="realtime_overview",
+        ),
+        path(
+            "realtime-rag/",
+            admin.site.admin_view(realtime_rag_api),
+            name="realtime_rag",
+        ),
+        path(
+            "realtime-infra/",
+            admin.site.admin_view(realtime_infra_api),
+            name="realtime_infra",
+        ),
+        path(
             "system-logs/<str:log_type>/",
             admin.site.admin_view(system_log_detail_view),
             name="system_logs_detail",
@@ -616,6 +839,8 @@ def _custom_admin_index(request, extra_context=None):
     context["quick_sessions_url"] = "/admin/core/chatsession/"
     context["quick_llm_url"] = "/admin/core/llmconfiguration/"
     context["quick_presence_url"] = "/admin/core/userloginpresence/"
+    context["quick_rag_metrics_url"] = "/admin/core/ragrequestmetric/"
+    context["quick_health_url"] = "/admin/core/systemhealthsnapshot/"
     return _original_admin_index(request, extra_context=context)
 
 

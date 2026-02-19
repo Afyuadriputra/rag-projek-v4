@@ -4,206 +4,564 @@
 {% block extrastyle %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'admin/css/dashboard.css' %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  .dash-shell {
-    display: grid;
-    gap: 14px;
+  :root {
+    --font-ui: 'Plus Jakarta Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --bg-base: #f8f9fb;
+    --bg-card: rgba(255,255,255,0.72);
+    --bg-card-hover: rgba(255,255,255,0.88);
+    --border: rgba(15,23,42,0.07);
+    --border-hover: rgba(15,23,42,0.14);
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --emerald: #10b981;
+    --amber: #f59e0b;
+    --rose: #f43f5e;
+    --indigo: #6366f1;
+    --violet: #8b5cf6;
+    --shadow-card: 0 1px 2px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.04);
+    --shadow-hover: 0 4px 6px rgba(15,23,42,0.04), 0 12px 32px rgba(15,23,42,0.08);
+    --blur: blur(20px);
   }
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 10px;
+  .dark-mode {
+    --bg-base: #030712;
+    --bg-card: rgba(15,23,42,0.70);
+    --bg-card-hover: rgba(15,23,42,0.88);
+    --border: rgba(255,255,255,0.06);
+    --border-hover: rgba(255,255,255,0.12);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #475569;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.2);
+    --shadow-hover: 0 4px 6px rgba(0,0,0,0.2), 0 12px 32px rgba(0,0,0,0.4);
   }
-  .kpi-card {
-    border: 1px solid var(--hairline-color);
-    border-radius: 10px;
-    background: var(--body-bg);
-    padding: 12px;
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body, #content-main, #content-main * {
+    font-family: var(--font-ui) !important;
   }
-  .kpi-label {
-    font-size: 11px;
-    color: var(--body-quiet-color);
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    margin-bottom: 6px;
+
+  #content-main {
+    background: var(--bg-base);
+    min-height: 100vh;
+    padding: 24px;
+    max-width: 1680px;
+    margin: 0 auto;
   }
-  .kpi-value {
-    font-size: 24px;
-    line-height: 1.1;
-    font-weight: 700;
+
+  /* === CARDS === */
+  .bento-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: var(--shadow-card);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.2s ease;
+    overflow: hidden;
   }
-  .panel {
-    border: 1px solid var(--hairline-color);
-    border-radius: 10px;
-    background: var(--body-bg);
+  .bento-card:hover {
+    box-shadow: var(--shadow-hover);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
   }
-  .panel-head {
+
+  /* === HEADER === */
+  .cmd-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--hairline-color);
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 20px 24px;
+  }
+  .cmd-header .header-left .eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .cmd-header .header-left h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.2;
+  }
+  .cmd-header .header-left p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 4px 0 0;
+  }
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* === PILL BADGES === */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 100px;
+    border: 1px solid transparent;
+    letter-spacing: 0.02em;
+  }
+  .pill-neutral {
+    background: rgba(100,116,139,0.08);
+    color: var(--text-secondary);
+    border-color: var(--border);
+  }
+  .pill-emerald { background: rgba(16,185,129,0.1); color: #059669; border-color: rgba(16,185,129,0.2); }
+  .pill-amber { background: rgba(245,158,11,0.1); color: #d97706; border-color: rgba(245,158,11,0.2); }
+  .pill-rose { background: rgba(244,63,94,0.1); color: #e11d48; border-color: rgba(244,63,94,0.2); }
+
+  /* === REFRESH BUTTON === */
+  .btn-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 6px 14px;
+    border-radius: 100px;
+    background: var(--text-primary);
+    color: var(--bg-base);
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  .btn-refresh:hover { opacity: 0.82; transform: scale(0.98); }
+
+  /* === AUTO TOGGLE (iOS-style) === */
+  .auto-toggle-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: rgba(100,116,139,0.04);
+  }
+  .ios-toggle {
+    position: relative;
+    width: 32px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  .ios-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .ios-slider {
+    position: absolute;
+    inset: 0;
+    background: #cbd5e1;
+    border-radius: 100px;
+    transition: background 0.2s;
+    cursor: pointer;
+  }
+  .ios-slider::before {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    left: 2px;
+    top: 2px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+  }
+  .ios-toggle input:checked + .ios-slider { background: #10b981; }
+  .ios-toggle input:checked + .ios-slider::before { transform: translateX(14px); }
+
+  /* === KPI BENTO GRID === */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+  .kpi-card {
+    padding: 20px 22px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 60px; height: 60px;
+    border-radius: 0 20px 0 60px;
+    opacity: 0.06;
+  }
+  .kpi-card.accent-emerald::before { background: var(--emerald); }
+  .kpi-card.accent-indigo::before { background: var(--indigo); }
+  .kpi-card.accent-violet::before { background: var(--violet); }
+  .kpi-card.accent-amber::before { background: var(--amber); }
+  .kpi-card.accent-rose::before { background: var(--rose); }
+
+  .kpi-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .kpi-sub span {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .kpi-icon {
+    position: absolute;
+    top: 18px; right: 18px;
+    font-size: 18px;
+    opacity: 0.25;
+  }
+
+  /* === CAPACITY === */
+  .capacity-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 768px) { .capacity-grid { grid-template-columns: 1fr; } }
+
+  .capacity-card {
+    padding: 20px;
+    border-radius: 14px;
+    background: rgba(100,116,139,0.04);
+    border: 1px solid var(--border);
+  }
+  .capacity-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .capacity-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .capacity-ratio {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .capacity-ratio small {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .track {
+    width: 100%;
+    height: 4px;
+    background: rgba(100,116,139,0.12);
+    border-radius: 100px;
+    overflow: visible;
+    position: relative;
+  }
+  .track-fill {
+    height: 100%;
+    border-radius: 100px;
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1), background 0.3s;
+    position: relative;
+  }
+  .track-fill.fill-emerald { background: linear-gradient(90deg, #10b981, #34d399); }
+  .track-fill.fill-amber { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .track-fill.fill-rose { background: linear-gradient(90deg, #f43f5e, #fb7185); }
+  .capacity-meta {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+  }
+
+  /* === PANELS GRID === */
+  .panels-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 1100px) { .panels-grid { grid-template-columns: 1fr; } }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
   }
   .panel-title {
     font-size: 13px;
     font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
   }
+  .panel-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .panel-pad { padding: 20px 22px; }
+
+  /* === TABLES === */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .data-table th {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table td {
+    padding: 9px 12px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(100,116,139,0.05);
+    font-weight: 500;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .data-table td:first-child { color: var(--text-primary); font-weight: 600; }
+  .data-table tr:hover td { background: rgba(100,116,139,0.04); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    margin-top: 14px;
+  }
+
+  /* === CHART CONTAINERS === */
+  .chart-wrap {
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 4px;
+    background: rgba(100,116,139,0.02);
+  }
+
+  /* === LOGS === */
+  .logs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 900px) { .logs-grid { grid-template-columns: 1fr; } }
+
+  .log-terminal {
+    background: #080c14;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+    overflow: hidden;
+  }
+  .log-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.03);
+  }
+  .log-dots { display: flex; gap: 5px; }
+  .log-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+  }
+  .log-dot.r { background: #ff5f56; }
+  .log-dot.y { background: #ffbd2e; }
+  .log-dot.g { background: #27c93f; }
+  .log-file-name {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    margin-left: 4px;
+  }
+  .log-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: rgba(255,255,255,0.25);
+    margin-left: auto;
+  }
+  .log-body {
+    padding: 12px 14px;
+    font-family: var(--font-mono) !important;
+    font-size: 10.5px;
+    line-height: 1.7;
+    color: #7dd3b2;
+    height: 280px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .log-body::-webkit-scrollbar { width: 4px; }
+  .log-body::-webkit-scrollbar-track { background: transparent; }
+  .log-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+  /* === USERS GRID === */
+  .users-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 900px) { .users-grid { grid-template-columns: 1fr; } }
+
+  /* === QUICK ACTIONS === */
   .quick-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    padding: 12px;
   }
-  .quick-actions .button {
-    margin: 0;
-  }
-  .status-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-    padding: 12px;
-  }
-  .status-item {
-    border: 1px solid var(--hairline-color);
-    border-radius: 8px;
-    padding: 10px;
-  }
-  .monitor-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    padding: 12px;
-  }
-  .monitor-log {
-    margin: 0;
-    padding: 10px;
-    height: 280px;
-    overflow: auto;
-    border-radius: 8px;
-    background: #0f1117;
-    color: #e6e6e6;
-    font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    white-space: pre-wrap;
-  }
-  .tok-level-info { color: #4caf50; font-weight: 700; }
-  .tok-level-warning { color: #f4b400; font-weight: 700; }
-  .tok-level-error { color: #ff6b6b; font-weight: 700; }
-  .tok-level-critical { color: #ff3b30; font-weight: 700; }
-  .tok-level-debug { color: #5bc0de; font-weight: 700; }
-  .tok-ip { color: #4dd0e1; font-weight: 600; }
-  .tok-user { color: #ffd166; font-weight: 600; }
-  .tok-rid { color: #b0bec5; }
-  .tok-method { color: #90caf9; font-weight: 700; }
-  .tok-status-2xx { color: #69f0ae; font-weight: 700; }
-  .tok-status-4xx { color: #ffd54f; font-weight: 700; }
-  .tok-status-5xx { color: #ff8a80; font-weight: 700; }
-  .tok-ua { color: #ce93d8; }
-  .tok-device { color: #f48fb1; font-weight: 600; }
-  .log-meta {
-    font-size: 11px;
-    color: var(--body-quiet-color);
-  }
-  .maintenance-badge {
+  .quick-btn {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    min-width: 72px;
-    border-radius: 999px;
-    padding: 4px 10px;
+    gap: 6px;
+    font-family: var(--font-ui);
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .04em;
-    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 7px 14px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: rgba(100,116,139,0.04);
+    text-decoration: none;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
   }
-  .maintenance-on {
-    background: #fee2e2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
+  .quick-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+    background: rgba(100,116,139,0.09);
+    transform: translateY(-1px);
   }
-  .maintenance-off {
-    background: #dcfce7;
-    color: #166534;
-    border: 1px solid #bbf7d0;
+  .quick-btn i { font-size: 13px; opacity: 0.7; }
+
+  /* === SECTION SPACING === */
+  .section-stack { display: flex; flex-direction: column; gap: 12px; }
+
+  /* === APP REGISTRY === */
+  .app-registry {
+    padding: 20px 22px;
   }
-  .capacity-badge {
+
+  /* === OPEN LOGS LINK === */
+  .link-subtle {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    min-width: 90px;
-    border-radius: 999px;
-    padding: 4px 10px;
+    gap: 5px;
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .04em;
-    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
   }
-  .capacity-open {
-    background: #dcfce7;
-    color: #166534;
-    border: 1px solid #bbf7d0;
+  .link-subtle:hover { color: var(--text-secondary); border-color: var(--border-hover); }
+
+  /* === DIVIDERS === */
+  .panel-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 14px 0;
   }
-  .capacity-near {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fde68a;
-  }
-  .capacity-full {
-    background: #fee2e2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
-  }
-  .mini-table-wrap {
-    overflow: auto;
-    border: 1px solid var(--hairline-color);
-    border-radius: 8px;
-  }
-  .mini-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-  .mini-table th,
-  .mini-table td {
-    border-bottom: 1px solid var(--hairline-color);
-    padding: 8px 10px;
-    text-align: left;
-    white-space: nowrap;
-  }
-  .mini-table th {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    color: var(--body-quiet-color);
-  }
-  .mini-table tr:last-child td {
-    border-bottom: 0;
-  }
-  .dot-staff {
+
+  /* === STATUS DOT === */
+  .status-dot {
     display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    margin-right: 6px;
-    background: #64748b;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-right: 5px;
+    animation: pulse-dot 2s infinite;
   }
-  .dot-user {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    margin-right: 6px;
-    background: #10b981;
+  .status-dot.green { background: #10b981; box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+  .status-dot.amber { background: #f59e0b; box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
+  .status-dot.rose { background: #f43f5e; box-shadow: 0 0 0 0 rgba(244,63,94,0.4); animation: none; }
+
+  @keyframes pulse-dot {
+    0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+    70% { box-shadow: 0 0 0 5px rgba(16,185,129,0); }
+    100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
   }
-  @media (max-width: 1280px) {
-    .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .status-grid { grid-template-columns: 1fr; }
+
+  /* === OVERRIDES === */
+  #content-main table { font-family: var(--font-ui) !important; }
+  .module { background: transparent; box-shadow: none; }
+  pre { font-family: var(--font-mono) !important; }
+
+  /* Dark mode auto-detect */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-base: #030712;
+      --bg-card: rgba(15,23,42,0.70);
+      --bg-card-hover: rgba(15,23,42,0.88);
+      --border: rgba(255,255,255,0.06);
+      --border-hover: rgba(255,255,255,0.12);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --shadow-card: 0 1px 2px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.2);
+      --shadow-hover: 0 4px 6px rgba(0,0,0,0.2), 0 12px 32px rgba(0,0,0,0.4);
+    }
+    .ios-slider { background: #334155; }
+    .capacity-card { background: rgba(255,255,255,0.02); }
   }
-  @media (max-width: 900px) {
-    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .monitor-grid { grid-template-columns: 1fr; }
-  }
+
+  /* Scrollbar global */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.2); border-radius: 4px; }
 </style>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script defer src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script defer src="https://unpkg.com/@phosphor-icons/web"></script>
 {% endblock %}
 
 {% block coltype %}colM{% endblock %}
@@ -212,138 +570,268 @@
 {% block nav-sidebar %}{% endblock %}
 
 {% block content %}
-<div id="content-main" class="dash-shell">
-  <div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-label">Users</div><div class="kpi-value">{{ kpi_total_users }}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Registered (Non-Staff)</div><div class="kpi-value" id="kpi-registered">{{ kpi_registered_non_staff_count }}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Documents</div><div class="kpi-value">{{ kpi_total_docs }}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Embedded</div><div class="kpi-value">{{ kpi_embedded_docs }}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Sessions</div><div class="kpi-value">{{ kpi_total_sessions }}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Messages</div><div class="kpi-value">{{ kpi_total_messages }}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Online (Non-Staff)</div><div class="kpi-value" id="kpi-online">{{ kpi_active_online_non_staff_count }}</div></div>
-    <div class="kpi-card"><div class="kpi-label">LLM Config</div><div class="kpi-value">{{ kpi_active_llm_configs }}/{{ kpi_total_llm_configs }}</div></div>
-  </div>
+<!-- COMPONENT: DashboardRoot -->
+<div id="content-main">
+  <div class="section-stack">
 
-  <section class="panel">
-    <div class="panel-head">
-      <div class="panel-title">Quick Actions</div>
-    </div>
-    <div class="quick-actions">
-      <a class="button" href="{{ quick_docs_url }}">Manage Documents</a>
-      <a class="button" href="{{ quick_sessions_url }}">Manage Sessions</a>
-      <a class="button" href="{{ quick_chats_url }}">Manage Chat History</a>
-      <a class="button" href="{{ quick_llm_url }}">Manage LLM Config</a>
-      <a class="button" href="{{ quick_presence_url }}">Manage Active Logins</a>
-      <a class="button" href="{{ system_logs_url|default:'/admin/system-logs/' }}">Open Full Logs</a>
-    </div>
-  </section>
+    <!-- COMPONENT: HeaderCommandBar -->
+    <section class="bento-card">
+      <div class="cmd-header">
+        <div class="header-left">
+          <p class="eyebrow">Realtime CCTV Command Center</p>
+          <h1>Academic RAG Operations</h1>
+          <p>Monitoring pengguna, kapasitas, log sistem, dan kinerja pipeline RAG secara realtime.</p>
+        </div>
+        <div class="header-controls">
+          <span id="kpi-alert" class="pill pill-emerald">{{ kpi_alert_state }}</span>
+          <span class="pill pill-neutral">
+            <i class="ph ph-timer-bold"></i>
+            Polling <span id="poll-label">{{ kpi_admin_poll_seconds|default:"5" }}</span>s
+          </span>
+          <button id="monitor-refresh" type="button" class="btn-refresh" aria-label="Refresh dashboard">
+            <i class="ph ph-arrows-clockwise"></i>
+            Refresh
+          </button>
+          <label class="auto-toggle-wrap">
+            <span class="ios-toggle">
+              <input id="monitor-auto" type="checkbox" checked>
+              <span class="ios-slider"></span>
+            </span>
+            Auto update
+          </label>
+        </div>
+      </div>
+    </section>
 
-  <section class="panel">
-    <div class="panel-head">
-      <div class="panel-title">System Status</div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span class="maintenance-badge {% if kpi_maintenance_enabled %}maintenance-on{% else %}maintenance-off{% endif %}">
-          Maintenance {% if kpi_maintenance_enabled %}ON{% else %}OFF{% endif %}
-        </span>
-        <div class="log-meta">Overview aktivitas terakhir sistem</div>
-      </div>
-    </div>
-    <div class="status-grid">
-      <div class="status-item">
-        <div class="kpi-label">Last Upload</div>
-        <div><strong>{% if kpi_latest_doc_time %}{{ kpi_latest_doc_time }}{% else %}-{% endif %}</strong></div>
-      </div>
-      <div class="status-item">
-        <div class="kpi-label">Last Chat</div>
-        <div><strong>{% if kpi_latest_chat_time %}{{ kpi_latest_chat_time }}{% else %}-{% endif %}</strong></div>
-      </div>
-      <div class="status-item">
-        <div class="kpi-label">Last LLM Config Update</div>
-        <div><strong>{% if kpi_latest_cfg_time %}{{ kpi_latest_cfg_time }}{% else %}-{% endif %}</strong></div>
-      </div>
-    </div>
-  </section>
+    <!-- COMPONENT: KPIGrid -->
+    <section class="kpi-grid">
+      <article class="bento-card kpi-card accent-indigo">
+        <i class="ph ph-users kpi-icon"></i>
+        <p class="kpi-label">Total Users</p>
+        <p class="kpi-value" id="kpi-total-users">{{ kpi_total_users }}</p>
+        <p class="kpi-sub">Non-staff: <span id="kpi-registered">{{ kpi_registered_non_staff_count }}</span></p>
+      </article>
 
-  <section class="panel">
-    <div class="panel-head">
-      <div class="panel-title">User Capacity</div>
-      <div class="log-meta">Update otomatis setiap 5 detik</div>
+      <article class="bento-card kpi-card accent-emerald">
+        <i class="ph ph-books kpi-icon"></i>
+        <p class="kpi-label">Knowledge Base</p>
+        <p class="kpi-value"><span id="kpi-total-docs">{{ kpi_total_docs }}</span></p>
+        <p class="kpi-sub">Embedded: <span id="kpi-embedded-docs">{{ kpi_embedded_docs }}</span></p>
+      </article>
+
+      <article class="bento-card kpi-card accent-violet">
+        <i class="ph ph-chat-dots kpi-icon"></i>
+        <p class="kpi-label">Activity</p>
+        <p class="kpi-value"><span id="kpi-total-messages">{{ kpi_total_messages }}</span></p>
+        <p class="kpi-sub">Sessions: <span id="kpi-total-sessions">{{ kpi_total_sessions }}</span></p>
+      </article>
+
+      <article class="bento-card kpi-card accent-emerald">
+        <i class="ph ph-pulse kpi-icon"></i>
+        <p class="kpi-label">Live Health</p>
+        <p class="kpi-value"><span id="kpi-online">{{ kpi_active_online_non_staff_count }}</span></p>
+        <p class="kpi-sub">CPU/RAM/Disk: <span id="kpi-infra">{{ kpi_cpu_percent }}/{{ kpi_memory_percent }}/{{ kpi_disk_percent }}</span></p>
+      </article>
+
+      <article class="bento-card kpi-card accent-rose">
+        <i class="ph ph-warning kpi-icon"></i>
+        <p class="kpi-label">RAG Error Rate</p>
+        <p class="kpi-value" id="kpi-rag-error">{{ kpi_rag_error_rate_pct }}%</p>
+        <p class="kpi-sub">Fallback: <span id="kpi-rag-fallback">{{ kpi_rag_fallback_rate_pct }}%</span></p>
+      </article>
+
+      <article class="bento-card kpi-card accent-violet">
+        <i class="ph ph-timer kpi-icon"></i>
+        <p class="kpi-label">RAG Latency</p>
+        <p class="kpi-value"><span id="rag-avg-retrieval">{{ kpi_avg_retrieval_ms }}</span><span style="font-size:16px;font-weight:500;opacity:0.5;margin-left:3px;">ms</span></p>
+        <p class="kpi-sub">LLM: <span id="rag-avg-llm">{{ kpi_avg_llm_ms }}</span>ms &middot; p95: <span id="rag-p95">{{ kpi_rag_p95_retrieval_ms }}</span>ms</p>
+      </article>
+
+      <article class="bento-card kpi-card accent-amber">
+        <i class="ph ph-cpu kpi-icon"></i>
+        <p class="kpi-label">Infrastructure</p>
+        <p class="kpi-value"><span id="infra-cpu">{{ kpi_cpu_percent }}</span><span style="font-size:16px;font-weight:500;opacity:0.5;margin-left:2px;">%</span></p>
+        <p class="kpi-sub">RAM: <span id="infra-mem">{{ kpi_memory_percent }}</span>% &middot; Disk: <span id="infra-disk">{{ kpi_disk_percent }}</span>%</p>
+      </article>
+
+      <article class="bento-card kpi-card accent-indigo">
+        <i class="ph ph-robot kpi-icon"></i>
+        <p class="kpi-label">LLM Configuration</p>
+        <p class="kpi-value"><span id="kpi-llm-active">{{ kpi_active_llm_configs }}</span><span style="font-size:16px;font-weight:500;opacity:0.5;">/</span><span id="kpi-llm-total">{{ kpi_total_llm_configs }}</span></p>
+        <p class="kpi-sub">Maintenance: {% if kpi_maintenance_enabled %}<span style="color:#f43f5e;font-weight:700;">ON</span>{% else %}<span style="color:#10b981;font-weight:700;">OFF</span>{% endif %}</p>
+      </article>
+    </section>
+
+    <!-- COMPONENT: CapacityStatusPanel -->
+    <section id="panel-capacity" class="bento-card panel-pad">
+      <div class="panel-header">
+        <h2 class="panel-title">Capacity Control</h2>
+        <span class="panel-meta">Realtime user capacity endpoint</span>
+      </div>
+      <div class="capacity-grid">
+        <div class="capacity-card">
+          <div class="capacity-header">
+            <p class="capacity-label">Registered Capacity</p>
+            <span id="registered-status" class="pill pill-emerald">{{ kpi_registered_capacity_status }}</span>
+          </div>
+          <p class="capacity-ratio">
+            <span id="registered-ratio">{{ kpi_registered_non_staff_count }}</span>
+            <small> / <span id="registered-limit">{{ kpi_registered_limit }}</span></small>
+          </p>
+          <div class="track">
+            <div
+              id="registered-progress"
+              class="track-fill fill-emerald"
+              style="width: 0%;"
+              data-initial-pct="{{ kpi_registered_usage_pct|default:'0' }}"
+            ></div>
+          </div>
+          <p class="capacity-meta">Usage <span id="registered-pct">{{ kpi_registered_usage_pct }}</span>% &middot; Limit <span id="register-limit-enabled">{% if kpi_registration_limit_enabled %}ON{% else %}OFF{% endif %}</span></p>
+        </div>
+
+        <div class="capacity-card">
+          <div class="capacity-header">
+            <p class="capacity-label">Concurrent Online Capacity</p>
+            <span id="online-status" class="pill pill-emerald">{{ kpi_concurrent_capacity_status }}</span>
+          </div>
+          <p class="capacity-ratio">
+            <span id="online-ratio">{{ kpi_active_online_non_staff_count }}</span>
+            <small> / <span id="online-limit">{{ kpi_concurrent_limit }}</span></small>
+          </p>
+          <div class="track">
+            <div
+              id="online-progress"
+              class="track-fill fill-emerald"
+              style="width: 0%;"
+              data-initial-pct="{{ kpi_concurrent_usage_pct|default:'0' }}"
+            ></div>
+          </div>
+          <p class="capacity-meta">Usage <span id="online-pct">{{ kpi_concurrent_usage_pct }}</span>% &middot; Limit <span id="concurrent-limit-enabled">{% if kpi_concurrent_limit_enabled %}ON{% else %}OFF{% endif %}</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPONENT: InfraAndRagPanel -->
+    <div class="panels-grid">
+      <article id="panel-infra" class="bento-card panel-pad">
+        <div class="panel-header">
+          <h2 class="panel-title">Infrastructure Health</h2>
+          <span id="alarm-state" class="pill pill-emerald">{{ kpi_alert_state }}</span>
+        </div>
+        <div class="chart-wrap">
+          <div id="chart-infra" class="w-full" style="height:240px;" aria-label="Grafik metrik infrastruktur"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>CPU</th>
+                <th>RAM</th>
+                <th>Disk</th>
+                <th>Session</th>
+                <th>Online</th>
+              </tr>
+            </thead>
+            <tbody id="infra-snapshots-body">
+              {% for row in kpi_infra_snapshots %}
+              <tr>
+                <td>{{ row.captured_at|default:"-" }}</td>
+                <td>{{ row.cpu_percent|default:"0" }}%</td>
+                <td>{{ row.memory_percent|default:"0" }}%</td>
+                <td>{{ row.disk_percent|default:"0" }}%</td>
+                <td>{{ row.active_sessions|default:"0" }}</td>
+                <td>{{ row.online_users_non_staff|default:"0" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="6" style="padding:14px 12px;color:var(--text-muted);">Belum ada snapshot infrastruktur.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article id="panel-rag" class="bento-card panel-pad">
+        <div class="panel-header">
+          <h2 class="panel-title">RAG Pipeline</h2>
+          <span class="panel-meta">Avg retrieval <span id="rag-avg-retrieval-inline">{{ kpi_avg_retrieval_ms }}</span>ms</span>
+        </div>
+        <div class="chart-wrap">
+          <div id="chart-rag" class="w-full" style="height:240px;" aria-label="Grafik metrik RAG"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>User</th>
+                <th>Mode</th>
+                <th>Retrieval</th>
+                <th>LLM</th>
+                <th>Fallback</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="rag-events-body">
+              {% for row in kpi_rag_events %}
+              <tr>
+                <td>{{ row.created_at|default:"-" }}</td>
+                <td>{{ row.username|default:"-" }}</td>
+                <td>{{ row.mode|default:"-" }}</td>
+                <td>{{ row.retrieval_ms|default:"0" }}ms</td>
+                <td>{{ row.llm_time_ms|default:"0" }}ms</td>
+                <td>{% if row.fallback_used %}Ya{% else %}Tidak{% endif %}</td>
+                <td>{{ row.status_code|default:"-" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="7" style="padding:14px 12px;color:var(--text-muted);">Belum ada event RAG.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:10px;">LLM avg <span id="rag-avg-llm-inline">{{ kpi_avg_llm_ms }}</span>ms &middot; p95 retrieval <span id="rag-p95-inline">{{ kpi_rag_p95_retrieval_ms }}</span>ms</p>
+      </article>
     </div>
-    <div class="status-grid">
-      <div class="status-item">
-        <div class="kpi-label">Registered Capacity</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <strong><span id="registered-ratio">{{ kpi_registered_non_staff_count }}</span> / <span id="registered-limit">{{ kpi_registered_limit }}</span></strong>
-          {% if kpi_registered_capacity_status == "FULL" %}
-            <span id="registered-status" class="capacity-badge capacity-full">{{ kpi_registered_capacity_status }}</span>
-          {% elif kpi_registered_capacity_status == "NEAR LIMIT" %}
-            <span id="registered-status" class="capacity-badge capacity-near">{{ kpi_registered_capacity_status }}</span>
-          {% else %}
-            <span id="registered-status" class="capacity-badge capacity-open">{{ kpi_registered_capacity_status }}</span>
-          {% endif %}
-        </div>
-        <div class="log-meta">Usage: <span id="registered-pct">{{ kpi_registered_usage_pct }}</span>%</div>
+
+    <!-- COMPONENT: OnlineUsersTable -->
+    <section id="panel-online-users" class="bento-card panel-pad">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span class="status-dot green"></span>
+          Siapa Online Sekarang
+        </h2>
+        <span class="panel-meta">User online non-staff &amp; pendaftar terbaru</span>
       </div>
-      <div class="status-item">
-        <div class="kpi-label">Concurrent Online Capacity</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <strong><span id="online-ratio">{{ kpi_active_online_non_staff_count }}</span> / <span id="online-limit">{{ kpi_concurrent_limit }}</span></strong>
-          {% if kpi_concurrent_capacity_status == "FULL" %}
-            <span id="online-status" class="capacity-badge capacity-full">{{ kpi_concurrent_capacity_status }}</span>
-          {% elif kpi_concurrent_capacity_status == "NEAR LIMIT" %}
-            <span id="online-status" class="capacity-badge capacity-near">{{ kpi_concurrent_capacity_status }}</span>
-          {% else %}
-            <span id="online-status" class="capacity-badge capacity-open">{{ kpi_concurrent_capacity_status }}</span>
-          {% endif %}
-        </div>
-        <div class="log-meta">Usage: <span id="online-pct">{{ kpi_concurrent_usage_pct }}</span>%</div>
-      </div>
-      <div class="status-item">
-        <div class="kpi-label">Limit Config</div>
-        <div class="log-meta">
-          Register limit:
-          <strong id="register-limit-enabled">{% if kpi_registration_limit_enabled %}ON{% else %}OFF{% endif %}</strong>
-        </div>
-        <div class="log-meta">
-          Concurrent limit:
-          <strong id="concurrent-limit-enabled">{% if kpi_concurrent_limit_enabled %}ON{% else %}OFF{% endif %}</strong>
-        </div>
-      </div>
-    </div>
-    <div class="monitor-grid">
-      <div>
-        <div class="log-meta"><strong>Online Users (Non-Staff)</strong></div>
-        <div class="mini-table-wrap">
-          <table class="mini-table">
+      <div class="users-grid">
+        <div class="table-wrap" style="margin-top:0;">
+          <table class="data-table">
             <thead>
               <tr>
                 <th>Username</th>
                 <th>Role</th>
                 <th>IP</th>
-                <th>Login At</th>
+                <th>Login</th>
                 <th>Last Seen</th>
               </tr>
             </thead>
             <tbody id="online-users-body">
               {% for row in kpi_online_users %}
-                <tr>
-                  <td>{{ row.username }}</td>
-                  <td>{% if row.is_staff %}Staff{% else %}User{% endif %}</td>
-                  <td>{{ row.ip_address|default:"-" }}</td>
-                  <td>{{ row.logged_in_at|default:"-" }}</td>
-                  <td>{{ row.last_seen_at|default:"-" }}</td>
-                </tr>
+              <tr>
+                <td>{{ row.username }}</td>
+                <td>{% if row.is_staff %}Staff{% else %}User{% endif %}</td>
+                <td>{{ row.ip_address|default:"-" }}</td>
+                <td>{{ row.logged_in_at|default:"-" }}</td>
+                <td>{{ row.last_seen_at|default:"-" }}</td>
+              </tr>
               {% empty %}
-                <tr><td colspan="5">Belum ada user online.</td></tr>
+              <tr><td colspan="5" style="padding:14px 12px;color:var(--text-muted);">Belum ada user online.</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
-      </div>
-      <div>
-        <div class="log-meta"><strong>Recent Registered Users</strong></div>
-        <div class="mini-table-wrap">
-          <table class="mini-table">
+
+        <div class="table-wrap" style="margin-top:0;">
+          <table class="data-table">
             <thead>
               <tr>
                 <th>Username</th>
@@ -353,140 +841,172 @@
             </thead>
             <tbody id="recent-users-body">
               {% for row in kpi_recent_registered_users %}
-                <tr>
-                  <td>{{ row.username }}</td>
-                  <td>{% if row.is_staff %}Staff{% else %}User{% endif %}</td>
-                  <td>{{ row.date_joined|default:"-" }}</td>
-                </tr>
+              <tr>
+                <td>{{ row.username }}</td>
+                <td>{% if row.is_staff %}Staff{% else %}User{% endif %}</td>
+                <td>{{ row.date_joined|default:"-" }}</td>
+              </tr>
               {% empty %}
-                <tr><td colspan="3">Belum ada data user.</td></tr>
+              <tr><td colspan="3" style="padding:14px 12px;color:var(--text-muted);">Belum ada data user.</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="panel">
-    <div class="panel-head">
-      <div class="panel-title">Live Monitoring (CCTV)</div>
-      <div>
-        <button type="button" class="button" id="monitor-refresh">Refresh</button>
-        <label style="margin-left:8px; font-size:12px;">
-          <input type="checkbox" id="monitor-auto" checked> Auto 5s
-        </label>
+    <!-- COMPONENT: SystemLogsPanel -->
+    <section id="panel-logs" class="bento-card panel-pad">
+      <div class="panel-header">
+        <h2 class="panel-title">System Logs</h2>
+        <a href="{{ system_logs_url|default:'/admin/system-logs/' }}" class="link-subtle">
+          <i class="ph ph-list-bullets"></i>
+          Open Full Logs
+        </a>
       </div>
-    </div>
+      <div class="logs-grid">
+        <div class="log-terminal">
+          <div class="log-titlebar">
+            <div class="log-dots">
+              <span class="log-dot r"></span>
+              <span class="log-dot y"></span>
+              <span class="log-dot g"></span>
+            </div>
+            <span class="log-file-name">app.log &mdash; <span id="app-path">{{ app_log_path }}</span></span>
+            <span class="log-meta"><span id="app-size">{{ app_log_size_kb }}</span> KB</span>
+          </div>
+          <pre id="app-log" class="log-body">{{ app_log_text }}</pre>
+        </div>
+        <div class="log-terminal">
+          <div class="log-titlebar">
+            <div class="log-dots">
+              <span class="log-dot r"></span>
+              <span class="log-dot y"></span>
+              <span class="log-dot g"></span>
+            </div>
+            <span class="log-file-name">audit.log &mdash; <span id="audit-path">{{ audit_log_path }}</span></span>
+            <span class="log-meta"><span id="audit-size">{{ audit_log_size_kb }}</span> KB</span>
+          </div>
+          <pre id="audit-log" class="log-body">{{ audit_log_text }}</pre>
+        </div>
+      </div>
+    </section>
 
-    <div class="monitor-grid">
-      <div>
-        <div class="log-meta"><strong>app.log</strong> · <code id="app-path">{{ app_log_path }}</code> · <span id="app-size">{{ app_log_size_kb }}</span> KB</div>
-        <pre id="app-log" class="monitor-log">{{ app_log_text }}</pre>
+    <!-- COMPONENT: QuickActionsPanel -->
+    <section class="bento-card panel-pad">
+      <h2 class="panel-title" style="margin-bottom:14px;">Quick Actions</h2>
+      <div class="quick-actions">
+        <a class="quick-btn" href="{{ quick_docs_url }}"><i class="ph ph-file-text"></i> Documents</a>
+        <a class="quick-btn" href="{{ quick_sessions_url }}"><i class="ph ph-chat-centered"></i> Sessions</a>
+        <a class="quick-btn" href="{{ quick_chats_url }}"><i class="ph ph-chats"></i> Chat History</a>
+        <a class="quick-btn" href="{{ quick_llm_url }}"><i class="ph ph-cpu"></i> LLM Config</a>
+        <a class="quick-btn" href="{{ quick_presence_url }}"><i class="ph ph-users-three"></i> Active Logins</a>
+        <a class="quick-btn" href="{{ quick_rag_metrics_url }}"><i class="ph ph-waveform"></i> RAG Metrics</a>
+        <a class="quick-btn" href="{{ quick_health_url }}"><i class="ph ph-heartbeat"></i> Infra Snapshot</a>
       </div>
-      <div>
-        <div class="log-meta"><strong>audit.log</strong> · <code id="audit-path">{{ audit_log_path }}</code> · <span id="audit-size">{{ audit_log_size_kb }}</span> KB</div>
-        <pre id="audit-log" class="monitor-log">{{ audit_log_text }}</pre>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="panel" style="padding:12px;">
-    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
-  </section>
+    <!-- COMPONENT: AppRegistryPanel -->
+    <section class="bento-card app-registry">
+      {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+    </section>
+
+  </div>
 </div>
 
+<!-- COMPONENT: RealtimeControllerScript -->
 <script>
 (function () {
-  const appEl = document.getElementById("app-log");
-  const auditEl = document.getElementById("audit-log");
-  const appPath = document.getElementById("app-path");
-  const auditPath = document.getElementById("audit-path");
-  const appSize = document.getElementById("app-size");
-  const auditSize = document.getElementById("audit-size");
-  const kpiRegistered = document.getElementById("kpi-registered");
-  const kpiOnline = document.getElementById("kpi-online");
-  const registeredRatio = document.getElementById("registered-ratio");
-  const registeredLimit = document.getElementById("registered-limit");
-  const registeredPct = document.getElementById("registered-pct");
-  const registeredStatus = document.getElementById("registered-status");
-  const onlineRatio = document.getElementById("online-ratio");
-  const onlineLimit = document.getElementById("online-limit");
-  const onlinePct = document.getElementById("online-pct");
-  const onlineStatus = document.getElementById("online-status");
-  const registerLimitEnabled = document.getElementById("register-limit-enabled");
-  const concurrentLimitEnabled = document.getElementById("concurrent-limit-enabled");
-  const onlineUsersBody = document.getElementById("online-users-body");
-  const recentUsersBody = document.getElementById("recent-users-body");
-  const autoEl = document.getElementById("monitor-auto");
-  const refreshBtn = document.getElementById("monitor-refresh");
-  const tailUrl = "{% url 'admin:system_logs_tail' %}";
-  const realtimeUsersUrl = "{% url 'admin:realtime_users' %}";
+  "use strict";
 
-  function escHtml(s) {
-    return String(s || "")
+  const qs = (id) => document.getElementById(id);
+  const state = {
+    infraChart: null,
+    ragChart: null,
+    pollSeconds: 5,
+    maxPoints: 20,
+    isTicking: false,
+  };
+
+  const el = {
+    appLog: qs("app-log"),
+    auditLog: qs("audit-log"),
+    appPath: qs("app-path"),
+    auditPath: qs("audit-path"),
+    appSize: qs("app-size"),
+    auditSize: qs("audit-size"),
+    kpiRegistered: qs("kpi-registered"),
+    kpiOnline: qs("kpi-online"),
+    registeredRatio: qs("registered-ratio"),
+    registeredLimit: qs("registered-limit"),
+    registeredPct: qs("registered-pct"),
+    registeredStatus: qs("registered-status"),
+    onlineRatio: qs("online-ratio"),
+    onlineLimit: qs("online-limit"),
+    onlinePct: qs("online-pct"),
+    onlineStatus: qs("online-status"),
+    registeredProgress: qs("registered-progress"),
+    onlineProgress: qs("online-progress"),
+    registerLimitEnabled: qs("register-limit-enabled"),
+    concurrentLimitEnabled: qs("concurrent-limit-enabled"),
+    onlineUsersBody: qs("online-users-body"),
+    recentUsersBody: qs("recent-users-body"),
+    ragEventsBody: qs("rag-events-body"),
+    infraSnapshotsBody: qs("infra-snapshots-body"),
+    ragAvgRetrieval: qs("rag-avg-retrieval"),
+    ragAvgLlm: qs("rag-avg-llm"),
+    ragP95: qs("rag-p95"),
+    ragAvgRetrievalInline: qs("rag-avg-retrieval-inline"),
+    ragAvgLlmInline: qs("rag-avg-llm-inline"),
+    ragP95Inline: qs("rag-p95-inline"),
+    infraCpu: qs("infra-cpu"),
+    infraMem: qs("infra-mem"),
+    infraDisk: qs("infra-disk"),
+    kpiRagError: qs("kpi-rag-error"),
+    kpiRagFallback: qs("kpi-rag-fallback"),
+    kpiInfra: qs("kpi-infra"),
+    kpiAlert: qs("kpi-alert"),
+    alarmState: qs("alarm-state"),
+    pollLabel: qs("poll-label"),
+    autoToggle: qs("monitor-auto"),
+    refreshButton: qs("monitor-refresh"),
+    chartInfra: qs("chart-infra"),
+    chartRag: qs("chart-rag"),
+  };
+
+  const urls = {
+    logs: "{% url 'admin:system_logs_tail' %}",
+    users: "{% url 'admin:realtime_users' %}",
+    overview: "{% url 'admin:realtime_overview' %}",
+    rag: "{% url 'admin:realtime_rag' %}",
+    infra: "{% url 'admin:realtime_infra' %}",
+  };
+
+  const configuredPoll = parseInt("{{ kpi_admin_poll_seconds|default:'5'|escapejs }}", 10);
+  state.pollSeconds = Number.isFinite(configuredPoll) ? Math.max(configuredPoll, 3) : 5;
+  if (el.pollLabel) {
+    el.pollLabel.textContent = String(state.pollSeconds);
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;");
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
   }
 
-  function colorizeLogText(raw) {
-    let html = escHtml(raw);
-
-    html = html.replace(/\b(DEBUG|INFO|WARNING|ERROR|CRITICAL)\b/g, function (m) {
-      const k = m.toLowerCase();
-      return '<span class="tok-level-' + k + '">' + m + "</span>";
-    });
-
-    html = html.replace(/\brid=([A-Za-z0-9\-]+)/g, '<span class="tok-rid">rid=$1</span>');
-    html = html.replace(/\buser=([^\s|]+)/g, '<span class="tok-user">user=$1</span>');
-    html = html.replace(/\bip=((?:\d{1,3}\.){3}\d{1,3})/g, '<span class="tok-ip">ip=$1</span>');
-    html = html.replace(/\b(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g, '<span class="tok-method">$1</span>');
-
-    html = html.replace(/-\&gt;\s*(\d{3})/g, function (_, code) {
-      const c = Number(code);
-      let klass = "tok-status-4xx";
-      if (c >= 200 && c < 300) klass = "tok-status-2xx";
-      else if (c >= 500) klass = "tok-status-5xx";
-      return '-&gt; <span class="' + klass + '">' + code + "</span>";
-    });
-
-    html = html.replace(/\bua=([^|\n]+)/g, function (_, ua) {
-      const escapedUa = ua;
-      const deviceColored = escapedUa.replace(/\b(Android|iPhone|iPad|Windows|Macintosh|Linux)\b/g, '<span class="tok-device">$1</span>');
-      return '<span class="tok-ua">ua=' + deviceColored + "</span>";
-    });
-
-    return html;
-  }
-
-  function renderLog(el, raw) {
-    el.innerHTML = colorizeLogText(raw || "");
-  }
-
-  async function pullLogs() {
-    try {
-      const res = await fetch(tailUrl, { credentials: "same-origin" });
-      if (!res.ok) return;
-      const data = await res.json();
-      appPath.textContent = data.app_log_path || "-";
-      auditPath.textContent = data.audit_log_path || "-";
-      appSize.textContent = data.app_log_size_kb ?? "0";
-      auditSize.textContent = data.audit_log_size_kb ?? "0";
-      renderLog(appEl, data.app_log_text || "");
-      renderLog(auditEl, data.audit_log_text || "");
-      appEl.scrollTop = appEl.scrollHeight;
-      auditEl.scrollTop = auditEl.scrollHeight;
-    } catch (_) {
-      // no-op
-    }
+  function setText(node, value) {
+    if (!node) return;
+    node.textContent = value;
   }
 
   function formatTime(value) {
     if (!value) return "-";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "-";
-    return d.toLocaleString("id-ID", {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString("id-ID", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -496,110 +1016,397 @@
     });
   }
 
-  function resolveCapacityClass(status) {
-    if (status === "FULL") return "capacity-badge capacity-full";
-    if (status === "NEAR LIMIT") return "capacity-badge capacity-near";
-    return "capacity-badge capacity-open";
+  function capacityClass(status) {
+    if (status === "FULL") return "pill pill-rose";
+    if (status === "NEAR LIMIT") return "pill pill-amber";
+    return "pill pill-emerald";
   }
 
-  function resolveCapacityStatus(usagePct) {
-    if (usagePct >= 100) return "FULL";
-    if (usagePct >= 80) return "NEAR LIMIT";
+  function alarmClass(status) {
+    if (status === "Kritis") return "pill pill-rose";
+    if (status === "Waspada") return "pill pill-amber";
+    return "pill pill-emerald";
+  }
+
+  function updateBadge(node, status, resolver) {
+    if (!node) return;
+    node.className = resolver(status);
+    node.textContent = status;
+  }
+
+  async function fetchJson(url) {
+    const response = await fetch(url, { credentials: "same-origin" });
+    if (!response.ok) {
+      throw new Error("Request failed " + response.status + " for " + url);
+    }
+    return response.json();
+  }
+
+  function resolveCapacityStatus(pct) {
+    if (pct >= 100) return "FULL";
+    if (pct >= 80) return "NEAR LIMIT";
     return "OPEN";
   }
 
+  function updateProgress(node, pct) {
+    if (!node) return;
+    const safePct = Math.max(0, Math.min(100, Number(pct) || 0));
+    node.style.width = safePct + "%";
+    if (safePct >= 100) {
+      node.className = "track-fill fill-rose";
+    } else if (safePct >= 80) {
+      node.className = "track-fill fill-amber";
+    } else {
+      node.className = "track-fill fill-emerald";
+    }
+  }
+
+  function initializeProgressBars() {
+    if (el.registeredProgress) {
+      const pct = Number(el.registeredProgress.dataset.initialPct || 0);
+      updateProgress(el.registeredProgress, pct);
+    }
+    if (el.onlineProgress) {
+      const pct = Number(el.onlineProgress.dataset.initialPct || 0);
+      updateProgress(el.onlineProgress, pct);
+    }
+  }
+
+  function renderCapacity(summary) {
+    if (!summary) return;
+
+    const registeredCount = Number(summary.registered_non_staff_count || 0);
+    const regLimit = Math.max(Number(summary.registered_limit || 1), 1);
+    const onlineCount = Number(summary.active_online_non_staff_count || 0);
+    const onlineLimit = Math.max(Number(summary.concurrent_limit || 1), 1);
+
+    const regPct = Math.min(100, Math.round((registeredCount / regLimit) * 100));
+    const onlinePct = Math.min(100, Math.round((onlineCount / onlineLimit) * 100));
+
+    const regStatus = resolveCapacityStatus(regPct);
+    const onlineStatus = resolveCapacityStatus(onlinePct);
+
+    setText(el.kpiRegistered, String(registeredCount));
+    setText(el.kpiOnline, String(onlineCount));
+    setText(el.registeredRatio, String(registeredCount));
+    setText(el.registeredLimit, String(regLimit));
+    setText(el.registeredPct, String(regPct));
+    setText(el.onlineRatio, String(onlineCount));
+    setText(el.onlineLimit, String(onlineLimit));
+    setText(el.onlinePct, String(onlinePct));
+    setText(el.registerLimitEnabled, summary.registered_limit_enabled ? "ON" : "OFF");
+    setText(el.concurrentLimitEnabled, summary.concurrent_limit_enabled ? "ON" : "OFF");
+
+    updateBadge(el.registeredStatus, regStatus, capacityClass);
+    updateBadge(el.onlineStatus, onlineStatus, capacityClass);
+    updateProgress(el.registeredProgress, regPct);
+    updateProgress(el.onlineProgress, onlinePct);
+  }
+
+  function renderKPI(summary) {
+    if (!summary) return;
+
+    setText(el.kpiRagError, String(summary.rag_error_rate_pct || 0) + "%");
+    setText(el.kpiRagFallback, String(summary.rag_fallback_rate_pct || 0) + "%");
+    setText(el.ragAvgRetrieval, String(summary.avg_retrieval_ms || 0));
+    setText(el.ragAvgLlm, String(summary.avg_llm_ms || 0));
+    setText(el.ragAvgRetrievalInline, String(summary.avg_retrieval_ms || 0));
+    setText(el.ragAvgLlmInline, String(summary.avg_llm_ms || 0));
+    setText(el.infraCpu, String(summary.cpu_percent || 0));
+    setText(el.infraMem, String(summary.memory_percent || 0));
+    setText(el.infraDisk, String(summary.disk_percent || 0));
+    setText(el.kpiInfra, [summary.cpu_percent || 0, summary.memory_percent || 0, summary.disk_percent || 0].join("/"));
+
+    const alarm = String(summary.alert_state || "Normal");
+    updateBadge(el.kpiAlert, alarm, alarmClass);
+    updateBadge(el.alarmState, alarm, alarmClass);
+  }
+
+  function tdRow(cells) {
+    return "<tr>" + cells.map(c => `<td class="data-td">${c}</td>`).join("") + "</tr>";
+  }
+
   function renderOnlineUsers(rows) {
+    if (!el.onlineUsersBody) return;
     if (!rows || rows.length === 0) {
-      onlineUsersBody.innerHTML = "<tr><td colspan='5'>Belum ada user online.</td></tr>";
+      el.onlineUsersBody.innerHTML = "<tr><td colspan='5' style='padding:14px 12px;color:var(--text-muted);'>Belum ada user online.</td></tr>";
       return;
     }
-    onlineUsersBody.innerHTML = rows
-      .map((row) => {
-        const role = row.is_staff ? "Staff" : "User";
-        return (
-          "<tr>" +
-          `<td>${escHtml(row.username || "-")}</td>` +
-          `<td>${escHtml(role)}</td>` +
-          `<td>${escHtml(row.ip_address || "-")}</td>` +
-          `<td>${escHtml(formatTime(row.logged_in_at))}</td>` +
-          `<td>${escHtml(formatTime(row.last_seen_at))}</td>` +
-          "</tr>"
-        );
-      })
-      .join("");
+
+    el.onlineUsersBody.innerHTML = rows.map((row) => {
+      return "<tr>" +
+        `<td>${escapeHtml(row.username || "-")}</td>` +
+        `<td>${row.is_staff ? "Staff" : "User"}</td>` +
+        `<td>${escapeHtml(row.ip_address || "-")}</td>` +
+        `<td>${escapeHtml(formatTime(row.logged_in_at))}</td>` +
+        `<td>${escapeHtml(formatTime(row.last_seen_at))}</td>` +
+      "</tr>";
+    }).join("");
   }
 
   function renderRecentUsers(rows) {
+    if (!el.recentUsersBody) return;
     if (!rows || rows.length === 0) {
-      recentUsersBody.innerHTML = "<tr><td colspan='3'>Belum ada data user.</td></tr>";
+      el.recentUsersBody.innerHTML = "<tr><td colspan='3' style='padding:14px 12px;color:var(--text-muted);'>Belum ada data user.</td></tr>";
       return;
     }
-    recentUsersBody.innerHTML = rows
-      .map((row) => {
-        const role = row.is_staff ? "Staff" : "User";
-        return (
-          "<tr>" +
-          `<td>${escHtml(row.username || "-")}</td>` +
-          `<td>${escHtml(role)}</td>` +
-          `<td>${escHtml(formatTime(row.date_joined))}</td>` +
-          "</tr>"
-        );
-      })
-      .join("");
+
+    el.recentUsersBody.innerHTML = rows.map((row) => {
+      return "<tr>" +
+        `<td>${escapeHtml(row.username || "-")}</td>` +
+        `<td>${row.is_staff ? "Staff" : "User"}</td>` +
+        `<td>${escapeHtml(formatTime(row.date_joined))}</td>` +
+      "</tr>";
+    }).join("");
   }
 
-  async function pullRealtimeUsers() {
-    try {
-      const res = await fetch(realtimeUsersUrl, { credentials: "same-origin" });
-      if (!res.ok) return;
-      const data = await res.json();
-      const summary = data.summary || {};
-      const registeredCount = Number(summary.registered_non_staff_count || 0);
-      const regLimit = Number(summary.registered_limit || 1);
-      const onlineCount = Number(summary.active_online_non_staff_count || 0);
-      const concLimit = Number(summary.concurrent_limit || 1);
+  function renderRagTable(events) {
+    if (!el.ragEventsBody) return;
+    if (!events || events.length === 0) {
+      el.ragEventsBody.innerHTML = "<tr><td colspan='7' style='padding:14px 12px;color:var(--text-muted);'>Belum ada event RAG.</td></tr>";
+      return;
+    }
 
-      const regPctValue = Math.min(100, Math.round((registeredCount / Math.max(regLimit, 1)) * 100));
-      const concPctValue = Math.min(100, Math.round((onlineCount / Math.max(concLimit, 1)) * 100));
-      const regStatusValue = resolveCapacityStatus(regPctValue);
-      const concStatusValue = resolveCapacityStatus(concPctValue);
+    el.ragEventsBody.innerHTML = events.map((row) => {
+      return "<tr>" +
+        `<td>${escapeHtml(formatTime(row.created_at))}</td>` +
+        `<td>${escapeHtml(row.username || "-")}</td>` +
+        `<td>${escapeHtml(row.mode || "-")}</td>` +
+        `<td>${escapeHtml(String(row.retrieval_ms || 0))}ms</td>` +
+        `<td>${escapeHtml(String(row.llm_time_ms || 0))}ms</td>` +
+        `<td>${row.fallback_used ? "Ya" : "Tidak"}</td>` +
+        `<td>${escapeHtml(String(row.status_code || "-"))}</td>` +
+      "</tr>";
+    }).join("");
+  }
 
-      kpiRegistered.textContent = String(registeredCount);
-      kpiOnline.textContent = String(onlineCount);
-      registeredRatio.textContent = String(registeredCount);
-      registeredLimit.textContent = String(regLimit);
-      registeredPct.textContent = String(regPctValue);
-      registeredStatus.textContent = regStatusValue;
-      registeredStatus.className = resolveCapacityClass(regStatusValue);
-      onlineRatio.textContent = String(onlineCount);
-      onlineLimit.textContent = String(concLimit);
-      onlinePct.textContent = String(concPctValue);
-      onlineStatus.textContent = concStatusValue;
-      onlineStatus.className = resolveCapacityClass(concStatusValue);
-      registerLimitEnabled.textContent = summary.registered_limit_enabled ? "ON" : "OFF";
-      concurrentLimitEnabled.textContent = summary.concurrent_limit_enabled ? "ON" : "OFF";
+  function renderInfraTable(snapshots) {
+    if (!el.infraSnapshotsBody) return;
+    if (!snapshots || snapshots.length === 0) {
+      el.infraSnapshotsBody.innerHTML = "<tr><td colspan='6' style='padding:14px 12px;color:var(--text-muted);'>Belum ada snapshot infrastruktur.</td></tr>";
+      return;
+    }
 
-      renderOnlineUsers(data.online_users || []);
-      renderRecentUsers(data.recent_registered_users || []);
-    } catch (_) {
-      // no-op
+    el.infraSnapshotsBody.innerHTML = snapshots.map((row) => {
+      return "<tr>" +
+        `<td>${escapeHtml(formatTime(row.captured_at))}</td>` +
+        `<td>${escapeHtml(String(row.cpu_percent || 0))}%</td>` +
+        `<td>${escapeHtml(String(row.memory_percent || 0))}%</td>` +
+        `<td>${escapeHtml(String(row.disk_percent || 0))}%</td>` +
+        `<td>${escapeHtml(String(row.active_sessions || 0))}</td>` +
+        `<td>${escapeHtml(String(row.online_users_non_staff || 0))}</td>` +
+      "</tr>";
+    }).join("");
+  }
+
+  function nearBottom(node) {
+    if (!node) return false;
+    return (node.scrollHeight - node.scrollTop - node.clientHeight) < 40;
+  }
+
+  function renderLogs(logPayload) {
+    if (!logPayload) return;
+
+    if (el.appPath) setText(el.appPath, logPayload.app_log_path || "-");
+    if (el.auditPath) setText(el.auditPath, logPayload.audit_log_path || "-");
+    if (el.appSize) setText(el.appSize, String(logPayload.app_log_size_kb ?? 0));
+    if (el.auditSize) setText(el.auditSize, String(logPayload.audit_log_size_kb ?? 0));
+
+    if (el.appLog) {
+      const autoScroll = nearBottom(el.appLog);
+      el.appLog.textContent = String(logPayload.app_log_text || "");
+      if (autoScroll) el.appLog.scrollTop = el.appLog.scrollHeight;
+    }
+
+    if (el.auditLog) {
+      const autoScroll = nearBottom(el.auditLog);
+      el.auditLog.textContent = String(logPayload.audit_log_text || "");
+      if (autoScroll) el.auditLog.scrollTop = el.auditLog.scrollHeight;
     }
   }
 
-  renderLog(appEl, appEl.textContent || "");
-  renderLog(auditEl, auditEl.textContent || "");
+  // Shared chart theme
+  const chartTheme = {
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+    fontSize: '11px',
+    foreColor: '#94a3b8',
+  };
+  const gridOpts = {
+    borderColor: 'rgba(148,163,184,0.08)',
+    strokeDashArray: 3,
+    xaxis: { lines: { show: false } },
+    yaxis: { lines: { show: true } },
+  };
+  const tooltipOpts = {
+    theme: 'dark',
+    style: { fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '11px' },
+  };
 
-  refreshBtn.addEventListener("click", function () {
-    pullLogs();
-    pullRealtimeUsers();
-  });
-  setInterval(function () {
-    if (autoEl.checked) {
-      pullLogs();
-      pullRealtimeUsers();
+  function initCharts() {
+    if (!window.ApexCharts) return;
+
+    if (el.chartInfra && !state.infraChart) {
+      state.infraChart = new ApexCharts(el.chartInfra, {
+        chart: {
+          type: "area",
+          height: 240,
+          toolbar: { show: false },
+          animations: { easing: "easeinout", speed: 300, animateGradually: { enabled: false } },
+          background: 'transparent',
+          fontFamily: chartTheme.fontFamily,
+          foreColor: chartTheme.foreColor,
+        },
+        stroke: { curve: "smooth", width: [2, 2, 1.5] },
+        fill: {
+          type: "gradient",
+          gradient: {
+            shadeIntensity: 1,
+            opacityFrom: 0.18,
+            opacityTo: 0.01,
+            stops: [0, 95],
+          },
+        },
+        dataLabels: { enabled: false },
+        series: [
+          { name: "CPU", data: [] },
+          { name: "RAM", data: [] },
+          { name: "Disk", data: [] },
+        ],
+        colors: ["#10b981", "#6366f1", "#f43f5e"],
+        xaxis: { categories: [], labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
+        yaxis: { max: 100, min: 0, tickAmount: 4, labels: { style: { fontSize: '10px' } } },
+        legend: { position: "top", fontSize: '11px', fontFamily: chartTheme.fontFamily, markers: { size: 5, shape: 'circle' } },
+        grid: gridOpts,
+        tooltip: tooltipOpts,
+      });
+      state.infraChart.render();
     }
-  }, 5000);
-  pullRealtimeUsers();
+
+    if (el.chartRag && !state.ragChart) {
+      state.ragChart = new ApexCharts(el.chartRag, {
+        chart: {
+          type: "line",
+          height: 240,
+          toolbar: { show: false },
+          animations: { easing: "easeinout", speed: 300, animateGradually: { enabled: false } },
+          background: 'transparent',
+          fontFamily: chartTheme.fontFamily,
+          foreColor: chartTheme.foreColor,
+        },
+        stroke: { curve: "smooth", width: 2 },
+        dataLabels: { enabled: false },
+        series: [
+          { name: "Retrieval ms", data: [] },
+          { name: "LLM ms", data: [] },
+        ],
+        colors: ["#8b5cf6", "#06b6d4"],
+        markers: { size: 0, hover: { size: 4 } },
+        xaxis: { categories: [], labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
+        legend: { position: "top", fontSize: '11px', fontFamily: chartTheme.fontFamily, markers: { size: 5, shape: 'circle' } },
+        grid: gridOpts,
+        tooltip: tooltipOpts,
+      });
+      state.ragChart.render();
+    }
+  }
+
+  function updateInfraChart(snapshots) {
+    if (!state.infraChart || !Array.isArray(snapshots)) return;
+    const rows = snapshots.slice(0, state.maxPoints).reverse();
+
+    const categories = rows.map((r) => formatTime(r.captured_at));
+    const cpu = rows.map((r) => Number(r.cpu_percent || 0));
+    const mem = rows.map((r) => Number(r.memory_percent || 0));
+    const disk = rows.map((r) => Number(r.disk_percent || 0));
+
+    state.infraChart.updateOptions({ xaxis: { categories } }, false, false);
+    state.infraChart.updateSeries([
+      { name: "CPU", data: cpu },
+      { name: "RAM", data: mem },
+      { name: "Disk", data: disk },
+    ], false);
+  }
+
+  function updateRagChart(events) {
+    if (!state.ragChart || !Array.isArray(events)) return;
+    const rows = events.slice(0, state.maxPoints).reverse();
+
+    const categories = rows.map((r) => formatTime(r.created_at));
+    const retrieval = rows.map((r) => Number(r.retrieval_ms || 0));
+    const llm = rows.map((r) => Number(r.llm_time_ms || 0));
+
+    state.ragChart.updateOptions({ xaxis: { categories } }, false, false);
+    state.ragChart.updateSeries([
+      { name: "Retrieval ms", data: retrieval },
+      { name: "LLM ms", data: llm },
+    ], false);
+  }
+
+  async function tick() {
+    if (state.isTicking) return;
+    state.isTicking = true;
+
+    const tasks = [
+      fetchJson(urls.logs),
+      fetchJson(urls.users),
+      fetchJson(urls.overview),
+      fetchJson(urls.rag),
+      fetchJson(urls.infra),
+    ];
+
+    const [logsRes, usersRes, overviewRes, ragRes, infraRes] = await Promise.allSettled(tasks);
+
+    if (logsRes.status === "fulfilled") {
+      renderLogs(logsRes.value);
+    }
+
+    if (usersRes.status === "fulfilled") {
+      const users = usersRes.value;
+      renderCapacity(users.summary || {});
+      renderOnlineUsers(users.online_users || []);
+      renderRecentUsers(users.recent_registered_users || []);
+    }
+
+    if (overviewRes.status === "fulfilled") {
+      renderKPI((overviewRes.value || {}).summary || {});
+    }
+
+    if (ragRes.status === "fulfilled") {
+      const payload = ragRes.value || {};
+      renderRagTable(payload.events || []);
+      setText(el.ragP95, String(payload.p95_retrieval_ms || 0));
+      setText(el.ragP95Inline, String(payload.p95_retrieval_ms || 0));
+      updateRagChart(payload.events || []);
+    }
+
+    if (infraRes.status === "fulfilled") {
+      const payload = infraRes.value || {};
+      renderInfraTable(payload.snapshots || []);
+      updateInfraChart(payload.snapshots || []);
+    }
+
+    state.isTicking = false;
+  }
+
+  function boot() {
+    initCharts();
+    initializeProgressBars();
+
+    if (el.refreshButton) {
+      el.refreshButton.addEventListener("click", function () {
+        tick();
+      });
+    }
+
+    tick();
+    window.setInterval(function () {
+      if (!el.autoToggle || el.autoToggle.checked) {
+        tick();
+      }
+    }, state.pollSeconds * 1000);
+  }
+
+  window.addEventListener("load", boot);
 })();
 </script>
 {% endblock %}

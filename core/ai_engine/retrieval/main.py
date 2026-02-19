@@ -14,6 +14,7 @@ from .rules import _SEMESTER_RE, infer_doc_type
 from .utils import build_sources_from_docs, looks_like_markdown_table, has_interactive_sections
 from .llm import get_runtime_openrouter_config, get_backup_models, build_llm, invoke_text, llm_fallback_message
 from .prompt import LLM_FIRST_TEMPLATE
+from ...monitoring import record_rag_metric
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,22 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
     runtime_cfg = get_runtime_openrouter_config()
     api_key = (runtime_cfg.get("api_key") or "").strip()
     if not api_key:
+        record_rag_metric(
+            request_id=request_id,
+            user_id=user_id,
+            mode="dense",
+            query_len=len((query or "").strip()),
+            dense_hits=0,
+            bm25_hits=0,
+            final_docs=0,
+            retrieval_ms=0,
+            rerank_ms=0,
+            llm_model="",
+            llm_time_ms=0,
+            fallback_used=False,
+            source_count=0,
+            status_code=503,
+        )
         return {
             "answer": "OpenRouter API key belum di-set. Atur di Django Admin (LLM Configuration) atau .env.",
             "sources": [],
@@ -111,13 +128,14 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
     rerank_model = str(os.environ.get("RAG_RERANK_MODEL", "BAAI/bge-reranker-v2-m3")).strip()
     query_preview = q if len(q) <= 140 else q[:140] + "..."
 
+    rag_mode = "hybrid" if use_hybrid else "dense"
     logger.info(
         " RAG start user_id=%s dense_k=%s bm25_k=%s rerank_n=%s mode=%s q='%s'",
         user_id,
         dense_k,
         bm25_k,
         rerank_top_n,
-        "hybrid" if use_hybrid else "dense",
+        rag_mode,
         query_preview,
         extra={"request_id": request_id},
     )
@@ -178,7 +196,7 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
     top_score = float(final_scored[0][1]) if final_scored else 0.0
     logger.info(
         " RAG retrieval done mode=%s query_variants=%s dense_hits=%s bm25_hits=%s final_docs=%s top_score=%.4f retrieval_ms=%s rerank_ms=%s",
-        "hybrid" if use_hybrid else "dense",
+        rag_mode,
         len(query_variants),
         len(dense_all),
         bm25_hits,
@@ -197,6 +215,9 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
         runtime_cfg.get("backup_models"),
     )
     last_error = ""
+    llm_model_name = ""
+    llm_time_ms = 0
+    fallback_used = False
     for idx, model_name in enumerate(backup_models):
         model_t0 = time.time()
         try:
@@ -263,6 +284,8 @@ JAWABAN:
                 idx, model_name, model_dur, total_dur, len(answer), len(sources),
                 extra={"request_id": request_id},
             )
+            llm_model_name = model_name
+            llm_time_ms = int((time.time() - model_t0) * 1000)
 
             if idx > 0:
                 logger.warning(
@@ -270,6 +293,24 @@ JAWABAN:
                     idx, model_name,
                     extra={"request_id": request_id},
                 )
+                fallback_used = True
+
+            record_rag_metric(
+                request_id=request_id,
+                user_id=user_id,
+                mode=rag_mode,
+                query_len=len(q),
+                dense_hits=len(dense_all),
+                bm25_hits=bm25_hits,
+                final_docs=len(docs),
+                retrieval_ms=retrieval_ms,
+                rerank_ms=rerank_ms,
+                llm_model=llm_model_name,
+                llm_time_ms=llm_time_ms,
+                fallback_used=fallback_used,
+                source_count=len(sources),
+                status_code=200,
+            )
 
             return {"answer": answer, "sources": sources}
 
@@ -294,5 +335,22 @@ JAWABAN:
                 extra={"request_id": request_id},
                 exc_info=True,
             )
+
+    record_rag_metric(
+        request_id=request_id,
+        user_id=user_id,
+        mode=rag_mode,
+        query_len=len(q),
+        dense_hits=len(dense_all),
+        bm25_hits=bm25_hits,
+        final_docs=len(docs),
+        retrieval_ms=retrieval_ms,
+        rerank_ms=rerank_ms,
+        llm_model=llm_model_name,
+        llm_time_ms=llm_time_ms,
+        fallback_used=fallback_used,
+        source_count=len(sources),
+        status_code=500,
+    )
 
     return llm_fallback_message(last_error)

@@ -13,6 +13,7 @@ from .presence import (
     maybe_cleanup_stale_presence,
     touch_presence,
 )
+from .monitoring import maybe_cleanup_monitoring_retention, maybe_collect_system_snapshot
 from .system_settings import get_maintenance_state
 
 logger = logging.getLogger("request")
@@ -104,6 +105,8 @@ class UserPresenceMiddleware:
 
     def __call__(self, request):
         maybe_cleanup_stale_presence(chance=0.01)
+        maybe_cleanup_monitoring_retention(chance=0.01)
+        maybe_collect_system_snapshot(chance=0.08)
 
         user = getattr(request, "user", None)
         if not user or not getattr(user, "is_authenticated", False):

@@ -3,9 +3,12 @@ djangorestframework==3.16.1
 inertia-django==1.2.0
 django-vite==3.1.0
 django-axes==8.1.0
+django-unfold==0.44.0
+django-admin-rangefilter==0.13.2
 python-dotenv==1.2.1
 colorlog==6.10.1
 concurrent-log-handler==0.9.28
+psutil==6.1.1
 
 langchain==1.2.7
 langchain-openai==1.1.7

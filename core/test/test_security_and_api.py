@@ -7,7 +7,16 @@ from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings, RequestFactory
 
-from core.models import AcademicDocument, ChatSession, ChatHistory, UserQuota, SystemSetting, UserLoginPresence
+from core.models import (
+    AcademicDocument,
+    ChatSession,
+    ChatHistory,
+    UserQuota,
+    SystemSetting,
+    UserLoginPresence,
+    RagRequestMetric,
+    SystemHealthSnapshot,
+)
 from core.ai_engine.ingest import process_document
 from core import views
 from core.ai_engine.retrieval.main import ask_bot
@@ -549,6 +558,68 @@ class SecurityAndApiTests(TestCase):
         self.assertIn("recent_registered_users", body)
         self.assertIn("active_online_non_staff_count", body["summary"])
         self.assertGreaterEqual(body["summary"]["active_online_non_staff_count"], 1)
+
+    def test_admin_realtime_overview_requires_staff(self):
+        self._announce("Realtime overview endpoint requires staff")
+        self.client.force_login(self.user_a)
+        resp = self.client.get("/admin/realtime-overview/")
+        self.assertIn(resp.status_code, (302, 403))
+
+    def test_admin_realtime_overview_contract_for_staff(self):
+        self._announce("Realtime overview endpoint returns summary for staff")
+        staff = User.objects.create_user(username="staff_observer", password="pass123", is_staff=True)
+        self.client.force_login(staff)
+        resp = self.client.get("/admin/realtime-overview/")
+        self.assertEqual(resp.status_code, 200)
+        body = json.loads(resp.content.decode())
+        self.assertIn("summary", body)
+        self.assertIn("poll_seconds", body)
+        self.assertIn("cpu_percent", body["summary"])
+
+    def test_admin_realtime_rag_and_infra_contract_for_staff(self):
+        self._announce("Realtime rag/infra endpoints return payload for staff")
+        staff = User.objects.create_user(username="staff_ops", password="pass123", is_staff=True)
+        self.client.force_login(staff)
+        resp_rag = self.client.get("/admin/realtime-rag/")
+        resp_infra = self.client.get("/admin/realtime-infra/")
+        self.assertEqual(resp_rag.status_code, 200)
+        self.assertEqual(resp_infra.status_code, 200)
+        rag_body = json.loads(resp_rag.content.decode())
+        infra_body = json.loads(resp_infra.content.decode())
+        self.assertIn("events", rag_body)
+        self.assertIn("p95_retrieval_ms", rag_body)
+        self.assertIn("snapshots", infra_body)
+
+    @patch.dict(os.environ, {"OPENROUTER_API_KEY": "test"})
+    @patch("core.ai_engine.retrieval.main.create_stuff_documents_chain")
+    @patch("core.ai_engine.retrieval.main.build_llm")
+    @patch("core.ai_engine.retrieval.main.get_vectorstore")
+    def test_rag_metric_written_on_success(self, mock_vs, mock_llm, mock_chain):
+        self._announce("RAG telemetry writes RagRequestMetric on success")
+        fake_vs = _FakeVectorStore()
+        mock_vs.return_value = fake_vs
+
+        class _DummyChain:
+            def invoke(self, _):
+                return {"answer": "ok [source: test]"}
+
+        mock_chain.return_value = _DummyChain()
+        mock_llm.return_value = object()
+
+        ask_bot(user_id=self.user_a.id, query="jadwal kuliah", request_id="telemetry-ok")
+        self.assertTrue(RagRequestMetric.objects.filter(request_id="telemetry-ok").exists())
+
+    def test_infra_snapshot_model_writable(self):
+        self._announce("SystemHealthSnapshot can persist sample row")
+        row = SystemHealthSnapshot.objects.create(
+            cpu_percent=10.5,
+            memory_percent=20.5,
+            disk_percent=30.5,
+            load_1m=0.2,
+            active_sessions=1,
+            online_users_non_staff=1,
+        )
+        self.assertIsNotNone(row.id)
 
     def test_maintenance_login_blocked(self):
         self._announce("Maintenance blocks login page and post")
