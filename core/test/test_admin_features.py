@@ -83,6 +83,9 @@ class AdminFeatureTests(TestCase):
         self.assertContains(resp, "Academic RAG Admin Overview")
         self.assertContains(resp, "Quick Actions CRUD")
         self.assertContains(resp, "System Logs Preview")
+        self.assertContains(resp, "Chart: Activity Throughput")
+        self.assertContains(resp, "Chart: Online User Trend")
+        self.assertContains(resp, "Chart: RAG Reliability Mix")
         self.assertIn("quick_admin_links", resp.context)
         self.assertIn("system_logs_url", resp.context)
 

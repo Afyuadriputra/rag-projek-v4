@@ -94,6 +94,9 @@ div.breadcrumbs a:hover {
 
 .admin-quick-nav__title {
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -102,6 +105,9 @@ div.breadcrumbs a:hover {
 }
 
 .admin-quick-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   text-decoration: none;
   font-size: 12px;
   font-weight: 600;
@@ -120,6 +126,12 @@ div.breadcrumbs a:hover {
 .admin-quick-nav__add {
   color: var(--admin-primary) !important;
   border-color: rgba(37, 99, 235, 0.3) !important;
+}
+
+.admin-quick-nav__logs {
+  margin-left: auto;
+  color: var(--admin-success) !important;
+  border-color: rgba(21, 128, 61, 0.35) !important;
 }
 
 #content,
@@ -262,6 +274,13 @@ textarea:focus {
   padding: 14px;
 }
 
+.admin-hero {
+  background:
+    linear-gradient(165deg, rgba(29, 78, 216, 0.08), transparent 40%),
+    linear-gradient(340deg, rgba(14, 165, 233, 0.08), transparent 45%),
+    var(--admin-surface);
+}
+
 .admin-card__title {
   margin: 0;
   font-size: 13px;
@@ -330,6 +349,7 @@ textarea:focus {
 }
 
 .admin-btn {
+  min-height: 44px;
   border: 1px solid var(--admin-border);
   background: var(--admin-surface-muted);
   color: var(--admin-text);
@@ -339,6 +359,16 @@ textarea:focus {
   border-radius: 999px;
   text-decoration: none;
   cursor: pointer;
+}
+
+.admin-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--admin-primary-soft);
+}
+
+.admin-chip input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
 }
 
 .admin-btn:hover {
@@ -468,6 +498,36 @@ textarea:focus {
   font-size: 14px;
   font-weight: 700;
   color: var(--admin-text);
+}
+
+.admin-chart-meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.admin-row--vcenter {
+  align-items: center;
+}
+
+.admin-dashboard {
+  gap: 16px;
+}
+
+.admin-chart-wrap {
+  position: relative;
+  height: 260px;
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-surface-muted);
+  padding: 8px;
+}
+
+@media (max-width: 920px) {
+  .admin-chart-wrap {
+    height: 240px;
+  }
 }
 
 .tok-level-info { color: #4ade80; font-weight: 700; }

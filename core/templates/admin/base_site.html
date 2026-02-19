@@ -6,6 +6,7 @@
 {% block extrastyle %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'admin/css/admin_native_plus.css' %}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 {% endblock %}
 
 {% block branding %}
@@ -18,19 +19,35 @@
 {% endblock %}
 
 {% block extra_userlinks %}
-  <a href="{{ system_logs_url|default:'/admin/system-logs/' }}">{{ system_logs_button_label|default:'System Logs' }}</a>
+  <a href="{{ system_logs_url|default:'/admin/system-logs/' }}">
+    <span class="bi bi-journal-text" aria-hidden="true"></span>
+    {{ system_logs_button_label|default:'System Logs' }}
+  </a>
 {% endblock %}
 
 {% block nav-global %}
   {% if quick_admin_links %}
     <nav class="admin-quick-nav" aria-label="Quick CRUD navigation">
-      <span class="admin-quick-nav__title">Quick Navigation</span>
+      <span class="admin-quick-nav__title">
+        <span class="bi bi-compass" aria-hidden="true"></span>
+        Quick Navigation
+      </span>
       {% for link in quick_admin_links %}
-        <a href="{{ link.list_url }}">{{ link.label }}</a>
+        <a href="{{ link.list_url }}">
+          <span class="bi bi-grid-1x2" aria-hidden="true"></span>
+          {{ link.label }}
+        </a>
         {% if link.add_url %}
-          <a class="admin-quick-nav__add" href="{{ link.add_url }}">+ {{ link.label }}</a>
+          <a class="admin-quick-nav__add" href="{{ link.add_url }}">
+            <span class="bi bi-plus-circle" aria-hidden="true"></span>
+            {{ link.label }}
+          </a>
         {% endif %}
       {% endfor %}
+      <a class="admin-quick-nav__logs" href="{{ system_logs_url|default:'/admin/system-logs/' }}">
+        <span class="bi bi-activity" aria-hidden="true"></span>
+        Logs
+      </a>
     </nav>
   {% endif %}
 {% endblock %}
