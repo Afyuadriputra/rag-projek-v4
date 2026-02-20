@@ -410,7 +410,7 @@ def chat_and_save(user: User, message: str, request_id: str = "-", session_id: i
 
      Pembaruan penting:
     - ask_bot() sekarang mengembalikan dict:
-        {"answer": "...", "sources": [...]}
+        {"answer": "...", "sources": [...], "meta": {...}}
       agar frontend bisa menampilkan "rujukan/source trace".
     """
     session = get_or_create_chat_session(user=user, session_id=session_id)
@@ -430,9 +430,11 @@ def chat_and_save(user: User, message: str, request_id: str = "-", session_id: i
     if isinstance(result, dict):
         answer = result.get("answer", "")
         sources = result.get("sources", []) or []
+        meta = result.get("meta", {}) or {}
     else:
         answer = str(result)
         sources = []
+        meta = {}
 
     ChatHistory.objects.create(user=user, session=session, question=message, answer=answer)
     _maybe_update_session_title(session, message)
@@ -440,7 +442,7 @@ def chat_and_save(user: User, message: str, request_id: str = "-", session_id: i
         session.save(update_fields=["updated_at"])
 
     # Return ke API: answer + sources (sources bisa ditampilkan di UI)
-    return {"answer": answer, "sources": sources, "session_id": session.id}
+    return {"answer": answer, "sources": sources, "meta": meta, "session_id": session.id}
 
 
 def list_sessions(user: User, limit: int = 50, page: int = 1) -> Dict[str, Any]:

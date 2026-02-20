@@ -891,6 +891,7 @@ export default function Index() {
             onUploadClick={onUploadClick}
             loading={loading || deletingDocId !== null}
             deletingDoc={deletingDocId !== null}
+            docs={documents.map((d) => ({ id: d.id, title: d.title }))}
           />
         </main>
       </div>

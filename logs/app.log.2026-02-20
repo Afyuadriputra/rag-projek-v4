@@ -1,0 +1,381 @@
+INFO|01:24:47|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t5|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='jadwal senin'
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t5|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=1 bm25_hits=0 final_docs=1 top_score=0.2000 retrieval_ms=0 rerank_ms=0
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t5|ua=-|rc=-| LLM try idx=0 model=m
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t5|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.01s answer_len=44 sources=1
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t2|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=hybrid q='jadwal semester 3'
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t2|ua=-|rc=-| RAG retrieval done mode=hybrid query_variants=1 dense_hits=2 bm25_hits=2 final_docs=2 top_score=0.9000 retrieval_ms=0 rerank_ms=0
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t2|ua=-|rc=-| LLM try idx=0 model=m
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t2|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.0s answer_len=30 sources=1
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4c|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='jurusan apa yang cocok jadi HRD?'
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4c|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4c|ua=-|rc=-| LLM try idx=0 model=m
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4c|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.0s answer_len=69 sources=0
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='jadwal hari senin jam 07.00'
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4|ua=-|rc=-| LLM try idx=0 model=m
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.0s answer_len=5 sources=0
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4b|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='ipk saya 2.8, aman gak?'
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4b|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4b|ua=-|rc=-| LLM try idx=0 model=m
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t4b|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.01s answer_len=157 sources=0
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t3|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=2 mode=dense q='jadwal kelas'
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t3|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=2 bm25_hits=0 final_docs=2 top_score=0.1000 retrieval_ms=0 rerank_ms=0
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t3|ua=-|rc=-| LLM try idx=0 model=m
+INFO|01:26:03|-|-|-|-ms|user=-|ip=-|rid=t3|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.01s answer_len=28 sources=1
+INFO|01:36:39|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|01:36:41|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|01:36:41|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Watching for file changes with StatReloader
+INFO|01:37:50|GET|/|302|30ms|user=|ip=127.0.0.1|rid=f3f883af64|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Cursor/2.5.17 Chrome/142.0.7444.265 Electron/39.3.0 Safari/537.36|rc=-|HTTP GET / -> 302 (30ms) user= ip=127.0.0.1
+WARNING|01:37:50|-|-|-|-ms|user=-|ip=-|rid=79de994e17|ua=-|rc=-| [LOGIN BLOCKED MAINTENANCE] ip=127.0.0.1 forced=False
+WARNING|01:37:50|-|-|-|-ms|user=-|ip=127.0.0.1|rid=79de994e17|ua=-|rc=-|action=login status=blocked reason=maintenance
+INFO|01:37:50|GET|/login/|503|72ms|user=|ip=127.0.0.1|rid=79de994e17|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Cursor/2.5.17 Chrome/142.0.7444.265 Electron/39.3.0 Safari/537.36|rc=-|HTTP GET /login/ -> 503 (72ms) user= ip=127.0.0.1
+ERROR|01:37:50|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Service Unavailable: /login/
+ERROR|01:37:50|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|"GET /login/?next=/ HTTP/1.1" 503 2611
+WARNING|01:38:04|-|-|-|-ms|user=-|ip=-|rid=9bbd404b2c|ua=-|rc=-| [LOGIN BLOCKED MAINTENANCE] ip=127.0.0.1 forced=False
+WARNING|01:38:04|-|-|-|-ms|user=-|ip=127.0.0.1|rid=9bbd404b2c|ua=-|rc=-|action=login status=blocked reason=maintenance
+INFO|01:38:04|GET|/login/|503|18ms|user=|ip=127.0.0.1|rid=9bbd404b2c|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET /login/ -> 503 (18ms) user= ip=127.0.0.1
+ERROR|01:38:04|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Service Unavailable: /login/
+ERROR|01:38:04|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|"GET /login/?next=/ HTTP/1.1" 503 2611
+WARNING|01:38:05|-|-|-|-ms|user=-|ip=-|rid=c11831948f|ua=-|rc=-| [LOGIN BLOCKED MAINTENANCE] ip=127.0.0.1 forced=False
+WARNING|01:38:05|-|-|-|-ms|user=-|ip=127.0.0.1|rid=c11831948f|ua=-|rc=-|action=login status=blocked reason=maintenance
+INFO|01:38:05|GET|/login/|503|24ms|user=|ip=127.0.0.1|rid=c11831948f|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET /login/ -> 503 (24ms) user= ip=127.0.0.1
+ERROR|01:38:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Service Unavailable: /login/
+ERROR|01:38:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|"GET /login/?next=/ HTTP/1.1" 503 2611
+INFO|01:38:05|GET|/favicon.ico|404|330ms|user=|ip=127.0.0.1|rid=150ec96054|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/login/?next=/|HTTP GET /favicon.ico -> 404 (330ms) user= ip=127.0.0.1
+WARNING|01:38:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|"GET /favicon.ico HTTP/1.1" 404 5612
+INFO|01:38:13|GET|/admin/|302|38ms|user=|ip=127.0.0.1|rid=94d5c51b0c|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET /admin/ -> 302 (38ms) user= ip=127.0.0.1
+INFO|01:38:13|GET|/admin/login/|200|454ms|user=|ip=127.0.0.1|rid=c215729cdc|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET /admin/login/ -> 200 (454ms) user= ip=127.0.0.1
+INFO|01:38:20|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Successful login by {username: "afyu", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/admin/login/"}.
+INFO|01:38:20|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Cleaned up 0 expired access attempts from database that were older than 2026-02-19 18:35:19.367782+00:00
+INFO|01:38:20|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Reset 0 access attempts from database.
+INFO|01:38:20|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Deleted 0 failed login attempts by {username: "afyu", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/admin/login/"} from database.
+INFO|01:38:20|POST|/admin/login/|302|1284ms|user=afyu|ip=127.0.0.1|rid=83828113fb|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/login/?next=/admin/|HTTP POST /admin/login/ -> 302 (1284ms) user=afyu ip=127.0.0.1
+INFO|01:38:24|GET|/admin/|200|3442ms|user=afyu|ip=127.0.0.1|rid=c10fd8e7dd|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/login/?next=/admin/|HTTP GET /admin/ -> 200 (3442ms) user=afyu ip=127.0.0.1
+INFO|01:38:24|GET|/admin/realtime-users/|200|52ms|user=afyu|ip=127.0.0.1|rid=ea73adcf43|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/realtime-users/ -> 200 (52ms) user=afyu ip=127.0.0.1
+INFO|01:38:24|GET|/admin/realtime-infra/|200|72ms|user=afyu|ip=127.0.0.1|rid=85df53e70e|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/realtime-infra/ -> 200 (72ms) user=afyu ip=127.0.0.1
+INFO|01:38:24|GET|/admin/realtime-overview/|200|75ms|user=afyu|ip=127.0.0.1|rid=53270d7e5e|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/realtime-overview/ -> 200 (75ms) user=afyu ip=127.0.0.1
+INFO|01:38:24|GET|/admin/realtime-rag/|200|90ms|user=afyu|ip=127.0.0.1|rid=11e52a9a13|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/realtime-rag/ -> 200 (90ms) user=afyu ip=127.0.0.1
+INFO|01:38:24|GET|/admin/system-logs/tail/|200|123ms|user=afyu|ip=127.0.0.1|rid=07233e1c6c|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/system-logs/tail/ -> 200 (123ms) user=afyu ip=127.0.0.1
+INFO|01:38:29|GET|/admin/realtime-infra/|200|28ms|user=afyu|ip=127.0.0.1|rid=6261a5f789|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/realtime-infra/ -> 200 (28ms) user=afyu ip=127.0.0.1
+INFO|01:38:29|GET|/admin/realtime-rag/|200|72ms|user=afyu|ip=127.0.0.1|rid=2234d92f14|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/realtime-rag/ -> 200 (72ms) user=afyu ip=127.0.0.1
+INFO|01:38:29|GET|/admin/realtime-users/|200|101ms|user=afyu|ip=127.0.0.1|rid=132083fc49|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/realtime-users/ -> 200 (101ms) user=afyu ip=127.0.0.1
+INFO|01:38:29|GET|/admin/system-logs/tail/|200|103ms|user=afyu|ip=127.0.0.1|rid=2bdc06ee33|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/system-logs/tail/ -> 200 (103ms) user=afyu ip=127.0.0.1
+INFO|01:38:29|GET|/admin/realtime-overview/|200|113ms|user=afyu|ip=127.0.0.1|rid=ce695f9133|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/realtime-overview/ -> 200 (113ms) user=afyu ip=127.0.0.1
+INFO|01:38:30|GET|/admin/system-logs/|200|21ms|user=afyu|ip=127.0.0.1|rid=084c54967d|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/system-logs/ -> 200 (21ms) user=afyu ip=127.0.0.1
+INFO|01:38:32|-|-|-|-ms|user=-|ip=-|rid=8799b7a88a|ua=-|rc=-| [VIEW START] user=afyu(id=1) ip=127.0.0.1
+INFO|01:38:32|-|-|-|-ms|user=-|ip=-|rid=8799b7a88a|ua=-|rc=-| [VIEW OK] user=afyu(id=1) hist=0 docs=0 storage=0 B/10.00 MB (0%) in 0.017s
+INFO|01:38:32|GET|/|200|31ms|user=afyu|ip=127.0.0.1|rid=8799b7a88a|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/system-logs/|HTTP GET / -> 200 (31ms) user=afyu ip=127.0.0.1
+INFO|01:38:33|GET|/api/sessions/|200|7ms|user=afyu|ip=127.0.0.1|rid=4d4249cde4|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (7ms) user=afyu ip=127.0.0.1
+INFO|01:38:33|GET|/api/sessions/22/timeline/|200|19ms|user=afyu|ip=127.0.0.1|rid=8ffbb48142|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/22/timeline/ -> 200 (19ms) user=afyu ip=127.0.0.1
+INFO|01:38:33|GET|/api/sessions/|200|32ms|user=afyu|ip=127.0.0.1|rid=66fbeabb25|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (32ms) user=afyu ip=127.0.0.1
+INFO|01:38:33|GET|/api/sessions/22/timeline/|200|20ms|user=afyu|ip=127.0.0.1|rid=617fd61fa6|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/22/timeline/ -> 200 (20ms) user=afyu ip=127.0.0.1
+INFO|01:38:42|-|-|-|-ms|user=-|ip=-|rid=1567bbd244|ua=-|rc=-| [CHAT REQUEST] user=afyu(id=1) ip=127.0.0.1 mode=chat q='halo'
+INFO|01:38:42|-|-|-|-ms|user=-|ip=-|rid=1567bbd244|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='halo'
+INFO|01:38:42|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Use pytorch device_name: cpu
+INFO|01:38:42|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Load pretrained SentenceTransformer: intfloat/multilingual-e5-large
+INFO|01:38:52|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|RAG embedding loaded model=intfloat/multilingual-e5-large normalize=True
+INFO|01:39:01|-|-|-|-ms|user=-|ip=-|rid=1567bbd244|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=6885 rerank_ms=0
+INFO|01:39:01|-|-|-|-ms|user=-|ip=-|rid=1567bbd244|ua=-|rc=-| LLM try idx=0 model=qwen/qwen3-next-80b-a3b-instruct:free
+INFO|01:39:06|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.441311 seconds
+WARNING|01:39:07|-|-|-|-ms|user=-|ip=-|rid=1567bbd244|ua=-|rc=-| LLM fail idx=0 model=qwen/qwen3-next-80b-a3b-instruct:free dur=5.84s err=Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, o...
+INFO|01:39:08|-|-|-|-ms|user=-|ip=-|rid=1567bbd244|ua=-|rc=-| LLM try idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free
+INFO|01:39:10|-|-|-|-ms|user=-|ip=-|rid=1567bbd244|ua=-|rc=-| LLM ok idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free model_time=2.12s total_time=28.1s answer_len=400 sources=0
+WARNING|01:39:10|-|-|-|-ms|user=-|ip=-|rid=1567bbd244|ua=-|rc=-| Fallback used idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free
+INFO|01:39:10|-|-|-|-ms|user=-|ip=-|rid=1567bbd244|ua=-|rc=-| [CHAT RESPONSE] user=afyu(id=1) ip=127.0.0.1 mode=chat len=400 sources=0
+INFO|01:39:10|POST|/api/chat/|200|28316ms|user=afyu|ip=127.0.0.1|rid=1567bbd244|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP POST /api/chat/ -> 200 (28316ms) user=afyu ip=127.0.0.1
+INFO|01:39:10|GET|/api/sessions/|200|40ms|user=afyu|ip=127.0.0.1|rid=25358dde16|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (40ms) user=afyu ip=127.0.0.1
+INFO|01:39:55|-|-|-|-ms|user=-|ip=-|rid=51ce58c78e|ua=-|rc=-| [CHAT REQUEST] user=afyu(id=1) ip=127.0.0.1 mode=chat q='saya mau jadi HRD, jurusan Kuliah apa yang cocok untuk pekerjaan tersebut?'
+INFO|01:39:55|-|-|-|-ms|user=-|ip=-|rid=51ce58c78e|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='saya mau jadi HRD, jurusan Kuliah apa yang cocok untuk pekerjaan tersebut?'
+INFO|01:39:57|-|-|-|-ms|user=-|ip=-|rid=51ce58c78e|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=2387 rerank_ms=0
+INFO|01:39:57|-|-|-|-ms|user=-|ip=-|rid=51ce58c78e|ua=-|rc=-| LLM try idx=0 model=qwen/qwen3-next-80b-a3b-instruct:free
+INFO|01:39:59|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.402251 seconds
+WARNING|01:39:59|-|-|-|-ms|user=-|ip=-|rid=51ce58c78e|ua=-|rc=-| LLM fail idx=0 model=qwen/qwen3-next-80b-a3b-instruct:free dur=2.22s err=Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, o...
+INFO|01:40:00|-|-|-|-ms|user=-|ip=-|rid=51ce58c78e|ua=-|rc=-| LLM try idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free
+INFO|01:40:09|-|-|-|-ms|user=-|ip=-|rid=51ce58c78e|ua=-|rc=-| LLM ok idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free model_time=8.81s total_time=14.39s answer_len=2119 sources=0
+WARNING|01:40:09|-|-|-|-ms|user=-|ip=-|rid=51ce58c78e|ua=-|rc=-| Fallback used idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free
+INFO|01:40:09|-|-|-|-ms|user=-|ip=-|rid=51ce58c78e|ua=-|rc=-| [CHAT RESPONSE] user=afyu(id=1) ip=127.0.0.1 mode=chat len=2119 sources=0
+INFO|01:40:09|POST|/api/chat/|200|14459ms|user=afyu|ip=127.0.0.1|rid=51ce58c78e|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP POST /api/chat/ -> 200 (14459ms) user=afyu ip=127.0.0.1
+INFO|01:40:09|GET|/api/sessions/|200|61ms|user=afyu|ip=127.0.0.1|rid=b466e268c8|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (61ms) user=afyu ip=127.0.0.1
+INFO|01:40:30|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Cleaned up 0 expired access attempts from database that were older than 2026-02-19 18:37:30.933323+00:00
+INFO|01:40:30|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Successful logout by {username: "afyu", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/logout/"}.
+INFO|01:40:30|-|-|-|-ms|user=-|ip=-|rid=cdd38b99ea|ua=-|rc=-| [LOGOUT] user='afyu' ip=127.0.0.1
+INFO|01:40:30|-|-|-|-ms|user=afyu|ip=127.0.0.1|rid=cdd38b99ea|ua=-|rc=-|action=logout status=success session_key=2ro1bsbqki
+INFO|01:40:30|GET|/logout/|302|45ms|user=|ip=127.0.0.1|rid=cdd38b99ea|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /logout/ -> 302 (45ms) user= ip=127.0.0.1
+WARNING|01:40:30|-|-|-|-ms|user=-|ip=-|rid=08c8688e5d|ua=-|rc=-| [LOGIN BLOCKED MAINTENANCE] ip=127.0.0.1 forced=False
+WARNING|01:40:30|-|-|-|-ms|user=-|ip=127.0.0.1|rid=08c8688e5d|ua=-|rc=-|action=login status=blocked reason=maintenance
+INFO|01:40:30|GET|/login/|503|16ms|user=|ip=127.0.0.1|rid=08c8688e5d|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /login/ -> 503 (16ms) user= ip=127.0.0.1
+ERROR|01:40:30|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Service Unavailable: /login/
+ERROR|01:40:31|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|"GET /login/ HTTP/1.1" 503 456
+INFO|01:40:36|GET|/admin/system-logs/|302|7ms|user=|ip=127.0.0.1|rid=c685dc31d4|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/system-logs/ -> 302 (7ms) user= ip=127.0.0.1
+INFO|01:40:36|GET|/admin/login/|200|46ms|user=|ip=127.0.0.1|rid=43708236da|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/|HTTP GET /admin/login/ -> 200 (46ms) user= ip=127.0.0.1
+INFO|01:40:42|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Successful login by {username: "afyu", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/admin/login/"}.
+INFO|01:40:42|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Cleaned up 0 expired access attempts from database that were older than 2026-02-19 18:37:40.907030+00:00
+INFO|01:40:42|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Reset 0 access attempts from database.
+INFO|01:40:42|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Deleted 0 failed login attempts by {username: "afyu", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/admin/login/"} from database.
+INFO|01:40:42|POST|/admin/login/|302|1236ms|user=afyu|ip=127.0.0.1|rid=d3c1e6458f|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/login/?next=/admin/system-logs/|HTTP POST /admin/login/ -> 302 (1236ms) user=afyu ip=127.0.0.1
+INFO|01:40:42|GET|/admin/system-logs/|200|35ms|user=afyu|ip=127.0.0.1|rid=d5e648889f|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/login/?next=/admin/system-logs/|HTTP GET /admin/system-logs/ -> 200 (35ms) user=afyu ip=127.0.0.1
+INFO|01:40:45|GET|/admin/core/systemsetting/|200|404ms|user=afyu|ip=127.0.0.1|rid=0a71765fe5|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/system-logs/|HTTP GET /admin/core/systemsetting/ -> 200 (404ms) user=afyu ip=127.0.0.1
+INFO|01:40:45|GET|/admin/jsi18n/|200|129ms|user=afyu|ip=127.0.0.1|rid=a6e335f252|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/core/systemsetting/|HTTP GET /admin/jsi18n/ -> 200 (129ms) user=afyu ip=127.0.0.1
+INFO|01:40:47|GET|/admin/core/systemsetting/1/change/|200|462ms|user=afyu|ip=127.0.0.1|rid=32a1c119e2|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/core/systemsetting/|HTTP GET /admin/core/systemsetting/1/change/ -> 200 (462ms) user=afyu ip=127.0.0.1
+INFO|01:40:47|GET|/admin/jsi18n/|200|22ms|user=afyu|ip=127.0.0.1|rid=6e3d4f7aa9|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/core/systemsetting/1/change/|HTTP GET /admin/jsi18n/ -> 200 (22ms) user=afyu ip=127.0.0.1
+INFO|01:40:53|POST|/admin/core/systemsetting/1/change/|302|38ms|user=afyu|ip=127.0.0.1|rid=023d32c48a|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/core/systemsetting/1/change/|HTTP POST /admin/core/systemsetting/1/change/ -> 302 (38ms) user=afyu ip=127.0.0.1
+INFO|01:40:53|GET|/admin/core/systemsetting/|200|65ms|user=afyu|ip=127.0.0.1|rid=44186f93dd|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/core/systemsetting/1/change/|HTTP GET /admin/core/systemsetting/ -> 200 (65ms) user=afyu ip=127.0.0.1
+INFO|01:40:53|GET|/admin/jsi18n/|200|11ms|user=afyu|ip=127.0.0.1|rid=82632d4f66|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/core/systemsetting/|HTTP GET /admin/jsi18n/ -> 200 (11ms) user=afyu ip=127.0.0.1
+INFO|01:40:55|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Cleaned up 0 expired access attempts from database that were older than 2026-02-19 18:37:55.246862+00:00
+INFO|01:40:55|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Successful logout by {username: "afyu", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/admin/logout/"}.
+INFO|01:40:55|POST|/admin/logout/|302|30ms|user=|ip=127.0.0.1|rid=69c4e64eda|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/core/systemsetting/|HTTP POST /admin/logout/ -> 302 (30ms) user= ip=127.0.0.1
+INFO|01:40:55|GET|/login/|200|13ms|user=|ip=127.0.0.1|rid=3ee7774195|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/admin/core/systemsetting/|HTTP GET /login/ -> 200 (13ms) user= ip=127.0.0.1
+INFO|01:41:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Successful login by {username: "iki uir", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/login/"}.
+INFO|01:41:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Cleaned up 0 expired access attempts from database that were older than 2026-02-19 18:38:04.826125+00:00
+INFO|01:41:06|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Reset 0 access attempts from database.
+INFO|01:41:06|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Deleted 0 failed login attempts by {username: "iki uir", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/login/"} from database.
+INFO|01:41:06|-|-|-|-ms|user=-|ip=-|rid=fcd1bd968a|ua=-|rc=-| [LOGIN SUCCESS] user=iki uir id=6 ip=127.0.0.1
+INFO|01:41:06|-|-|-|-ms|user=iki uir|ip=127.0.0.1|rid=fcd1bd968a|ua=-|rc=-|action=login status=success user_id=6
+INFO|01:41:06|POST|/login/|302|1207ms|user=iki uir|ip=127.0.0.1|rid=fcd1bd968a|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/login/|HTTP POST /login/ -> 302 (1207ms) user=iki uir ip=127.0.0.1
+INFO|01:41:06|-|-|-|-ms|user=-|ip=-|rid=1c8cb90d1d|ua=-|rc=-| [VIEW START] user=iki uir(id=6) ip=127.0.0.1
+INFO|01:41:06|-|-|-|-ms|user=-|ip=-|rid=1c8cb90d1d|ua=-|rc=-| [VIEW OK] user=iki uir(id=6) hist=0 docs=0 storage=0 B/10.00 MB (0%) in 0.0119s
+INFO|01:41:06|GET|/|200|25ms|user=iki uir|ip=127.0.0.1|rid=1c8cb90d1d|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/login/|HTTP GET / -> 200 (25ms) user=iki uir ip=127.0.0.1
+INFO|01:41:06|GET|/api/sessions/|200|13ms|user=iki uir|ip=127.0.0.1|rid=0ab3c6487a|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (13ms) user=iki uir ip=127.0.0.1
+INFO|01:41:06|GET|/api/sessions/|200|14ms|user=iki uir|ip=127.0.0.1|rid=4f8ac4f855|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (14ms) user=iki uir ip=127.0.0.1
+INFO|01:41:06|GET|/api/sessions/42/timeline/|200|30ms|user=iki uir|ip=127.0.0.1|rid=a233f3dcfa|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/42/timeline/ -> 200 (30ms) user=iki uir ip=127.0.0.1
+INFO|01:41:06|GET|/api/sessions/42/timeline/|200|16ms|user=iki uir|ip=127.0.0.1|rid=5cf64b6fcf|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/42/timeline/ -> 200 (16ms) user=iki uir ip=127.0.0.1
+INFO|01:41:12|-|-|-|-ms|user=iki uir|ip=127.0.0.1|rid=a9f7df5a0d|ua=-|rc=-|action=session_delete status=success session_id=41
+INFO|01:41:12|DELETE|/api/sessions/41/|200|21ms|user=iki uir|ip=127.0.0.1|rid=a9f7df5a0d|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP DELETE /api/sessions/41/ -> 200 (21ms) user=iki uir ip=127.0.0.1
+INFO|01:41:14|-|-|-|-ms|user=iki uir|ip=127.0.0.1|rid=205d08ad04|ua=-|rc=-|action=session_delete status=success session_id=40
+INFO|01:41:14|DELETE|/api/sessions/40/|200|26ms|user=iki uir|ip=127.0.0.1|rid=205d08ad04|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP DELETE /api/sessions/40/ -> 200 (26ms) user=iki uir ip=127.0.0.1
+INFO|01:41:17|-|-|-|-ms|user=iki uir|ip=127.0.0.1|rid=36702b09a5|ua=-|rc=-|action=session_delete status=success session_id=42
+INFO|01:41:17|DELETE|/api/sessions/42/|200|17ms|user=iki uir|ip=127.0.0.1|rid=36702b09a5|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP DELETE /api/sessions/42/ -> 200 (17ms) user=iki uir ip=127.0.0.1
+INFO|01:41:52|-|-|-|-ms|user=-|ip=-|rid=f3fecf98b0|ua=-|rc=-| [BATCH START] user=iki uir(id=6) ip=127.0.0.1 files=1
+INFO|01:41:52|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| MULAI PARSING: Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf (Type: pdf)
+INFO|01:42:41|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.389812 seconds
+WARNING|01:42:42|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Venice', 'is_byok': False}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|01:42:43|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.449119 seconds
+WARNING|01:42:44|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Venice', 'is_byok': False}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|01:42:45|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.482445 seconds
+WARNING|01:42:46|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Venice', 'is_byok': False}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|01:42:46|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.446379 seconds
+WARNING|01:42:48|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Venice', 'is_byok': False}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|01:42:48|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.385230 seconds
+WARNING|01:42:49|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Rate limit exceeded: limit_rpm/qwen/qwen3-next-80b-a3b-instruct-2509/94248808-ba97-4e3c-be60-1cb0928db51d. High demand for qwen/qwen3-next-80b-a3b-instruct:free on OpenRouter - limited to 8 requests per minute. Please retry shortly.', 'code': 429, 'metadata': {'headers': {'X-RateLimit-Limit': '8', 'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': '1771526580000'}, 'provider_name': None}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|01:42:49|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.450271 seconds
+WARNING|01:42:50|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Rate limit exceeded: limit_rpm/qwen/qwen3-next-80b-a3b-instruct-2509/94248808-ba97-4e3c-be60-1cb0928db51d. High demand for qwen/qwen3-next-80b-a3b-instruct:free on OpenRouter - limited to 8 requests per minute. Please retry shortly.', 'code': 429, 'metadata': {'headers': {'X-RateLimit-Limit': '8', 'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': '1771526580000'}, 'provider_name': None}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|01:42:50|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.470884 seconds
+WARNING|01:42:51|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Rate limit exceeded: limit_rpm/qwen/qwen3-next-80b-a3b-instruct-2509/94248808-ba97-4e3c-be60-1cb0928db51d. High demand for qwen/qwen3-next-80b-a3b-instruct:free on OpenRouter - limited to 8 requests per minute. Please retry shortly.', 'code': 429, 'metadata': {'headers': {'X-RateLimit-Limit': '8', 'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': '1771526580000'}, 'provider_name': None}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|01:42:51|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| HYBRID_REPAIR source=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf checked=1449 candidates=168 repaired=0 run=172dc411
+INFO|01:42:51|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| CSV canonical review source=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf rows=1382 cols=10
+NO,HARI,SESI,JAM,Ruang,SMT,MATA_KULIAH,SKS,KLS,DOSEN_PENGAMPU_TEAM_TEACHING
+1,SENIN,I,07:00-07:50,1.10,3,Hukum Administrasi Negara,3,A,"Abdul Hadi Anshary, S.H., M.H."
+2,SENIN,I,07:00-07:50,1.11,1,Pendidikan Agama Islam,2,A,"Dr.Muhibudin Zaini, S.Ag,S.E., M.Si"
+3,SENIN,I,07:00-07:50,1.12,3,Hukum Ketenagakerjaan,3,H,"Lidia Febrianti, S.H., M.H./ Puti Mayang Seruni, S.H.,M.H"
+4,SENIN,I,07:00-07:50,1.14,1,Ilmu Negara,2,D,"Assoc.Prof.Dr. Ir. H. Suparto, S.H., S.IP., MM., M.Si., M.H."
+5,SENIN,I,07:00-07:50,2.01,5,Hukum Acara Perdata,3,A,"Assoc.Prof.Dr. Admiral, S.H., M.H."
+6,SENIN,I,07:00-07:50,2.03,3,Hukum Internasional,3,C,"S. Parman, S.H., M.H."
+7,SENIN,I,07:00-07:50,2.04,3,Delik-delik Dalam KUHP,3,L,"Dr. Zulkarnain S, S.H., M.H."
+8,SENIN,I,07:00-07:50,2.05,5,Sosiologi Hukum,2,I,"Wira Atma Hajri, S.H., M.H/Hayatun Nufus, S.H.,M.H"
+9,SENIN,I,07:00-07:50,2.06,5,Hukum Acara Peradilan Agama,2,A,"Dr. Riadi Asra Rahmad, S.H., M.H."
+10,SENIN,I,07:00-07:50,2.07,5,Sosiologi Hukum,2,A,"Assoc.Prof.Dr. Hj. Sri Wahyuni, S.H., M.Si."
+11,SENIN,I,07:00-07:50,2.08,1,Pengantar Hukum Indonesia,3,L,"Dr. H. Zulfikri Toguan, SH., MH."
+... (+1371 rows)
+INFO|03:27:03|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|03:27:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|03:27:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Watching for file changes with StatReloader
+INFO|03:28:59|GET|/|302|43ms|user=|ip=127.0.0.1|rid=ab9a188565|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Cursor/2.5.17 Chrome/142.0.7444.265 Electron/39.3.0 Safari/537.36|rc=-|HTTP GET / -> 302 (43ms) user= ip=127.0.0.1
+INFO|03:28:59|GET|/login/|200|46ms|user=|ip=127.0.0.1|rid=0c28694d2f|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Cursor/2.5.17 Chrome/142.0.7444.265 Electron/39.3.0 Safari/537.36|rc=-|HTTP GET /login/ -> 200 (46ms) user= ip=127.0.0.1
+INFO|03:29:08|-|-|-|-ms|user=-|ip=-|rid=7b8f515cc9|ua=-|rc=-| [AUTH] already logged in -> redirect home
+INFO|03:29:08|GET|/login/|302|32ms|user=iki uir|ip=127.0.0.1|rid=7b8f515cc9|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET /login/ -> 302 (32ms) user=iki uir ip=127.0.0.1
+INFO|03:29:08|-|-|-|-ms|user=-|ip=-|rid=093f355642|ua=-|rc=-| [VIEW START] user=iki uir(id=6) ip=127.0.0.1
+INFO|03:29:08|-|-|-|-ms|user=-|ip=-|rid=093f355642|ua=-|rc=-| [VIEW OK] user=iki uir(id=6) hist=0 docs=1 storage=2.18 MB/10.00 MB (21%) in 0.0434s
+INFO|03:29:08|GET|/|200|56ms|user=iki uir|ip=127.0.0.1|rid=093f355642|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET / -> 200 (56ms) user=iki uir ip=127.0.0.1
+INFO|03:29:08|-|-|-|-ms|user=-|ip=-|rid=7ea03d9a54|ua=-|rc=-| [AUTH] already logged in -> redirect home
+INFO|03:29:08|GET|/login/|302|18ms|user=iki uir|ip=127.0.0.1|rid=7ea03d9a54|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET /login/ -> 302 (18ms) user=iki uir ip=127.0.0.1
+INFO|03:29:08|-|-|-|-ms|user=-|ip=-|rid=12403f9a31|ua=-|rc=-| [VIEW START] user=iki uir(id=6) ip=127.0.0.1
+INFO|03:29:08|-|-|-|-ms|user=-|ip=-|rid=12403f9a31|ua=-|rc=-| [VIEW OK] user=iki uir(id=6) hist=0 docs=1 storage=2.18 MB/10.00 MB (21%) in 0.0164s
+INFO|03:29:08|GET|/|200|26ms|user=iki uir|ip=127.0.0.1|rid=12403f9a31|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET / -> 200 (26ms) user=iki uir ip=127.0.0.1
+INFO|03:29:09|GET|/api/sessions/|200|9ms|user=iki uir|ip=127.0.0.1|rid=a13cb7a303|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (9ms) user=iki uir ip=127.0.0.1
+INFO|03:29:09|GET|/api/sessions/43/timeline/|200|16ms|user=iki uir|ip=127.0.0.1|rid=eb899d8d60|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/43/timeline/ -> 200 (16ms) user=iki uir ip=127.0.0.1
+INFO|03:29:09|GET|/api/sessions/|200|17ms|user=iki uir|ip=127.0.0.1|rid=a60721edd2|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (17ms) user=iki uir ip=127.0.0.1
+INFO|03:29:09|GET|/api/sessions/43/timeline/|200|13ms|user=iki uir|ip=127.0.0.1|rid=8a307afcb8|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/43/timeline/ -> 200 (13ms) user=iki uir ip=127.0.0.1
+INFO|03:29:09|GET|/favicon.ico|404|51ms|user=iki uir|ip=127.0.0.1|rid=08f0baa0ba|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /favicon.ico -> 404 (51ms) user=iki uir ip=127.0.0.1
+WARNING|03:29:09|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|"GET /favicon.ico HTTP/1.1" 404 5612
+INFO|03:29:13|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Use pytorch device_name: cpu
+INFO|03:29:13|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Load pretrained SentenceTransformer: intfloat/multilingual-e5-large
+INFO|03:29:22|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|RAG embedding loaded model=intfloat/multilingual-e5-large normalize=True
+INFO|03:29:23|-|-|-|-ms|user=-|ip=-|rid=d38d25949f|ua=-|rc=-| [DOC DELETE OK] user=iki uir(id=6) ip=127.0.0.1 doc_id=142
+INFO|03:29:23|-|-|-|-ms|user=iki uir|ip=127.0.0.1|rid=d38d25949f|ua=-|rc=-|action=doc_delete status=success doc_id=142
+INFO|03:29:23|DELETE|/api/documents/142/|200|9844ms|user=iki uir|ip=127.0.0.1|rid=d38d25949f|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP DELETE /api/documents/142/ -> 200 (9844ms) user=iki uir ip=127.0.0.1
+INFO|03:29:23|-|-|-|-ms|user=-|ip=-|rid=ea9b83109b|ua=-|rc=-| [DOCS API OK] user=iki uir(id=6) ip=127.0.0.1 docs=0 storage=0 B(0%)
+INFO|03:29:23|GET|/api/documents/|200|10ms|user=iki uir|ip=127.0.0.1|rid=ea9b83109b|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/documents/ -> 200 (10ms) user=iki uir ip=127.0.0.1
+INFO|03:29:33|-|-|-|-ms|user=-|ip=-|rid=8197c08bc7|ua=-|rc=-| [VIEW START] user=iki uir(id=6) ip=127.0.0.1
+INFO|03:29:33|-|-|-|-ms|user=-|ip=-|rid=8197c08bc7|ua=-|rc=-| [VIEW OK] user=iki uir(id=6) hist=0 docs=0 storage=0 B/10.00 MB (0%) in 0.0154s
+INFO|03:29:33|GET|/|200|28ms|user=iki uir|ip=127.0.0.1|rid=8197c08bc7|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET / -> 200 (28ms) user=iki uir ip=127.0.0.1
+INFO|03:29:34|GET|/api/sessions/|200|9ms|user=iki uir|ip=127.0.0.1|rid=70f9f73ca7|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (9ms) user=iki uir ip=127.0.0.1
+INFO|03:29:34|GET|/api/sessions/43/timeline/|200|19ms|user=iki uir|ip=127.0.0.1|rid=eec2bcfc01|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/43/timeline/ -> 200 (19ms) user=iki uir ip=127.0.0.1
+INFO|03:29:34|GET|/api/sessions/|200|19ms|user=iki uir|ip=127.0.0.1|rid=d62e342b2e|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (19ms) user=iki uir ip=127.0.0.1
+INFO|03:29:34|GET|/api/sessions/43/timeline/|200|17ms|user=iki uir|ip=127.0.0.1|rid=d5c4c62816|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/43/timeline/ -> 200 (17ms) user=iki uir ip=127.0.0.1
+INFO|03:30:05|-|-|-|-ms|user=-|ip=-|rid=d5e8a91b4d|ua=-|rc=-| [BATCH START] user=iki uir(id=6) ip=127.0.0.1 files=1
+INFO|03:30:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| MULAI PARSING: Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf (Type: pdf)
+INFO|03:31:00|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.404255 seconds
+WARNING|03:31:01|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Venice', 'is_byok': False}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|03:31:02|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.382243 seconds
+WARNING|03:31:03|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Venice', 'is_byok': False}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|03:31:04|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.496230 seconds
+WARNING|03:31:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Venice', 'is_byok': False}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|03:31:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.415535 seconds
+WARNING|03:31:06|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Venice', 'is_byok': False}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|03:31:07|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.382943 seconds
+WARNING|03:31:08|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Rate limit exceeded: limit_rpm/qwen/qwen3-next-80b-a3b-instruct-2509/94248808-ba97-4e3c-be60-1cb0928db51d. High demand for qwen/qwen3-next-80b-a3b-instruct:free on OpenRouter - limited to 8 requests per minute. Please retry shortly.', 'code': 429, 'metadata': {'headers': {'X-RateLimit-Limit': '8', 'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': '1771533120000'}, 'provider_name': None}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|03:31:08|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.381448 seconds
+WARNING|03:31:09|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Rate limit exceeded: limit_rpm/qwen/qwen3-next-80b-a3b-instruct-2509/94248808-ba97-4e3c-be60-1cb0928db51d. High demand for qwen/qwen3-next-80b-a3b-instruct:free on OpenRouter - limited to 8 requests per minute. Please retry shortly.', 'code': 429, 'metadata': {'headers': {'X-RateLimit-Limit': '8', 'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': '1771533120000'}, 'provider_name': None}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|03:31:09|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.385825 seconds
+WARNING|03:31:10|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| Hybrid LLM repair batch gagal: Error code: 429 - {'error': {'message': 'Rate limit exceeded: limit_rpm/qwen/qwen3-next-80b-a3b-instruct-2509/94248808-ba97-4e3c-be60-1cb0928db51d. High demand for qwen/qwen3-next-80b-a3b-instruct:free on OpenRouter - limited to 8 requests per minute. Please retry shortly.', 'code': 429, 'metadata': {'headers': {'X-RateLimit-Limit': '8', 'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': '1771533120000'}, 'provider_name': None}}, 'user_id': 'user_36vkldbmKz23PmeixKyhYlruPut'}
+INFO|03:31:10|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| HYBRID_REPAIR source=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf checked=1449 candidates=168 repaired=0 run=b99f7885
+INFO|03:31:10|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-| CSV canonical review source=Jadwal Mata Kuliah Semester GANJIL TA.2024-2025.pdf rows=1382 cols=10
+NO,HARI,SESI,JAM,Ruang,SMT,MATA_KULIAH,SKS,KLS,DOSEN_PENGAMPU_TEAM_TEACHING
+1,SENIN,I,07:00-07:50,1.10,3,Hukum Administrasi Negara,3,A,"Abdul Hadi Anshary, S.H., M.H."
+2,SENIN,I,07:00-07:50,1.11,1,Pendidikan Agama Islam,2,A,"Dr.Muhibudin Zaini, S.Ag,S.E., M.Si"
+3,SENIN,I,07:00-07:50,1.12,3,Hukum Ketenagakerjaan,3,H,"Lidia Febrianti, S.H., M.H./ Puti Mayang Seruni, S.H.,M.H"
+4,SENIN,I,07:00-07:50,1.14,1,Ilmu Negara,2,D,"Assoc.Prof.Dr. Ir. H. Suparto, S.H., S.IP., MM., M.Si., M.H."
+5,SENIN,I,07:00-07:50,2.01,5,Hukum Acara Perdata,3,A,"Assoc.Prof.Dr. Admiral, S.H., M.H."
+6,SENIN,I,07:00-07:50,2.03,3,Hukum Internasional,3,C,"S. Parman, S.H., M.H."
+7,SENIN,I,07:00-07:50,2.04,3,Delik-delik Dalam KUHP,3,L,"Dr. Zulkarnain S, S.H., M.H."
+8,SENIN,I,07:00-07:50,2.05,5,Sosiologi Hukum,2,I,"Wira Atma Hajri, S.H., M.H/Hayatun Nufus, S.H.,M.H"
+9,SENIN,I,07:00-07:50,2.06,5,Hukum Acara Peradilan Agama,2,A,"Dr. Riadi Asra Rahmad, S.H., M.H."
+10,SENIN,I,07:00-07:50,2.07,5,Sosiologi Hukum,2,A,"Assoc.Prof.Dr. Hj. Sri Wahyuni, S.H., M.Si."
+11,SENIN,I,07:00-07:50,2.08,1,Pengantar Hukum Indonesia,3,L,"Dr. H. Zulfikri Toguan, SH., MH."
+... (+1371 rows)
+INFO|23:05:26|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|23:05:28|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|23:05:28|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Watching for file changes with StatReloader
+INFO|23:08:43|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t9|ua=-|rc=-| RAG guard hit decision=refuse_crime reason=crime_or_harmful_request tags=['\\bjudi\\b', '\\bjudi online\\b']
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t5|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='jadwal senin'
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t5|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=1 bm25_hits=0 final_docs=1 top_score=0.2000 retrieval_ms=0 rerank_ms=0
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t5|ua=-|rc=-| LLM try idx=0 model=m
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t5|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.01s answer_len=44 sources=1
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t8|ua=-|rc=-| RAG guard hit decision=redirect_weird reason=out_of_scope_weird_query tags=['ramalan hoki', 'cara jadi dukun', 'santet', 'pesugihan', 'cara hipnotis orang']
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t6|ua=-|rc=-| RAG guard hit decision=refuse_crime reason=crime_or_harmful_request tags=['\\bjudi\\b', '\\bjudi online\\b']
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t7|ua=-|rc=-| RAG guard hit decision=refuse_political reason=political_persuasion_request tags=['\\bkampanye\\b', '\\bpropaganda\\b']
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t2|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=hybrid q='jadwal semester 3'
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t2|ua=-|rc=-| RAG retrieval done mode=hybrid query_variants=1 dense_hits=2 bm25_hits=2 final_docs=2 top_score=0.9000 retrieval_ms=0 rerank_ms=0
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t2|ua=-|rc=-| LLM try idx=0 model=m
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t2|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.0s answer_len=30 sources=1
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4c|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='jurusan apa yang cocok jadi HRD?'
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4c|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4c|ua=-|rc=-| LLM try idx=0 model=m
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4c|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.01s answer_len=69 sources=0
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='jadwal hari senin jam 07.00'
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4|ua=-|rc=-| LLM try idx=0 model=m
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.01s answer_len=5 sources=0
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4b|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='ipk saya 2.8, aman gak?'
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4b|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4b|ua=-|rc=-| LLM try idx=0 model=m
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t4b|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.0s answer_len=157 sources=0
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t3|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=2 mode=dense q='jadwal kelas'
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t3|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=2 bm25_hits=0 final_docs=2 top_score=0.1000 retrieval_ms=0 rerank_ms=0
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t3|ua=-|rc=-| LLM try idx=0 model=m
+INFO|23:09:05|-|-|-|-ms|user=-|ip=-|rid=t3|ua=-|rc=-| LLM ok idx=0 model=m model_time=0.0s total_time=0.01s answer_len=28 sources=1
+INFO|23:11:56|GET|/|302|392ms|user=|ip=127.0.0.1|rid=656569c5ac|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Cursor/2.5.17 Chrome/142.0.7444.265 Electron/39.3.0 Safari/537.36|rc=-|HTTP GET / -> 302 (392ms) user= ip=127.0.0.1
+INFO|23:11:57|GET|/login/|200|85ms|user=|ip=127.0.0.1|rid=86a60a99a9|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Cursor/2.5.17 Chrome/142.0.7444.265 Electron/39.3.0 Safari/537.36|rc=-|HTTP GET /login/ -> 200 (85ms) user= ip=127.0.0.1
+INFO|23:12:03|-|-|-|-ms|user=-|ip=-|rid=fdacbebb37|ua=-|rc=-| [AUTH] already logged in -> redirect home
+INFO|23:12:03|GET|/login/|302|44ms|user=iki uir|ip=127.0.0.1|rid=fdacbebb37|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET /login/ -> 302 (44ms) user=iki uir ip=127.0.0.1
+INFO|23:12:04|-|-|-|-ms|user=-|ip=-|rid=257599b21b|ua=-|rc=-| [VIEW START] user=iki uir(id=6) ip=127.0.0.1
+INFO|23:12:04|-|-|-|-ms|user=-|ip=-|rid=257599b21b|ua=-|rc=-| [VIEW OK] user=iki uir(id=6) hist=0 docs=1 storage=2.18 MB/10.00 MB (21%) in 0.0211s
+INFO|23:12:04|GET|/|200|34ms|user=iki uir|ip=127.0.0.1|rid=257599b21b|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET / -> 200 (34ms) user=iki uir ip=127.0.0.1
+INFO|23:12:04|GET|/api/sessions/|200|15ms|user=iki uir|ip=127.0.0.1|rid=4254c304fd|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (15ms) user=iki uir ip=127.0.0.1
+INFO|23:12:04|GET|/api/sessions/|200|24ms|user=iki uir|ip=127.0.0.1|rid=c5ff3171fc|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (24ms) user=iki uir ip=127.0.0.1
+INFO|23:12:04|GET|/api/sessions/43/timeline/|200|31ms|user=iki uir|ip=127.0.0.1|rid=8a1cf0709f|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/43/timeline/ -> 200 (31ms) user=iki uir ip=127.0.0.1
+INFO|23:12:04|GET|/api/sessions/43/timeline/|200|22ms|user=iki uir|ip=127.0.0.1|rid=31d65fda25|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/43/timeline/ -> 200 (22ms) user=iki uir ip=127.0.0.1
+INFO|23:12:07|GET|/favicon.ico|404|2701ms|user=iki uir|ip=127.0.0.1|rid=6699eb08d7|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /favicon.ico -> 404 (2701ms) user=iki uir ip=127.0.0.1
+WARNING|23:12:07|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|"GET /favicon.ico HTTP/1.1" 404 5612
+INFO|23:12:10|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Cleaned up 0 expired access attempts from database that were older than 2026-02-20 16:09:10.013423+00:00
+INFO|23:12:10|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Successful logout by {username: "iki uir", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/logout/"}.
+INFO|23:12:10|-|-|-|-ms|user=-|ip=-|rid=108ec38f98|ua=-|rc=-| [LOGOUT] user='iki uir' ip=127.0.0.1
+INFO|23:12:10|-|-|-|-ms|user=iki uir|ip=127.0.0.1|rid=108ec38f98|ua=-|rc=-|action=logout status=success session_key=3ma0k2rncw
+INFO|23:12:10|GET|/logout/|302|48ms|user=|ip=127.0.0.1|rid=108ec38f98|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /logout/ -> 302 (48ms) user= ip=127.0.0.1
+INFO|23:12:10|GET|/login/|200|14ms|user=|ip=127.0.0.1|rid=1271a379cf|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /login/ -> 200 (14ms) user= ip=127.0.0.1
+INFO|23:12:18|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Successful login by {username: "afyu", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/login/"}.
+INFO|23:12:18|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Cleaned up 0 expired access attempts from database that were older than 2026-02-20 16:09:17.362112+00:00
+INFO|23:12:18|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Reset 0 access attempts from database.
+INFO|23:12:18|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: Deleted 0 failed login attempts by {username: "afyu", ip_address: "127.0.0.1", user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36", path_info: "/login/"} from database.
+INFO|23:12:18|-|-|-|-ms|user=-|ip=-|rid=0ce2184338|ua=-|rc=-| [LOGIN SUCCESS] user=afyu id=1 ip=127.0.0.1
+INFO|23:12:18|-|-|-|-ms|user=afyu|ip=127.0.0.1|rid=0ce2184338|ua=-|rc=-|action=login status=success user_id=1
+INFO|23:12:18|POST|/login/|302|1323ms|user=afyu|ip=127.0.0.1|rid=0ce2184338|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/login/|HTTP POST /login/ -> 302 (1323ms) user=afyu ip=127.0.0.1
+INFO|23:12:18|-|-|-|-ms|user=-|ip=-|rid=0298bb0e93|ua=-|rc=-| [VIEW START] user=afyu(id=1) ip=127.0.0.1
+INFO|23:12:18|-|-|-|-ms|user=-|ip=-|rid=0298bb0e93|ua=-|rc=-| [VIEW OK] user=afyu(id=1) hist=2 docs=0 storage=0 B/10.00 MB (0%) in 0.0132s
+INFO|23:12:18|GET|/|200|29ms|user=afyu|ip=127.0.0.1|rid=0298bb0e93|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/login/|HTTP GET / -> 200 (29ms) user=afyu ip=127.0.0.1
+INFO|23:12:18|GET|/api/sessions/|200|18ms|user=afyu|ip=127.0.0.1|rid=23ddd7812c|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (18ms) user=afyu ip=127.0.0.1
+INFO|23:12:18|GET|/api/sessions/22/timeline/|200|21ms|user=afyu|ip=127.0.0.1|rid=9ce60de95f|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/22/timeline/ -> 200 (21ms) user=afyu ip=127.0.0.1
+INFO|23:12:18|GET|/api/sessions/|200|24ms|user=afyu|ip=127.0.0.1|rid=aa69fbebd1|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (24ms) user=afyu ip=127.0.0.1
+INFO|23:12:18|GET|/api/sessions/22/timeline/|200|25ms|user=afyu|ip=127.0.0.1|rid=9649d0e102|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/22/timeline/ -> 200 (25ms) user=afyu ip=127.0.0.1
+INFO|23:12:23|-|-|-|-ms|user=afyu|ip=127.0.0.1|rid=b3eb8bce2d|ua=-|rc=-|action=session_create status=success session_id=44
+INFO|23:12:23|POST|/api/sessions/|200|49ms|user=afyu|ip=127.0.0.1|rid=b3eb8bce2d|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP POST /api/sessions/ -> 200 (49ms) user=afyu ip=127.0.0.1
+INFO|23:12:23|GET|/api/sessions/44/timeline/|200|28ms|user=afyu|ip=127.0.0.1|rid=ec860832c8|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/44/timeline/ -> 200 (28ms) user=afyu ip=127.0.0.1
+INFO|23:12:29|-|-|-|-ms|user=-|ip=-|rid=ea9eb266b3|ua=-|rc=-| [CHAT REQUEST] user=afyu(id=1) ip=127.0.0.1 mode=chat q='halo'
+INFO|23:12:29|-|-|-|-ms|user=-|ip=-|rid=ea9eb266b3|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='halo'
+INFO|23:12:29|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Use pytorch device_name: cpu
+INFO|23:12:29|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Load pretrained SentenceTransformer: intfloat/multilingual-e5-large
+INFO|23:12:38|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|RAG embedding loaded model=intfloat/multilingual-e5-large normalize=True
+INFO|23:12:43|-|-|-|-ms|user=-|ip=-|rid=ea9eb266b3|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=2973 rerank_ms=0
+INFO|23:12:43|-|-|-|-ms|user=-|ip=-|rid=ea9eb266b3|ua=-|rc=-| LLM try idx=0 model=qwen/qwen3-next-80b-a3b-instruct:free
+INFO|23:12:50|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.495005 seconds
+WARNING|23:12:51|-|-|-|-ms|user=-|ip=-|rid=ea9eb266b3|ua=-|rc=-| LLM fail idx=0 model=qwen/qwen3-next-80b-a3b-instruct:free dur=7.74s err=Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, o...
+INFO|23:12:52|-|-|-|-ms|user=-|ip=-|rid=ea9eb266b3|ua=-|rc=-| LLM try idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free
+INFO|23:12:56|-|-|-|-ms|user=-|ip=-|rid=ea9eb266b3|ua=-|rc=-| LLM ok idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free model_time=3.7s total_time=26.43s answer_len=284 sources=0
+WARNING|23:12:56|-|-|-|-ms|user=-|ip=-|rid=ea9eb266b3|ua=-|rc=-| Fallback used idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free
+INFO|23:12:56|-|-|-|-ms|user=-|ip=-|rid=ea9eb266b3|ua=-|rc=-| [CHAT RESPONSE] user=afyu(id=1) ip=127.0.0.1 mode=chat len=284 sources=0
+INFO|23:12:56|POST|/api/chat/|200|26509ms|user=afyu|ip=127.0.0.1|rid=ea9eb266b3|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP POST /api/chat/ -> 200 (26509ms) user=afyu ip=127.0.0.1
+INFO|23:12:56|GET|/api/sessions/|200|23ms|user=afyu|ip=127.0.0.1|rid=b56336500d|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (23ms) user=afyu ip=127.0.0.1
+INFO|23:13:32|-|-|-|-ms|user=-|ip=-|rid=e03d309137|ua=-|rc=-| [CHAT REQUEST] user=afyu(id=1) ip=127.0.0.1 mode=chat q='kamu tau UMRI?'
+INFO|23:13:32|-|-|-|-ms|user=-|ip=-|rid=e03d309137|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='kamu tau UMRI?'
+INFO|23:13:33|-|-|-|-ms|user=-|ip=-|rid=e03d309137|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=686 rerank_ms=0
+INFO|23:13:33|-|-|-|-ms|user=-|ip=-|rid=e03d309137|ua=-|rc=-| LLM try idx=0 model=qwen/qwen3-next-80b-a3b-instruct:free
+INFO|23:13:34|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.430820 seconds
+WARNING|23:13:35|-|-|-|-ms|user=-|ip=-|rid=e03d309137|ua=-|rc=-| LLM fail idx=0 model=qwen/qwen3-next-80b-a3b-instruct:free dur=2.49s err=Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, o...
+INFO|23:13:36|-|-|-|-ms|user=-|ip=-|rid=e03d309137|ua=-|rc=-| LLM try idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free
+INFO|23:13:40|-|-|-|-ms|user=-|ip=-|rid=e03d309137|ua=-|rc=-| LLM ok idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free model_time=4.54s total_time=8.73s answer_len=638 sources=0
+WARNING|23:13:40|-|-|-|-ms|user=-|ip=-|rid=e03d309137|ua=-|rc=-| Fallback used idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free
+INFO|23:13:40|-|-|-|-ms|user=-|ip=-|rid=e03d309137|ua=-|rc=-| [CHAT RESPONSE] user=afyu(id=1) ip=127.0.0.1 mode=chat len=638 sources=0
+INFO|23:13:40|POST|/api/chat/|200|8796ms|user=afyu|ip=127.0.0.1|rid=e03d309137|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP POST /api/chat/ -> 200 (8796ms) user=afyu ip=127.0.0.1
+INFO|23:13:40|GET|/api/sessions/|200|16ms|user=afyu|ip=127.0.0.1|rid=16e116bfc3|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (16ms) user=afyu ip=127.0.0.1
+INFO|23:16:14|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|D:\Kuliah\start_up\v2\academic_rag_project\core\ai_engine\retrieval\prompt.py changed, reloading.
+INFO|23:16:23|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|23:16:23|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Watching for file changes with StatReloader
+INFO|23:17:02|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|D:\Kuliah\start_up\v2\academic_rag_project\core\ai_engine\retrieval\main.py changed, reloading.
+INFO|23:17:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|23:17:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Watching for file changes with StatReloader
+INFO|23:18:40|-|-|-|-ms|user=-|ip=-|rid=603fffc810|ua=-|rc=-| [VIEW START] user=afyu(id=1) ip=127.0.0.1
+INFO|23:18:40|-|-|-|-ms|user=-|ip=-|rid=603fffc810|ua=-|rc=-| [VIEW OK] user=afyu(id=1) hist=2 docs=0 storage=0 B/10.00 MB (0%) in 0.0194s
+INFO|23:18:40|GET|/|200|58ms|user=afyu|ip=127.0.0.1|rid=603fffc810|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=-|HTTP GET / -> 200 (58ms) user=afyu ip=127.0.0.1
+INFO|23:18:42|GET|/api/sessions/|200|1035ms|user=afyu|ip=127.0.0.1|rid=2e70e8eac7|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (1035ms) user=afyu ip=127.0.0.1
+INFO|23:18:42|GET|/api/sessions/44/timeline/|200|59ms|user=afyu|ip=127.0.0.1|rid=528b90c225|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/44/timeline/ -> 200 (59ms) user=afyu ip=127.0.0.1
+INFO|23:18:42|GET|/api/sessions/|200|23ms|user=afyu|ip=127.0.0.1|rid=dbd34abbdd|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (23ms) user=afyu ip=127.0.0.1
+INFO|23:18:42|GET|/api/sessions/44/timeline/|200|24ms|user=afyu|ip=127.0.0.1|rid=1486a219c0|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/44/timeline/ -> 200 (24ms) user=afyu ip=127.0.0.1
+INFO|23:18:44|-|-|-|-ms|user=-|ip=-|rid=a27ca515b6|ua=-|rc=-| [CHAT REQUEST] user=afyu(id=1) ip=127.0.0.1 mode=chat q='halooo'
+INFO|23:18:44|-|-|-|-ms|user=-|ip=-|rid=a27ca515b6|ua=-|rc=-| RAG start user_id=1 dense_k=30 bm25_k=40 rerank_n=8 mode=dense q='halooo'
+INFO|23:18:44|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Use pytorch device_name: cpu
+INFO|23:18:44|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Load pretrained SentenceTransformer: intfloat/multilingual-e5-large
+INFO|23:18:54|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|RAG embedding loaded model=intfloat/multilingual-e5-large normalize=True
+INFO|23:19:00|-|-|-|-ms|user=-|ip=-|rid=a27ca515b6|ua=-|rc=-| RAG retrieval done mode=dense query_variants=1 dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=5913 rerank_ms=0
+INFO|23:19:00|-|-|-|-ms|user=-|ip=-|rid=a27ca515b6|ua=-|rc=-| LLM try idx=0 model=qwen/qwen3-next-80b-a3b-instruct:free
+INFO|23:19:05|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Retrying request to /chat/completions in 0.449821 seconds
+WARNING|23:19:06|-|-|-|-ms|user=-|ip=-|rid=a27ca515b6|ua=-|rc=-| LLM fail idx=0 model=qwen/qwen3-next-80b-a3b-instruct:free dur=6.23s err=Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'qwen/qwen3-next-80b-a3b-instruct:free is temporarily rate-limited upstream. Please retry shortly, o...
+INFO|23:19:07|-|-|-|-ms|user=-|ip=-|rid=a27ca515b6|ua=-|rc=-| LLM try idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free
+INFO|23:19:11|-|-|-|-ms|user=-|ip=-|rid=a27ca515b6|ua=-|rc=-| LLM ok idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free model_time=4.14s total_time=26.67s answer_len=849 sources=0
+WARNING|23:19:11|-|-|-|-ms|user=-|ip=-|rid=a27ca515b6|ua=-|rc=-| Fallback used idx=1 model=nvidia/nemotron-3-nano-30b-a3b:free
+INFO|23:19:11|-|-|-|-ms|user=-|ip=-|rid=a27ca515b6|ua=-|rc=-| [CHAT RESPONSE] user=afyu(id=1) ip=127.0.0.1 mode=chat len=849 sources=0
+INFO|23:19:11|POST|/api/chat/|200|26728ms|user=afyu|ip=127.0.0.1|rid=a27ca515b6|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP POST /api/chat/ -> 200 (26728ms) user=afyu ip=127.0.0.1
+INFO|23:19:11|GET|/api/sessions/|200|15ms|user=afyu|ip=127.0.0.1|rid=9def2bc481|ua=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36|rc=http://127.0.0.1:8000/|HTTP GET /api/sessions/ -> 200 (15ms) user=afyu ip=127.0.0.1
+INFO|23:55:04|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|D:\Kuliah\start_up\v2\academic_rag_project\core\ai_engine\retrieval\main.py changed, reloading.
+INFO|23:55:18|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|23:55:18|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Watching for file changes with StatReloader
+INFO|23:56:26|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|D:\Kuliah\start_up\v2\academic_rag_project\core\ai_engine\retrieval\prompt.py changed, reloading.
+INFO|23:56:30|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|23:56:30|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Watching for file changes with StatReloader
+INFO|23:57:48|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|D:\Kuliah\start_up\v2\academic_rag_project\core\service.py changed, reloading.
+INFO|23:57:51|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|23:57:51|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Watching for file changes with StatReloader
+INFO|23:58:23|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|D:\Kuliah\start_up\v2\academic_rag_project\core\ai_engine\retrieval\main.py changed, reloading.
+INFO|23:58:26|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+INFO|23:58:26|-|-|-|-ms|user=-|ip=-|rid=-|ua=-|rc=-|Watching for file changes with StatReloader

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export default function ChatComposer({
@@ -6,15 +6,18 @@ export default function ChatComposer({
   onUploadClick,
   loading,
   deletingDoc = false,
+  docs = [],
 }: {
   onSend: (message: string) => void;
   onUploadClick: () => void;
   loading?: boolean;
   deletingDoc?: boolean;
+  docs?: Array<{ id: number; title: string }>;
 }) {
   const MAX_TEXTAREA_HEIGHT = 160;
   const [value, setValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const composingRef = useRef(false);
 
@@ -39,6 +42,52 @@ export default function ChatComposer({
   }, [loading, onSend, value]);
 
   const canSend = !!value.trim() && !loading;
+  const cursorPos = taRef.current?.selectionStart ?? value.length;
+
+  const mentionState = useMemo(() => {
+    const left = value.slice(0, cursorPos);
+    const match = left.match(/(?:^|\s)@([^\s@]*)$/);
+    if (!match) return null;
+    const full = match[0];
+    const atOffset = full.lastIndexOf("@");
+    const start = (match.index ?? 0) + atOffset;
+    return {
+      query: (match[1] || "").trim().toLowerCase(),
+      start,
+      end: cursorPos,
+    };
+  }, [cursorPos, value]);
+
+  const mentionCandidates = useMemo(() => {
+    if (!mentionState || !isFocused) return [];
+    const query = mentionState.query;
+    const list = docs.filter((d) => {
+        const title = (d.title || "").toLowerCase();
+        return !query || title.includes(query);
+      })
+      .slice(0, 8);
+    return list;
+  }, [docs, isFocused, mentionState]);
+
+  useEffect(() => {
+    setMentionIndex(0);
+  }, [mentionCandidates.length, mentionState?.query]);
+
+  const applyMention = useCallback((title: string) => {
+    const ta = taRef.current;
+    if (!ta || !mentionState) return;
+    const before = value.slice(0, mentionState.start);
+    const after = value.slice(mentionState.end);
+    const inserted = `@${title} `;
+    const next = `${before}${inserted}${after}`;
+    setValue(next);
+    requestAnimationFrame(() => {
+      const pos = before.length + inserted.length;
+      ta.focus();
+      ta.setSelectionRange(pos, pos);
+      resizeTextarea();
+    });
+  }, [mentionState, resizeTextarea, value]);
 
   return (
     <div className="absolute bottom-0 left-0 w-full z-20" data-testid="chat-composer">
@@ -138,7 +187,35 @@ export default function ChatComposer({
             </button>
 
             {/* TEXT AREA */}
-            <div className="flex-1 py-2">
+            <div className="relative flex-1 py-2">
+              {mentionCandidates.length > 0 && (
+                <div
+                  className={cn(
+                    "absolute bottom-full left-0 right-0 mb-2 max-h-44 overflow-y-auto rounded-2xl border p-1 shadow-xl backdrop-blur-xl",
+                    "bg-white/90 border-zinc-200 dark:bg-zinc-900/95 dark:border-zinc-700"
+                  )}
+                  data-testid="mention-dropdown"
+                >
+                  {mentionCandidates.map((doc, idx) => (
+                    <button
+                      key={doc.id}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        applyMention(doc.title);
+                      }}
+                      className={cn(
+                        "w-full rounded-xl px-3 py-2 text-left text-xs transition",
+                        idx === mentionIndex
+                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                          : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      )}
+                    >
+                      @{doc.title}
+                    </button>
+                  ))}
+                </div>
+              )}
               <textarea
                 data-testid="chat-input"
                 ref={taRef}
@@ -165,6 +242,29 @@ export default function ChatComposer({
                 }}
                 onKeyDown={(e) => {
                   if (composingRef.current || e.nativeEvent.isComposing) return;
+                  if (mentionCandidates.length > 0) {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setMentionIndex((prev) => Math.min(prev + 1, mentionCandidates.length - 1));
+                      return;
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setMentionIndex((prev) => Math.max(prev - 1, 0));
+                      return;
+                    }
+                    if (e.key === "Tab" || e.key === "Enter") {
+                      e.preventDefault();
+                      const pick = mentionCandidates[mentionIndex];
+                      if (pick) applyMention(pick.title);
+                      return;
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      setMentionIndex(0);
+                      return;
+                    }
+                  }
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     submit();
