@@ -8,10 +8,6 @@ import KnowledgeSidebar from "@/components/organisms/KnowledgeSidebar";
 import ChatThread from "@/components/organisms/ChatThread";
 import ChatComposer from "@/components/molecules/ChatComposer";
 import Toast from "@/components/molecules/Toast";
-import PlannerOnboardingCard from "@/components/planner/PlannerOnboardingCard";
-import PlannerWizardCard from "@/components/planner/PlannerWizardCard";
-import PlannerReviewCard from "@/components/planner/PlannerReviewCard";
-import PlannerProgressOverlay from "@/components/planner/PlannerProgressOverlay";
 
 // API & Types
 import {
@@ -67,6 +63,26 @@ type PageProps = {
 // --- Helper ---
 function uid() {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
+}
+
+function plannerPanelId(sessionId?: number) {
+  return `planner-panel-${sessionId ?? "global"}`;
+}
+
+function buildPlannerPanelItem(
+  sessionId: number | undefined,
+  state: "idle" | "onboarding" | "uploading" | "ready" | "reviewing" | "executing" | "done"
+): ChatItem {
+  return {
+    id: plannerPanelId(sessionId),
+    role: "assistant",
+    text: "",
+    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    message_kind: "planner_panel",
+    planner_panel_state: state,
+    session_id: sessionId,
+    updated_at_ts: Date.now(),
+  };
 }
 
 function isPlannerResponse(res: ChatResponse): res is PlannerModeResponse {
@@ -328,6 +344,14 @@ export default function Index() {
 
   const activeSessionIdNum = typeof activeSession === "number" ? activeSession : undefined;
   const plannerWarning = activeSessionIdNum ? plannerWarningBySession[activeSessionIdNum] ?? null : null;
+  const shouldRenderPlannerPanel =
+    mode === "planner" && plannerUiState !== "idle" && plannerUiState !== "done";
+
+  const itemsWithPlannerPanel = useMemo(() => {
+    const base = items.filter((it) => it.message_kind !== "planner_panel");
+    if (!shouldRenderPlannerPanel) return base;
+    return [...base, buildPlannerPanelItem(activeSessionIdNum, plannerUiState)];
+  }, [items, shouldRenderPlannerPanel, activeSessionIdNum, plannerUiState]);
 
   // ✅ Inertia reuse fix: sinkronkan ulang items saat user/history berubah
   useEffect(() => {
@@ -363,7 +387,7 @@ export default function Index() {
       el.scrollTo({ top: el.scrollHeight + 9999, behavior: "smooth" });
     }, 120);
     return () => clearTimeout(t);
-  }, [items, composerH]);
+  }, [items, composerH, plannerUiState, mode]);
 
   useEffect(() => {
     if (mode === "planner") {
@@ -1086,57 +1110,34 @@ export default function Index() {
               scrollbarColor: dark ? "rgba(212,212,216,0.42) transparent" : "rgba(63,63,70,0.35) transparent",
             }}
           >
-            {mode === "planner" && plannerUiState === "onboarding" && (
-              <PlannerOnboardingCard
-                hasEmbeddedDocs={documents.some((d) => d.is_embedded)}
-                onUploadNew={onUploadClick}
-                onReuseExisting={onPlannerReuseExisting}
-                relevanceError={plannerRelevanceError}
-                majorSummary={plannerMajorSummary}
-                disabled={loading || deletingDocId !== null}
-              />
-            )}
-            {mode === "planner" && plannerUiState === "uploading" && (
-              <PlannerProgressOverlay message={plannerProgressMessage} />
-            )}
-            {mode === "planner" && plannerUiState === "ready" && wizardSteps[wizardIndex] && (
-              <PlannerWizardCard
-                step={wizardSteps[wizardIndex]}
-                index={wizardIndex}
-                total={wizardSteps.length}
-                value={wizardAnswers[wizardSteps[wizardIndex].step_key] || ""}
-                onSelectOption={onPlannerSelectOption}
-                onChangeManual={onPlannerManualChange}
-                onNext={onPlannerNext}
-                onBack={onPlannerBack}
-                disabled={loading || deletingDocId !== null}
-              />
-            )}
-            {mode === "planner" && plannerUiState === "reviewing" && (
-              <PlannerReviewCard
-                answers={wizardAnswers}
-                docs={plannerDocs}
-                onEdit={onPlannerEdit}
-                onExecute={onPlannerExecute}
-                executing={loading}
-              />
-            )}
-            {mode === "planner" && plannerUiState === "executing" && (
-              <PlannerProgressOverlay message={plannerProgressMessage} />
-            )}
-            {mode === "planner" && plannerWarning && (
-              <div className="mx-auto mb-3 mt-1 w-[min(900px,92%)]" data-testid="planner-warning-banner">
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-300">
-                  {plannerWarning}
-                </div>
-              </div>
-            )}
             <ChatThread
-              items={items}
+              items={itemsWithPlannerPanel}
               mode={mode}
               activePlannerOptionMessageId={activePlannerOptionMessageId}
               optionsLocked={loading || deletingDocId !== null}
               onSelectPlannerOption={onSelectPlannerOption}
+              plannerPanelProps={{
+                state: plannerUiState,
+                hasEmbeddedDocs: documents.some((d) => d.is_embedded),
+                relevanceError: plannerRelevanceError,
+                majorSummary: plannerMajorSummary,
+                progressMessage: plannerProgressMessage,
+                wizardSteps,
+                wizardIndex,
+                wizardAnswers,
+                plannerDocs,
+                loading,
+                deletingDocId,
+                plannerWarning,
+                onUploadNew: onUploadClick,
+                onReuseExisting: onPlannerReuseExisting,
+                onSelectOption: onPlannerSelectOption,
+                onChangeManual: onPlannerManualChange,
+                onNext: onPlannerNext,
+                onBack: onPlannerBack,
+                onEdit: onPlannerEdit,
+                onExecute: onPlannerExecute,
+              }}
             />
           </div>
 

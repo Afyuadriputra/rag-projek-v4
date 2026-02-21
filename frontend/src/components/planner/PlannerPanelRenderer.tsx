@@ -1,0 +1,109 @@
+import PlannerOnboardingCard from "@/components/planner/PlannerOnboardingCard";
+import PlannerWizardCard from "@/components/planner/PlannerWizardCard";
+import PlannerReviewCard from "@/components/planner/PlannerReviewCard";
+import PlannerProgressOverlay from "@/components/planner/PlannerProgressOverlay";
+import type { PlannerProfileHintsSummary, PlannerWizardStep } from "@/lib/api";
+
+export type PlannerUiState = "idle" | "onboarding" | "uploading" | "ready" | "reviewing" | "executing" | "done";
+
+export default function PlannerPanelRenderer({
+  state,
+  hasEmbeddedDocs,
+  relevanceError,
+  majorSummary,
+  progressMessage,
+  wizardSteps,
+  wizardIndex,
+  wizardAnswers,
+  plannerDocs,
+  loading,
+  deletingDocId,
+  plannerWarning,
+  onUploadNew,
+  onReuseExisting,
+  onSelectOption,
+  onChangeManual,
+  onNext,
+  onBack,
+  onEdit,
+  onExecute,
+}: {
+  state: PlannerUiState;
+  hasEmbeddedDocs: boolean;
+  relevanceError?: string | null;
+  majorSummary?: PlannerProfileHintsSummary | null;
+  progressMessage: string;
+  wizardSteps: PlannerWizardStep[];
+  wizardIndex: number;
+  wizardAnswers: Record<string, string>;
+  plannerDocs: Array<{ id: number; title: string }>;
+  loading: boolean;
+  deletingDocId: number | null;
+  plannerWarning?: string | null;
+  onUploadNew: () => void;
+  onReuseExisting: () => void;
+  onSelectOption: (value: string) => void;
+  onChangeManual: (value: string) => void;
+  onNext: () => void;
+  onBack: () => void;
+  onEdit: (stepKey: string) => void;
+  onExecute: () => void;
+}) {
+  const disabled = loading || deletingDocId !== null;
+
+  if (state === "onboarding") {
+    return (
+      <PlannerOnboardingCard
+        hasEmbeddedDocs={hasEmbeddedDocs}
+        onUploadNew={onUploadNew}
+        onReuseExisting={onReuseExisting}
+        relevanceError={relevanceError}
+        majorSummary={majorSummary}
+        disabled={disabled}
+      />
+    );
+  }
+
+  if (state === "uploading" || state === "executing") {
+    return <PlannerProgressOverlay message={progressMessage} />;
+  }
+
+  if (state === "ready" && wizardSteps[wizardIndex]) {
+    const step = wizardSteps[wizardIndex];
+    return (
+      <PlannerWizardCard
+        step={step}
+        index={wizardIndex}
+        total={wizardSteps.length}
+        value={wizardAnswers[step.step_key] || ""}
+        onSelectOption={onSelectOption}
+        onChangeManual={onChangeManual}
+        onNext={onNext}
+        onBack={onBack}
+        disabled={disabled}
+      />
+    );
+  }
+
+  if (state === "reviewing") {
+    return (
+      <PlannerReviewCard
+        answers={wizardAnswers}
+        docs={plannerDocs}
+        onEdit={onEdit}
+        onExecute={onExecute}
+        executing={loading}
+      />
+    );
+  }
+
+  if (plannerWarning) {
+    return (
+      <div className="mx-auto w-[min(900px,92%)] rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-300">
+        {plannerWarning}
+      </div>
+    );
+  }
+
+  return null;
+}

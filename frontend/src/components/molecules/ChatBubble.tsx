@@ -32,7 +32,9 @@ export type ChatItem = {
   session_state?: Record<string, unknown>;
   planner_warning?: string | null;
   profile_hints?: Record<string, unknown>;
-  message_kind?: "user" | "assistant_chat" | "assistant_planner_step" | "system_mode";
+  message_kind?: "user" | "assistant_chat" | "assistant_planner_step" | "system_mode" | "planner_panel";
+  planner_panel_state?: "idle" | "onboarding" | "uploading" | "ready" | "reviewing" | "executing" | "done";
+  planner_panel_payload?: Record<string, unknown>;
   session_id?: number;
   updated_at_ts?: number;
   planner_meta?: Record<string, unknown>;

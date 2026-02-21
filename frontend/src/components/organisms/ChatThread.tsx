@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import ChatBubble from "@/components/molecules/ChatBubble";
 import type { ChatItem } from "@/components/molecules/ChatBubble";
+import PlannerPanelRenderer, { type PlannerUiState } from "@/components/planner/PlannerPanelRenderer";
+import type { PlannerProfileHintsSummary, PlannerWizardStep } from "@/lib/api";
 
 export default function ChatThread({
   items,
@@ -8,12 +10,35 @@ export default function ChatThread({
   activePlannerOptionMessageId,
   optionsLocked = false,
   onSelectPlannerOption,
+  plannerPanelProps,
 }: {
   items: ChatItem[];
   mode?: "chat" | "planner";
   activePlannerOptionMessageId?: string | null;
   optionsLocked?: boolean;
   onSelectPlannerOption?: (optionId: number, label: string) => void;
+  plannerPanelProps?: {
+    state: PlannerUiState;
+    hasEmbeddedDocs: boolean;
+    relevanceError?: string | null;
+    majorSummary?: PlannerProfileHintsSummary | null;
+    progressMessage: string;
+    wizardSteps: PlannerWizardStep[];
+    wizardIndex: number;
+    wizardAnswers: Record<string, string>;
+    plannerDocs: Array<{ id: number; title: string }>;
+    loading: boolean;
+    deletingDocId: number | null;
+    plannerWarning?: string | null;
+    onUploadNew: () => void;
+    onReuseExisting: () => void;
+    onSelectOption: (value: string) => void;
+    onChangeManual: (value: string) => void;
+    onNext: () => void;
+    onBack: () => void;
+    onEdit: (stepKey: string) => void;
+    onExecute: () => void;
+  };
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -50,20 +75,29 @@ export default function ChatThread({
         {/* ✅ Pembaruan kompatibilitas:
             ChatItem sekarang boleh punya `sources?: [...]`.
             ChatBubble sudah handle itu, jadi di sini tidak perlu ubah desain/markup. */}
-        {items.map((it) => (
-          <ChatBubble
-            key={it.id}
-            item={it}
-            showPlannerOptions={mode === "planner"}
-            optionsEnabled={
-              mode === "planner" &&
-              !optionsLocked &&
-              !!activePlannerOptionMessageId &&
-              activePlannerOptionMessageId === it.id
-            }
-            onSelectOption={onSelectPlannerOption}
-          />
-        ))}
+        {items.map((it) => {
+          if (it.message_kind === "planner_panel" && plannerPanelProps) {
+            return (
+              <div key={it.id} data-testid="planner-inline-panel" className="w-full">
+                <PlannerPanelRenderer {...plannerPanelProps} />
+              </div>
+            );
+          }
+          return (
+            <ChatBubble
+              key={it.id}
+              item={it}
+              showPlannerOptions={mode === "planner"}
+              optionsEnabled={
+                mode === "planner" &&
+                !optionsLocked &&
+                !!activePlannerOptionMessageId &&
+                activePlannerOptionMessageId === it.id
+              }
+              onSelectOption={onSelectPlannerOption}
+            />
+          );
+        })}
 
         {/* Dummy element scroll target */}
         <div ref={bottomRef} className="mt-2 h-12 w-full md:h-16" />
