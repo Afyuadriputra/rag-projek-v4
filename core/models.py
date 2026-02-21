@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+import uuid
 import os
 
 
@@ -83,6 +84,44 @@ class PlannerHistory(models.Model):
 
     def __str__(self):
         return f"{self.user.username} {self.event_type} {self.planner_step}".strip()
+
+
+class PlannerRun(models.Model):
+    STATUS_STARTED = "started"
+    STATUS_READY = "ready"
+    STATUS_EXECUTING = "executing"
+    STATUS_COMPLETED = "completed"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_EXPIRED = "expired"
+    STATUS_CHOICES = [
+        (STATUS_STARTED, "Started"),
+        (STATUS_READY, "Ready"),
+        (STATUS_EXECUTING, "Executing"),
+        (STATUS_COMPLETED, "Completed"),
+        (STATUS_CANCELLED, "Cancelled"),
+        (STATUS_EXPIRED, "Expired"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_STARTED)
+    wizard_blueprint = models.JSONField(default=dict, blank=True)
+    documents_snapshot = models.JSONField(default=list, blank=True)
+    answers_snapshot = models.JSONField(default=dict, blank=True)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "status", "created_at"]),
+            models.Index(fields=["expires_at"]),
+        ]
+
+    def __str__(self):
+        return f"PlannerRun({self.user.username}, {self.status}, {self.id})"
 
 
 class UserQuota(models.Model):

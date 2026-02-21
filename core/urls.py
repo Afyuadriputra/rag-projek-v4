@@ -19,6 +19,9 @@ urlpatterns = [
     path('api/sessions/', views.sessions_api, name='sessions_api'),
     path('api/sessions/<int:session_id>/', views.session_detail_api, name='session_detail_api'),
     path('api/sessions/<int:session_id>/timeline/', views.session_timeline_api, name='session_timeline_api'),
+    path('api/planner/start/', views.planner_start_v3_api, name='planner_start_v3_api'),
+    path('api/planner/execute/', views.planner_execute_v3_api, name='planner_execute_v3_api'),
+    path('api/planner/cancel/', views.planner_cancel_v3_api, name='planner_cancel_v3_api'),
 
 
 ]

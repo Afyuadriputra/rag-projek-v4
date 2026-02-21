@@ -4,13 +4,14 @@ from django.db import OperationalError, ProgrammingError
 
 from langchain_openai import ChatOpenAI
 
-DEFAULT_MODEL = "qwen/qwen3-next-80b-a3b-instruct:free"
+DEFAULT_MODEL = "google/gemini-2.5-flash-lite"
 DEFAULT_BACKUP_MODELS = [
+    "openai/gpt-5-nano",
+    "minimax/minimax-m2.5",
     "nvidia/nemotron-3-nano-30b-a3b:free",
     "arcee-ai/trinity-large-preview:free",
-    "qwen/qwen3-next-80b-a3b-instruct:free",
-    "arcee-ai/trinity-large-preview:free",
     "meta-llama/llama-3.3-70b-instruct:free",
+    
 ]
 
 

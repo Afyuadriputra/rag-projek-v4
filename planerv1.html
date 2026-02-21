@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Chatbot: Dynamic Multi-Step Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F9FAFB;
+            color: #1F2937;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+
+        .fade-enter-active {
+            animation: fadeSlideIn 0.3s ease-out forwards;
+        }
+        .fade-out-active {
+            animation: fadeSlideOut 0.2s ease-in forwards;
+        }
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeSlideOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(-20px); }
+        }
+        
+        .option-chip { transition: all 0.2s ease; }
+        .option-chip:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .option-chip:active:not(:disabled) { transform: translateY(0); }
+
+        .shimmer {
+            background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+        @keyframes shimmer { to { background-position: -200% 0; } }
+    </style>
+    <!-- Chosen Palette: Warm Neutrals with Soft Blue/Indigo Accents -->
+    <!-- Application Structure Plan: 
+         Updated to showcase "Dynamic Multi-Step AI Suggestions". Upload -> Analyze -> Generate N Steps -> User Answers Step 1..N -> Review.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-gray-50 text-slate-800">
+
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">R</div>
+                <h1 class="text-xl font-bold tracking-tight text-slate-900">RAG Smart Planner <span class="text-indigo-500 font-normal">v3.0 Dynamic</span></h1>
+            </div>
+            <nav class="hidden md:flex space-x-8 text-sm font-medium text-slate-600">
+                <a href="#prototype" class="hover:text-indigo-600 transition-colors">Prototype Flow</a>
+                <a href="#anatomy" class="hover:text-indigo-600 transition-colors">Analisis UX</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+
+        <section class="text-center max-w-3xl mx-auto space-y-4">
+            <span class="bg-indigo-100 text-indigo-800 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Pembaruan UX v3.0</span>
+            <h2 class="text-3xl md:text-4xl font-bold text-slate-900">Dynamic Multi-Session Wizard</h2>
+            <p class="text-lg text-slate-600 leading-relaxed">
+                Jumlah pertanyaan tidak lagi statis. AI menganalisis kompleksitas dokumen pengguna (seperti KHS atau KRS) dan secara dinamis membuat urutan pertanyaan bertahap (Multi-step) yang relevan, lengkap dengan opsi kustom manual di setiap langkahnya.
+            </p>
+        </section>
+
+        <!-- LIVE PROTOTYPE SECTION -->
+        <section id="prototype" class="grid lg:grid-cols-2 gap-12 items-start">
+            
+            <div class="space-y-6">
+                <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg">
+                    <h3 class="font-bold text-indigo-900 text-lg mb-2">Skenario: Upload KHS Mahasiswa</h3>
+                    <p class="text-indigo-800 text-sm leading-relaxed">
+                        Simulasi ini mengasumsikan pengguna mengunggah <strong>KHS (Kartu Hasil Studi)</strong>. Perhatikan bagaimana AI mendeteksi dokumen ini dan memutuskan untuk membuat <strong>2 langkah pertanyaan</strong> berturut-turut untuk menggali niat pengguna dengan presisi.
+                    </p>
+                </div>
+                
+                <div class="prose text-slate-600 text-sm">
+                    <h4 class="text-slate-900 font-semibold text-lg">Keunggulan Flow Ini:</h4>
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li><strong>Instruksi Jelas di Awal:</strong> Pengguna tahu persis apa yang harus dilakukan (contoh: upload KRS, Jadwal).</li>
+                        <li><strong>Adaptive Length:</strong> Dokumen simpel mungkin butuh 1 pertanyaan. Dokumen kompleks (KHS) butuh 2-3 pertanyaan. AI yang mengatur.</li>
+                        <li><strong>Manual Escape Hatch:</strong> Di setiap langkah, pengguna tetap bisa mengetik perintahnya sendiri jika opsi AI tidak ada yang cocok.</li>
+                    </ul>
+                </div>
+
+                <div class="p-6 bg-slate-900 rounded-xl shadow-sm border border-slate-800">
+                    <h4 class="font-semibold text-xs text-slate-400 uppercase tracking-wider mb-4">Live State & Payload Viewer</h4>
+                    <pre id="json-preview" class="font-mono text-xs text-green-400 bg-slate-950 p-4 rounded-lg overflow-x-auto border border-slate-700 h-64 overflow-y-auto">
+{
+  "state": "waiting_for_upload"
+}</pre>
+                </div>
+            </div>
+
+            <!-- THE CHATBOT SIMULATOR -->
+            <div class="relative mx-auto w-full max-w-md bg-white rounded-[2rem] shadow-2xl border-8 border-slate-900 overflow-hidden h-[600px] flex flex-col">
+                <div class="bg-slate-900 text-white px-6 py-3 flex justify-between items-center text-xs">
+                    <span>9:41</span>
+                    <div class="flex gap-1"><span>&#128246;</span><span>&#128267;</span></div>
+                </div>
+
+                <div class="bg-white border-b border-gray-100 p-4 flex items-center justify-between shadow-sm z-10">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs">AI</div>
+                        <div>
+                            <h3 class="font-bold text-sm text-slate-800">Academic Planner AI</h3>
+                            <div class="flex items-center gap-1">
+                                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                <span class="text-xs text-gray-500">Dynamic Mode</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="location.reload()" class="text-gray-400 hover:text-indigo-600 text-xs font-semibold">RESET</button>
+                </div>
+
+                <div id="chat-canvas" class="flex-1 bg-gray-50 p-4 overflow-y-auto space-y-4 relative">
+                    <!-- DYNAMIC CARD CONTAINER -->
+                    <div id="card-container" class="mt-2 transition-all duration-300">
+                        <!-- Content injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Input Area (Disabled State) -->
+                <div class="bg-white p-4 border-t border-gray-100">
+                    <div class="relative">
+                        <div class="absolute inset-0 bg-gray-50/80 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-full border border-gray-200">
+                            <span class="text-xs font-semibold text-gray-500 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span> Mode Panduan Aktif
+                            </span>
+                        </div>
+                        <div class="flex gap-2 opacity-50">
+                            <input type="text" disabled placeholder="Ketik pesan..." class="w-full bg-gray-100 border-0 rounded-full px-4 py-3 text-sm">
+                            <button disabled class="bg-indigo-400 text-white rounded-full w-10 h-10 flex items-center justify-center"><span>&uarr;</span></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ANALYSIS SECTION -->
+        <section id="anatomy" class="border-t border-gray-200 pt-16 pb-10">
+            <h3 class="text-2xl font-bold text-slate-900 mb-8 text-center">Arsitektur UX: Multi-Session Dinamis</h3>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-xl mb-4">&#128221;</div>
+                    <h4 class="font-bold text-slate-800 mb-2">Clear Onboarding</h4>
+                    <p class="text-sm text-slate-600">Memberikan instruksi spesifik di awal (contoh: minta KRS/KHS) sangat penting agar sistem RAG menerima *ground truth* yang tepat sebelum mulai bertugas.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-xl mb-4">&#9881;</div>
+                    <h4 class="font-bold text-slate-800 mb-2">Generasi Parameter Otomatis</h4>
+                    <p class="text-sm text-slate-600">Bukannya mengandalkan *hard-coded form*, AI memutuskan berapa banyak sesi pertanyaan yang logis berdasarkan kepadatan dokumen yang diunggah.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-xl mb-4">&#128260;</div>
+                    <h4 class="font-bold text-slate-800 mb-2">Stateful Accumulation</h4>
+                    <p class="text-sm text-slate-600">Sistem menyimpan jawaban secara inkremental. Pengguna tidak merasa seperti mengisi *form* pajak, melainkan sedang berbincang langkah demi langkah.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- APP STATE ---
+        // Menangani sesi dinamis dan akumulasi jawaban
+        let appState = {
+            status: "waiting_for_upload",
+            uploadedFile: null,
+            documentTypeDetected: null, // e.g., "KHS"
+            dynamicSteps: [], // AI akan mengisi ini
+            currentStepIndex: 0,
+            selections: {} // Menyimpan jawaban per langkah { step_key: "jawaban" }
+        };
+
+        const cardContainer = document.getElementById('card-container');
+        const jsonPreview = document.getElementById('json-preview');
+
+        // --- INIT ---
+        function init() {
+            renderUploadCard();
+            updatePreview();
+        }
+
+        function updatePreview() {
+            jsonPreview.textContent = JSON.stringify(appState, null, 2);
+        }
+
+        // --- STAGE 1: INSTRUCTION & UPLOAD CARD ---
+        function renderUploadCard() {
+            cardContainer.innerHTML = `
+                <div class="flex gap-3 opacity-80 mb-4 fade-enter-active">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs flex-shrink-0">AI</div>
+                    <div class="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-none max-w-[85%] shadow-sm">
+                        <p class="text-xs text-gray-700 leading-relaxed font-medium">Halo! Saya siap membantu manajemen akademik Anda.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden fade-enter-active">
+                    <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
+                        <span class="text-xl">&#128194;</span>
+                        <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Mulai Analisis Dokumen</span>
+                    </div>
+                    <div class="p-5 text-center">
+                        <h4 class="text-sm font-bold text-slate-900 mb-2">Silakan unggah dokumen akademik Anda</h4>
+                        <p class="text-xs text-slate-500 mb-5 leading-relaxed bg-blue-50 text-blue-800 p-2 rounded-lg">
+                            Dukung dokumen seperti <strong>KRS</strong> (Kartu Rencana Studi), <strong>KHS</strong> (Kartu Hasil Studi), <strong>Jadwal Kuliah</strong>, atau Silabus.
+                        </p>
+                        
+                        <button onclick="handleFileUpload()" class="w-full group border-2 border-dashed border-indigo-200 hover:border-indigo-500 hover:bg-indigo-50 rounded-xl p-6 transition-all cursor-pointer">
+                            <div class="w-12 h-12 bg-indigo-100 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform text-xl shadow-sm">
+                                &#8681;
+                            </div>
+                            <span class="text-sm font-semibold text-indigo-600 block">Tap untuk Pilih File</span>
+                            <span class="text-xs text-gray-400 mt-1">PDF, Gambar, atau DOCX</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleFileUpload() {
+            appState.uploadedFile = "KHS_Semester_Ganjil_2025.pdf";
+            appState.status = "analyzing_document";
+            updatePreview();
+            renderAnalyzingState();
+            
+            // Simulate AI reading the file and deciding the flow (3 seconds)
+            setTimeout(() => {
+                // MOCK AI LOGIC: AI mendeteksi ini KHS, butuh 2 sesi pertanyaan.
+                appState.documentTypeDetected = "Kartu Hasil Studi (KHS)";
+                appState.dynamicSteps = [
+                    {
+                        key: "fokus_analisis",
+                        question: "Fokus analisis apa yang ingin Anda lihat dari KHS ini?",
+                        options: [
+                            { label: "Evaluasi IPK & Prediksi Tren Nilai", value: "evaluasi_ipk", icon: "&#128200;" },
+                            { label: "Identifikasi Mata Kuliah Mengulang (Nilai C/D/E)", value: "identifikasi_mengulang", icon: "&#9888;&#65039;" },
+                            { label: "Rekomendasi pengambilan SKS semester depan", value: "rekomendasi_sks", icon: "&#128218;" }
+                        ]
+                    },
+                    {
+                        key: "format_output",
+                        question: "Bagaimana Anda ingin hasilnya disajikan?",
+                        options: [
+                            { label: "Tabel ringkasan status kelulusan", value: "tabel_ringkasan", icon: "&#128202;" },
+                            { label: "Poin-poin evaluasi singkat (Teks)", value: "poin_teks", icon: "&#128221;" }
+                        ]
+                    }
+                ];
+                appState.status = "planning_steps";
+                appState.currentStepIndex = 0;
+                renderDynamicStepCard();
+                updatePreview();
+            }, 3000);
+        }
+
+        // --- STAGE 2: ANALYZING STATE ---
+        function renderAnalyzingState() {
+            cardContainer.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 text-center fade-enter-active">
+                    <div class="relative w-16 h-16 mx-auto mb-4">
+                        <div class="absolute inset-0 border-4 border-indigo-50 rounded-full"></div>
+                        <div class="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+                        <div class="absolute inset-0 flex items-center justify-center text-xl">&#129488;</div>
+                    </div>
+                    <h4 class="text-base font-bold text-slate-900 mb-1">AI Sedang Membaca...</h4>
+                    <p class="text-xs text-indigo-600 animate-pulse font-medium">Menganalisis jenis dokumen dan menyesuaikan panduan...</p>
+                    
+                    <div class="mt-5 space-y-3">
+                        <div class="h-8 rounded-xl shimmer"></div>
+                        <div class="h-8 rounded-xl shimmer"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- STAGE 3: DYNAMIC STEP CARD ---
+        function renderDynamicStepCard(showCustomInput = false) {
+            const step = appState.dynamicSteps[appState.currentStepIndex];
+            const isLastStep = appState.currentStepIndex === appState.dynamicSteps.length - 1;
+            
+            // Generate AI Options
+            let optionsHtml = step.options.map(opt => `
+                <button onclick="selectOption('${opt.value}', '${opt.label}')" class="option-chip w-full text-left p-4 rounded-xl border border-indigo-100 bg-white hover:border-indigo-500 hover:bg-indigo-50 group shadow-sm flex items-start gap-3">
+                    <span class="text-indigo-400 mt-0.5">${opt.icon || '&#10024;'}</span>
+                    <span class="text-sm font-medium text-slate-700 leading-snug">${opt.label}</span>
+                </button>
+            `).join('');
+
+            // Custom Input Escape Hatch
+            let customInputHtml = `
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-2 font-semibold">Atau ketik opsi Anda sendiri:</p>
+                    <button onclick="toggleCustomInput()" class="option-chip w-full text-left p-3 rounded-lg border border-dashed border-gray-300 hover:border-indigo-400 bg-gray-50 group flex items-center gap-2">
+                        <span class="text-base opacity-60 group-hover:text-indigo-600 transition-colors">&#9998;</span>
+                        <span class="font-medium text-slate-500 group-hover:text-indigo-700 text-xs transition-colors">Tulis perintah kustom...</span>
+                    </button>
+                </div>
+            `;
+
+            if (showCustomInput) {
+                customInputHtml = `
+                    <div class="mt-4 p-4 border border-indigo-200 bg-indigo-50/50 rounded-xl fade-enter-active">
+                        <label class="text-xs font-semibold text-indigo-800 mb-2 block uppercase tracking-wider">Input Manual</label>
+                        <textarea id="custom-q-input" rows="2" class="w-full text-sm p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-inner" placeholder="Ketik preferensi Anda untuk sesi ini..."></textarea>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="submitCustomQuestion()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2 rounded-lg transition-colors">Gunakan Ini</button>
+                            <button onclick="toggleCustomInput(false)" class="px-3 py-2 text-xs text-gray-500 hover:bg-gray-200 rounded-lg font-medium transition-colors">Batal</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Provide visual context of progress
+            let progressDots = appState.dynamicSteps.map((_, idx) => 
+                `<div class="w-1.5 h-1.5 rounded-full ${idx === appState.currentStepIndex ? 'bg-indigo-600 ring-2 ring-indigo-200' : (idx < appState.currentStepIndex ? 'bg-indigo-400' : 'bg-gray-300')}"></div>`
+            ).join('');
+
+            cardContainer.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-xl border border-indigo-100 overflow-hidden fade-enter-active">
+                    
+                    <!-- Context Header -->
+                    <div class="px-4 py-2 border-b border-indigo-50 bg-indigo-600 flex justify-between items-center">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="text-white text-xs">&#128196;</span>
+                            <span class="text-[11px] font-medium text-indigo-100 truncate">${appState.uploadedFile}</span>
+                        </div>
+                        <span class="text-[10px] bg-indigo-800 text-indigo-100 px-2 py-0.5 rounded-full font-semibold border border-indigo-500 shadow-inner">
+                            ${appState.documentTypeDetected}
+                        </span>
+                    </div>
+                    
+                    <div class="p-5">
+                        <!-- Progress & Question -->
+                        <div class="flex justify-between items-start mb-3">
+                            <h4 class="text-[15px] font-bold text-slate-900 leading-snug flex-1 pr-4">
+                                ${step.question}
+                            </h4>
+                            <div class="flex gap-1 mt-1.5 shrink-0">
+                                ${progressDots}
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mb-5 font-medium uppercase tracking-wider">Sesi ${appState.currentStepIndex + 1} dari ${appState.dynamicSteps.length}</p>
+                        
+                        <!-- AI Options -->
+                        <div class="space-y-3">
+                            ${optionsHtml}
+                        </div>
+
+                        <!-- Manual Escape Hatch -->
+                        ${customInputHtml}
+                    </div>
+                    
+                    <!-- Back Button if not first step -->
+                    ${appState.currentStepIndex > 0 ? `
+                        <div class="px-5 py-3 border-t border-gray-100 bg-gray-50 flex justify-start">
+                            <button onclick="goBackStep()" class="text-xs text-gray-500 hover:text-indigo-600 font-semibold flex items-center gap-1 transition-colors">
+                                <span>&#8592;</span> Kembali ke Sesi ${appState.currentStepIndex}
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // --- INTERACTIONS ---
+        function toggleCustomInput(show = true) {
+            renderDynamicStepCard(show);
+            if(show) {
+                setTimeout(() => document.getElementById('custom-q-input').focus(), 100);
+            }
+        }
+
+        function submitCustomQuestion() {
+            const val = document.getElementById('custom-q-input').value.trim();
+            if(val) {
+                selectOption(val, val); // For custom, value and label are the same
+            } else {
+                alert("Input manual tidak boleh kosong.");
+            }
+        }
+
+        function selectOption(value, label) {
+            const currentStepKey = appState.dynamicSteps[appState.currentStepIndex].key;
+            
+            // Save selection
+            appState.selections[currentStepKey] = label;
+            updatePreview();
+
+            // Proceed to next step or Review
+            if (appState.currentStepIndex < appState.dynamicSteps.length - 1) {
+                appState.currentStepIndex++;
+                renderDynamicStepCard();
+            } else {
+                appState.status = "reviewing_plan";
+                updatePreview();
+                renderFinalReview();
+            }
+        }
+
+        function goBackStep() {
+            if (appState.currentStepIndex > 0) {
+                appState.currentStepIndex--;
+                updatePreview();
+                renderDynamicStepCard();
+            }
+        }
+
+        // --- STAGE 4: FINAL REVIEW ---
+        function renderFinalReview() {
+            // Generate summary rows from selections mapping back to dynamic step questions
+            let summaryHtml = '';
+            appState.dynamicSteps.forEach((step, index) => {
+                const answer = appState.selections[step.key];
+                summaryHtml += `
+                    <div class="mb-4 bg-slate-800 p-3 rounded-lg border border-slate-700">
+                        <p class="text-[10px] text-indigo-300 uppercase tracking-wider mb-1 font-semibold">Sesi ${index + 1}: ${step.key.replace('_', ' ')}</p>
+                        <p class="text-sm font-medium text-indigo-50 italic">
+                            "${answer}"
+                        </p>
+                    </div>
+                `;
+            });
+
+            cardContainer.innerHTML = `
+                <div class="bg-slate-900 text-white rounded-2xl shadow-xl overflow-hidden fade-enter-active border border-slate-700">
+                    <div class="px-5 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+                        <h4 class="font-bold text-base flex items-center gap-2">
+                            <span class="text-green-400">&#10003;</span> Rencana Siap Dieksekusi
+                        </h4>
+                        <button onclick="goBackStep()" class="text-xs text-indigo-300 hover:text-white underline">Edit</button>
+                    </div>
+                    
+                    <div class="p-5">
+                        <div class="mb-5 flex items-center justify-between border-b border-slate-700 pb-4">
+                            <div>
+                                <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Dokumen Dasar:</p>
+                                <span class="text-sm font-semibold text-white flex items-center gap-1"><span class="text-lg">&#128196;</span> ${appState.uploadedFile}</span>
+                            </div>
+                            <span class="text-[10px] bg-slate-700 text-slate-300 px-2 py-1 rounded font-semibold">
+                                ${appState.documentTypeDetected}
+                            </span>
+                        </div>
+
+                        <div class="mb-6">
+                            ${summaryHtml}
+                        </div>
+
+                        <button id="exec-btn" onclick="executeSearch()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all transform active:scale-95 flex justify-center items-center gap-2">
+                            <span>&#128640;</span> Analisis Dokumen Sekarang
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function executeSearch() {
+            const btn = document.getElementById('exec-btn');
+            btn.innerHTML = `<span class="animate-spin inline-block mr-2">&#9696;</span> Mengeksekusi RAG...`;
+            btn.disabled = true;
+            btn.classList.replace('bg-indigo-600', 'bg-indigo-800');
+            
+            appState.status = "executing_rag_query";
+            updatePreview();
+
+            // Simulate finish
+            setTimeout(() => {
+                location.reload();
+            }, 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

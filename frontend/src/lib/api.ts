@@ -14,6 +14,8 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
+const PLANNER_START_TIMEOUT_MS = 90000;
+
 // ==========================================
 // 2. TIPE DATA (INTERFACES)
 // ==========================================
@@ -158,6 +160,65 @@ export interface SessionTimelineResponse {
   };
 }
 
+export interface PlannerWizardStep {
+  step_key: string;
+  title: string;
+  question: string;
+  options: Array<{ id: number; label: string; value: string }>;
+  allow_manual: boolean;
+  required?: boolean;
+  source_hint?: "document" | "profile" | "mixed" | string;
+}
+
+export interface PlannerDocRelevance {
+  is_relevant: boolean;
+  score: number;
+  reasons: string[];
+}
+
+export interface PlannerMajorCandidate {
+  value: string | number;
+  label: string;
+  confidence: number;
+  evidence?: string[];
+}
+
+export interface PlannerProfileHintsSummary {
+  major_candidates: PlannerMajorCandidate[];
+  confidence_summary?: "high" | "medium" | "low";
+}
+
+export interface PlannerStartResponse {
+  status: "success" | "error";
+  planner_run_id?: string;
+  session_id?: number;
+  wizard_blueprint?: {
+    version: string;
+    data_level?: Record<string, unknown>;
+    profile_hints?: Record<string, unknown>;
+    documents_summary?: Array<{ id: number; title: string; uploaded_at?: string }>;
+    meta?: Record<string, unknown>;
+    steps: PlannerWizardStep[];
+  };
+  documents_summary?: Array<{ id: number; title: string; uploaded_at?: string }>;
+  doc_relevance?: PlannerDocRelevance;
+  profile_hints_summary?: PlannerProfileHintsSummary;
+  error_code?: string;
+  required_upload?: boolean;
+  progress_hints?: string[];
+  planner_meta?: Record<string, unknown>;
+  error?: string;
+}
+
+export interface PlannerExecuteResponse {
+  status: "success" | "error";
+  answer?: string;
+  sources?: ChatSource[];
+  session_id?: number;
+  planner_meta?: Record<string, unknown>;
+  error?: string;
+}
+
 // ==========================================
 // 3. API FUNCTIONS (FUNGSI UTAMA DITANDAI)
 // ==========================================
@@ -261,6 +322,56 @@ export const getSessionTimeline = async (sessionId: number, page: number = 1, pa
   const response = await apiClient.get<SessionTimelineResponse>(`/sessions/${sessionId}/timeline/`, {
     params: { page, page_size: pageSize },
   });
+  return response.data;
+};
+
+export const plannerStartV3 = async ({
+  files,
+  sessionId,
+  reuseDocIds,
+}: {
+  files?: FileList | File[];
+  sessionId?: number;
+  reuseDocIds?: number[];
+}) => {
+  if (files && (Array.isArray(files) ? files.length > 0 : files.length > 0)) {
+    const fd = new FormData();
+    const arr = Array.isArray(files) ? files : Array.from(files);
+    arr.forEach((f) => fd.append("files", f));
+    if (sessionId) fd.append("session_id", String(sessionId));
+    (reuseDocIds || []).forEach((id) => fd.append("reuse_doc_ids", String(id)));
+    const response = await apiClient.post<PlannerStartResponse>("/planner/start/", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: PLANNER_START_TIMEOUT_MS,
+    });
+    return response.data;
+  }
+  const response = await apiClient.post<PlannerStartResponse>(
+    "/planner/start/",
+    {
+      session_id: sessionId,
+      reuse_doc_ids: reuseDocIds || [],
+    },
+    { timeout: PLANNER_START_TIMEOUT_MS }
+  );
+  return response.data;
+};
+
+export const plannerExecuteV3 = async (payload: {
+  planner_run_id: string;
+  session_id?: number;
+  answers: Record<string, unknown>;
+  client_summary?: string;
+}) => {
+  const response = await apiClient.post<PlannerExecuteResponse>("/planner/execute/", payload);
+  return response.data;
+};
+
+export const plannerCancelV3 = async (plannerRunId: string) => {
+  const response = await apiClient.post<{ status: string; status_detail?: string; error?: string }>(
+    "/planner/cancel/",
+    { planner_run_id: plannerRunId }
+  );
   return response.data;
 };
 

@@ -1,12 +1,17 @@
 # core/service.py
 import time
 import logging
+import os
+import json
+import re
+from datetime import timedelta
 from typing import Any, Dict, List, Tuple
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import UploadedFile
+from django.utils import timezone
 
-from .models import AcademicDocument, ChatHistory, ChatSession, PlannerHistory, UserQuota
+from .models import AcademicDocument, ChatHistory, ChatSession, PlannerHistory, PlannerRun, UserQuota
 from .ai_engine.ingest import process_document
 from .ai_engine.retrieval import ask_bot
 from .ai_engine.vector_ops import delete_vectors_for_doc, delete_vectors_for_doc_strict
@@ -934,3 +939,505 @@ def planner_continue(
             },
         )
     return payload, state
+
+
+def _planner_v3_expiry_hours() -> int:
+    try:
+        return max(1, int(os.environ.get("PLANNER_V3_EXPIRE_HOURS", "24")))
+    except Exception:
+        return 24
+
+
+def _planner_v3_progress_hints() -> List[str]:
+    return [
+        "Memvalidasi dokumen",
+        "Mengekstrak teks",
+        "Mengenali tipe dokumen",
+        "Menyusun sesi planner",
+    ]
+
+
+def _serialize_embedded_docs_for_user(user: User, only_ids: List[int] | None = None) -> List[Dict[str, Any]]:
+    qs = AcademicDocument.objects.filter(user=user, is_embedded=True).order_by("-uploaded_at")
+    if only_ids:
+        qs = qs.filter(id__in=only_ids)
+    rows: List[Dict[str, Any]] = []
+    for d in qs[:20]:
+        rows.append(
+            {
+                "id": d.id,
+                "title": d.title,
+                "uploaded_at": d.uploaded_at.isoformat(),
+            }
+        )
+    return rows
+
+
+def _build_planner_v3_user_summary(answers: Dict[str, Any], docs: List[Dict[str, Any]]) -> str:
+    focus = str(answers.get("focus") or answers.get("goal") or "analisis akademik").strip()
+    docs_text = ", ".join([str(d.get("title") or "-") for d in docs[:3]]) or "dokumen akademik"
+    return f"Tolong analisis {docs_text} dengan fokus {focus}."
+
+
+def _safe_json_obj(text: str) -> Dict[str, Any]:
+    txt = (text or "").strip()
+    if not txt:
+        return {}
+    try:
+        obj = json.loads(txt)
+        return obj if isinstance(obj, dict) else {}
+    except Exception:
+        pass
+    m = re.search(r"\{.*\}", txt, flags=re.DOTALL)
+    if not m:
+        return {}
+    try:
+        obj = json.loads(m.group(0))
+        return obj if isinstance(obj, dict) else {}
+    except Exception:
+        return {}
+
+
+def _collect_planner_context_snippets(user: User, docs_summary: List[Dict[str, Any]], k: int = 5) -> List[Dict[str, str]]:
+    snippets: List[Dict[str, str]] = []
+    try:
+        vectorstore = get_vectorstore()
+    except Exception:
+        return snippets
+
+    doc_titles = [str(d.get("title") or "").strip() for d in docs_summary if d.get("title")]
+    query = " ".join(doc_titles[:3]) or "khs krs jadwal transkrip"
+    try:
+        docs = vectorstore.similarity_search(query, k=max(1, k), filter={"user_id": str(user.id)})
+    except Exception:
+        return snippets
+
+    for d in docs[:k]:
+        source = str((getattr(d, "metadata", {}) or {}).get("source") or "unknown")
+        text = str(getattr(d, "page_content", "") or "").strip()
+        if not text:
+            continue
+        snippets.append({"source": source, "snippet": text[:420]})
+    return snippets
+
+
+def assess_documents_relevance(user: User, docs_summary: List[Dict[str, Any]]) -> Dict[str, Any]:
+    titles = [str(d.get("title") or "").lower() for d in docs_summary]
+    reasons: List[str] = []
+    strong_keywords = {
+        "khs", "krs", "jadwal", "transkrip", "kurikulum", "mata kuliah", "nilai", "ipk", "ips", "sks", "semester",
+    }
+    weak_keywords = {
+        "dosen", "kelas", "ruang", "kuliah", "akademik", "prodi", "jurusan",
+    }
+
+    strong_hits = 0
+    weak_hits = 0
+    for t in titles:
+        title_strong = [kw for kw in strong_keywords if kw in t]
+        title_weak = [kw for kw in weak_keywords if kw in t]
+        if title_strong:
+            strong_hits += len(title_strong)
+            reasons.append(f"Judul dokumen mengandung sinyal akademik kuat: {', '.join(title_strong[:3])}")
+        if title_weak:
+            weak_hits += len(title_weak)
+
+    snippets = _collect_planner_context_snippets(user=user, docs_summary=docs_summary, k=4)
+    snippet_strong_hits = 0
+    snippet_weak_hits = 0
+    for s in snippets:
+        low = (s.get("snippet") or "").lower()
+        if not low:
+            continue
+        snippet_strong_hits += len([kw for kw in strong_keywords if kw in low])
+        snippet_weak_hits += len([kw for kw in weak_keywords if kw in low])
+    if snippet_strong_hits or snippet_weak_hits:
+        reasons.append("Cuplikan dokumen mendukung konteks akademik.")
+
+    if strong_hits >= 1:
+        score = max(
+            0.75,
+            min(
+                1.0,
+                (strong_hits * 0.35) + (weak_hits * 0.08) + (snippet_strong_hits * 0.06) + (snippet_weak_hits * 0.02),
+            ),
+        )
+    else:
+        score = min(
+            1.0,
+            (strong_hits * 0.35) + (weak_hits * 0.08) + (snippet_strong_hits * 0.06) + (snippet_weak_hits * 0.02),
+        )
+    is_relevant = score >= 0.55
+    blocked_reason = "" if is_relevant else (
+        "Dokumen belum terdeteksi relevan untuk perencanaan akademik. "
+        "Upload dokumen seperti KHS, KRS, Jadwal, Transkrip, atau Kurikulum."
+    )
+    return {
+        "is_relevant": is_relevant,
+        "relevance_score": round(score, 3),
+        "relevance_reasons": reasons[:3],
+        "blocked_reason": blocked_reason,
+    }
+
+
+def _sanitize_blueprint_payload(blueprint: Dict[str, Any], profile_hints: Dict[str, Any], mode: str) -> Dict[str, Any]:
+    steps = blueprint.get("steps") if isinstance(blueprint, dict) else None
+    if not isinstance(steps, list):
+        steps = []
+    out_steps: List[Dict[str, Any]] = []
+    seen = set()
+    for s in steps[:3]:
+        if not isinstance(s, dict):
+            continue
+        step_key = str(s.get("step_key") or "").strip()[:40]
+        if (not step_key) or (step_key in seen):
+            continue
+        seen.add(step_key)
+        options = s.get("options") if isinstance(s.get("options"), list) else []
+        norm_opts = []
+        for idx, o in enumerate(options[:6], start=1):
+            if not isinstance(o, dict):
+                continue
+            norm_opts.append({
+                "id": int(o.get("id") or idx),
+                "label": str(o.get("label") or f"Opsi {idx}")[:120],
+                "value": str(o.get("value") or f"opt_{idx}")[:80],
+            })
+        allow_manual = bool(s.get("allow_manual", True))
+        if not allow_manual and len(norm_opts) < 2:
+            continue
+        out_steps.append(
+            {
+                "step_key": step_key,
+                "title": str(s.get("title") or step_key.title())[:120],
+                "question": str(s.get("question") or "Lanjutkan planner")[:320],
+                "options": norm_opts,
+                "allow_manual": allow_manual,
+                "required": bool(s.get("required", True)),
+                "source_hint": str(s.get("source_hint") or "mixed")[:20],
+            }
+        )
+
+    if not out_steps:
+        return {}
+
+    meta = blueprint.get("meta") if isinstance(blueprint.get("meta"), dict) else {}
+    major_candidates = profile_hints.get("major_candidates") or []
+    top_major = major_candidates[0] if major_candidates else {}
+    has_major_step = any(
+        ("jurusan" in str(s.get("step_key") or "").lower()) or ("major" in str(s.get("step_key") or "").lower())
+        for s in out_steps
+    )
+    requires_major_confirmation = bool(
+        meta.get("requires_major_confirmation", profile_hints.get("confidence_summary") != "high")
+    )
+    # Jangan memaksa konfirmasi jurusan jika blueprint tidak menyediakan step untuk itu.
+    if requires_major_confirmation and not has_major_step:
+        requires_major_confirmation = False
+
+    return {
+        "version": "v3_dynamic",
+        "steps": out_steps,
+        "meta": {
+            "doc_type_detected": str(meta.get("doc_type_detected") or "academic_document")[:80],
+            "major_inferred": str(meta.get("major_inferred") or top_major.get("label") or "")[:120] or None,
+            "major_confidence": float(meta.get("major_confidence") or top_major.get("confidence") or 0.0),
+            "generation_mode": mode,
+            "requires_major_confirmation": requires_major_confirmation,
+        },
+    }
+
+
+def _generate_planner_blueprint_llm(
+    *,
+    user: User,
+    docs_summary: List[Dict[str, Any]],
+    data_level: Dict[str, Any],
+    profile_hints: Dict[str, Any],
+) -> Dict[str, Any]:
+    runtime_cfg = get_runtime_openrouter_config()
+    api_key = str(runtime_cfg.get("api_key") or "").strip()
+    if not api_key:
+        return {}
+    # Planner start harus responsif; pakai timeout khusus agar tidak menahan UI terlalu lama.
+    planner_timeout = max(4, int(os.environ.get("PLANNER_BLUEPRINT_TIMEOUT_SEC", "12")))
+    runtime_cfg = {
+        **runtime_cfg,
+        "timeout": planner_timeout,
+        "max_retries": 0,
+    }
+
+    snippets = _collect_planner_context_snippets(user=user, docs_summary=docs_summary, k=5)
+    snippets_text = "\n".join([f"- [{x.get('source')}] {x.get('snippet')}" for x in snippets[:5]])
+    docs_text = "\n".join([f"- {d.get('title')}" for d in docs_summary[:8]])
+
+    prompt = (
+        "Kamu adalah AI Academic Planner Indonesia. "
+        "Tugasmu membuat JSON blueprint wizard planner berdasarkan dokumen user. "
+        "Hasil HARUS JSON valid saja, tanpa teks lain.\n\n"
+        "Aturan ketat:\n"
+        "1) Langkah 1-3 saja.\n"
+        "2) Setiap langkah wajib: step_key,title,question,options,allow_manual,required,source_hint.\n"
+        "3) Jika confidence jurusan tidak tinggi, wajib ada langkah konfirmasi jurusan.\n"
+        "4) Jangan tanya data yang sudah jelas ada di dokumen.\n"
+        "5) options minimal 2 jika allow_manual=false.\n"
+        "6) source_hint hanya: document|profile|mixed.\n\n"
+        "Schema output:\n"
+        "{\"version\":\"v3_dynamic\",\"steps\":[...],\"meta\":{\"doc_type_detected\":str,\"major_inferred\":str|null,\"major_confidence\":float,\"generation_mode\":\"llm\",\"requires_major_confirmation\":bool}}\n\n"
+        f"Data level: {data_level}\n"
+        f"Profile hints summary: confidence={profile_hints.get('confidence_summary')} major_candidates={(profile_hints.get('major_candidates') or [])[:3]}\n"
+        f"Dokumen user:\n{docs_text}\n"
+        f"Top snippets:\n{snippets_text}\n"
+    )
+
+    backup_models = get_backup_models(str(runtime_cfg.get("model") or ""), runtime_cfg.get("backup_models"))
+    # Batasi jumlah model untuk fase start agar latency tetap rendah.
+    max_models = max(1, int(os.environ.get("PLANNER_BLUEPRINT_MAX_MODELS", "1")))
+    for model_name in backup_models[:max_models]:
+        try:
+            llm = build_llm(model_name, runtime_cfg)
+            raw = invoke_text(llm, prompt).strip()
+            obj = _safe_json_obj(raw)
+            if not obj:
+                continue
+            clean = _sanitize_blueprint_payload(obj, profile_hints=profile_hints, mode="llm")
+            if clean.get("steps"):
+                return clean
+        except Exception:
+            continue
+    return {}
+
+
+def planner_start_v3(
+    *,
+    user: User,
+    files: List[UploadedFile] | None = None,
+    reuse_doc_ids: List[int] | None = None,
+    session_id: int | None = None,
+) -> Dict[str, Any]:
+    planner_session = get_or_create_chat_session(user=user, session_id=session_id)
+    reuse_doc_ids = reuse_doc_ids or []
+    had_upload = bool(files)
+
+    if files:
+        quota_bytes = get_user_quota_bytes(user=user, default_quota_bytes=10 * 1024 * 1024)
+        upload_result = upload_files_batch(user=user, files=files, quota_bytes=quota_bytes)
+        if upload_result.get("status") != "success":
+            return {
+                "status": "error",
+                "error": upload_result.get("msg") or "Upload gagal.",
+                "required_upload": True,
+            }
+
+    docs_summary = _serialize_embedded_docs_for_user(user=user, only_ids=reuse_doc_ids if reuse_doc_ids else None)
+    if not docs_summary:
+        return {
+            "status": "error",
+            "error": "Belum ada dokumen embedded yang valid. Upload atau pilih dokumen existing dulu.",
+            "required_upload": True,
+            "progress_hints": _planner_v3_progress_hints(),
+            "recommended_docs": ["KHS", "KRS", "Jadwal", "Transkrip", "Kurikulum"],
+        }
+
+    relevance = assess_documents_relevance(user=user, docs_summary=docs_summary)
+    if not relevance.get("is_relevant"):
+        return {
+            "status": "error",
+            "error_code": "IRRELEVANT_DOCUMENTS",
+            "error": relevance.get("blocked_reason") or "Dokumen tidak relevan.",
+            "required_upload": True,
+            "doc_relevance": {
+                "is_relevant": False,
+                "score": relevance.get("relevance_score", 0.0),
+                "reasons": relevance.get("relevance_reasons") or [],
+            },
+            "recommended_docs": ["KHS", "KRS", "Jadwal", "Transkrip", "Kurikulum"],
+            "progress_hints": _planner_v3_progress_hints(),
+        }
+
+    data_level = planner_engine.detect_data_level(user)
+    profile_hints = extract_profile_hints(user)
+
+    wizard_blueprint = _generate_planner_blueprint_llm(
+        user=user,
+        docs_summary=docs_summary,
+        data_level=data_level,
+        profile_hints=profile_hints,
+    )
+
+    generation_mode = "llm"
+    if not wizard_blueprint:
+        fallback = planner_engine.build_wizard_blueprint_v3(
+            data_level=data_level,
+            profile_hints=profile_hints,
+            documents_summary=docs_summary,
+        )
+        wizard_blueprint = _sanitize_blueprint_payload(fallback, profile_hints=profile_hints, mode="fallback_rule")
+        generation_mode = "fallback_rule"
+
+    if not wizard_blueprint:
+        return {
+            "status": "error",
+            "error": "Gagal menyusun blueprint planner. Coba upload dokumen yang lebih jelas.",
+            "required_upload": True,
+        }
+
+    run = PlannerRun.objects.create(
+        user=user,
+        session=planner_session,
+        status=PlannerRun.STATUS_READY,
+        wizard_blueprint=wizard_blueprint,
+        documents_snapshot=docs_summary,
+        expires_at=timezone.now() + timedelta(hours=_planner_v3_expiry_hours()),
+    )
+    return {
+        "status": "success",
+        "planner_run_id": str(run.id),
+        "session_id": planner_session.id,
+        "wizard_blueprint": wizard_blueprint,
+        "documents_summary": docs_summary,
+        "required_upload": False,
+        "progress_hints": _planner_v3_progress_hints(),
+        "doc_relevance": {
+            "is_relevant": True,
+            "score": relevance.get("relevance_score", 0.0),
+            "reasons": relevance.get("relevance_reasons") or [],
+        },
+        "profile_hints_summary": {
+            "major_candidates": (profile_hints.get("major_candidates") or [])[:3],
+            "confidence_summary": profile_hints.get("confidence_summary"),
+        },
+        "planner_meta": {
+            "event_type": "start_v3",
+            "had_upload": had_upload,
+            "reuse_count": len(reuse_doc_ids),
+            "generation_mode": generation_mode,
+        },
+    }
+def get_planner_run_for_user(user: User, run_id: str) -> PlannerRun | None:
+    try:
+        return PlannerRun.objects.filter(user=user, id=run_id).first()
+    except Exception:
+        return None
+
+
+def _validate_planner_answers(blueprint: Dict[str, Any], answers: Dict[str, Any]) -> str:
+    steps = blueprint.get("steps") if isinstance(blueprint, dict) else None
+    if not isinstance(steps, list) or not steps:
+        return "Blueprint planner tidak valid."
+
+    valid_step_keys = []
+    seen = set()
+    required_keys = set()
+    for s in steps:
+        if not isinstance(s, dict):
+            continue
+        key = str(s.get("step_key") or "").strip()
+        if not key:
+            return "Blueprint planner tidak memiliki step_key valid."
+        if key in seen:
+            return f"Blueprint planner duplikat step_key: {key}"
+        seen.add(key)
+        valid_step_keys.append(key)
+        if bool(s.get("required", True)):
+            required_keys.add(key)
+        allow_manual = bool(s.get("allow_manual", True))
+        options = s.get("options") if isinstance(s.get("options"), list) else []
+        if (not allow_manual) and len(options) < 2:
+            return f"Blueprint step '{key}' tidak valid: options kurang dari 2."
+
+    unknown_keys = [k for k in answers.keys() if k not in set(valid_step_keys)]
+    if unknown_keys:
+        return f"Jawaban memuat step tidak dikenal: {', '.join(sorted(unknown_keys))}"
+
+    missing_required = [k for k in sorted(required_keys) if str(answers.get(k) or "").strip() == ""]
+    if missing_required:
+        return f"Jawaban required belum lengkap: {', '.join(missing_required)}"
+
+    for k, v in answers.items():
+        if not isinstance(v, (str, int, float, bool, dict, list)):
+            return f"Tipe jawaban untuk step '{k}' tidak valid."
+
+    meta = blueprint.get("meta") if isinstance(blueprint.get("meta"), dict) else {}
+    if bool(meta.get("requires_major_confirmation")):
+        major_keys = [k for k in valid_step_keys if ("jurusan" in k.lower()) or ("major" in k.lower())]
+        if not major_keys:
+            return ""
+        has_major_answer = any(str(answers.get(k) or "").strip() for k in major_keys)
+        if not has_major_answer:
+            return "Konfirmasi jurusan wajib diisi karena confidence jurusan belum tinggi."
+    return ""
+def planner_execute_v3(
+    *,
+    user: User,
+    planner_run_id: str,
+    answers: Dict[str, Any],
+    session_id: int | None = None,
+    client_summary: str = "",
+    request_id: str = "-",
+) -> Dict[str, Any]:
+    run = get_planner_run_for_user(user=user, run_id=planner_run_id)
+    if not run:
+        return {"status": "error", "error": "planner_run_id tidak ditemukan."}
+    if run.status in {PlannerRun.STATUS_CANCELLED, PlannerRun.STATUS_EXPIRED}:
+        return {"status": "error", "error": f"Planner run sudah {run.status}."}
+    if run.status not in {PlannerRun.STATUS_READY, PlannerRun.STATUS_STARTED}:
+        return {"status": "error", "error": "Planner run tidak dalam status siap eksekusi."}
+    if timezone.now() > run.expires_at:
+        run.status = PlannerRun.STATUS_EXPIRED
+        run.save(update_fields=["status", "updated_at"])
+        return {"status": "error", "error": "Planner run sudah kedaluwarsa."}
+
+    err = _validate_planner_answers(run.wizard_blueprint, answers or {})
+    if err:
+        return {"status": "error", "error": err}
+
+    run.status = PlannerRun.STATUS_EXECUTING
+    run.answers_snapshot = answers or {}
+    run.save(update_fields=["status", "answers_snapshot", "updated_at"])
+
+    session = get_or_create_chat_session(user=user, session_id=session_id or run.session_id)
+    summary = (client_summary or "").strip() or _build_planner_v3_user_summary(answers=answers, docs=run.documents_snapshot)
+    context_payload = {
+        "planner_run_id": str(run.id),
+        "documents": run.documents_snapshot,
+        "answers": answers,
+    }
+    planner_prompt = (
+        "Buat analisis akademik berbasis dokumen user dan jawaban wizard berikut.\n"
+        f"Data: {context_payload}\n\n"
+        f"Permintaan user: {summary}"
+    )
+    rag_result = ask_bot(user.id, planner_prompt, request_id=request_id)
+    answer = str((rag_result or {}).get("answer") or "Maaf, belum ada jawaban.")
+    sources = list((rag_result or {}).get("sources") or [])
+
+    ChatHistory.objects.create(user=user, session=session, question=summary, answer=answer)
+    session.save(update_fields=["updated_at"])
+    run.status = PlannerRun.STATUS_COMPLETED
+    run.save(update_fields=["status", "updated_at"])
+
+    return {
+        "status": "success",
+        "answer": answer,
+        "sources": sources,
+        "session_id": session.id,
+        "planner_meta": {
+            "event_type": "generate",
+            "planner_run_id": str(run.id),
+        },
+    }
+
+
+def planner_cancel_v3(*, user: User, planner_run_id: str) -> Dict[str, Any]:
+    run = get_planner_run_for_user(user=user, run_id=planner_run_id)
+    if not run:
+        return {"status": "error", "error": "planner_run_id tidak ditemukan."}
+    if run.status in {PlannerRun.STATUS_COMPLETED, PlannerRun.STATUS_CANCELLED}:
+        return {"status": "success", "status_detail": run.status}
+    run.status = PlannerRun.STATUS_CANCELLED
+    run.save(update_fields=["status", "updated_at"])
+    return {"status": "success", "status_detail": "cancelled"}
+
+
+

@@ -455,3 +455,117 @@ def get_step_payload(state: Dict[str, Any]) -> Dict[str, Any]:
         "profile_hints": profile_hints,
         "planner_meta": {"step": current},
     }
+
+
+def build_wizard_blueprint_v3(
+    *,
+    data_level: Dict[str, Any],
+    profile_hints: Dict[str, Any],
+    documents_summary: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """
+    Builder fallback wizard planner v3 untuk mode local-state di frontend.
+    Dipakai saat LLM blueprint tidak tersedia/invalid.
+    """
+    major_candidates = profile_hints.get("major_candidates") or []
+    career_candidates = profile_hints.get("career_candidates") or []
+
+    major_options = []
+    seen_major = set()
+    for idx, c in enumerate(major_candidates[:4], start=1):
+        value = str(c.get("value") or "").strip()
+        if not value:
+            continue
+        low = value.lower()
+        if low in seen_major:
+            continue
+        seen_major.add(low)
+        major_options.append({"id": idx, "label": value, "value": value})
+    if not major_options:
+        major_options = [
+            {"id": 1, "label": "Teknik Informatika", "value": "Teknik Informatika"},
+            {"id": 2, "label": "Sistem Informasi", "value": "Sistem Informasi"},
+            {"id": 3, "label": "Manajemen", "value": "Manajemen"},
+        ]
+
+    career_options = []
+    seen_career = set()
+    for idx, c in enumerate(career_candidates[:4], start=1):
+        value = str(c.get("value") or "").strip()
+        if not value:
+            continue
+        low = value.lower()
+        if low in seen_career:
+            continue
+        seen_career.add(low)
+        career_options.append({"id": idx, "label": value, "value": value})
+    if not career_options:
+        career_options = [
+            {"id": 1, "label": "Software Engineer", "value": "Software Engineer"},
+            {"id": 2, "label": "Data Analyst", "value": "Data Analyst"},
+            {"id": 3, "label": "HR Specialist", "value": "HR Specialist"},
+        ]
+
+    steps = [
+        {
+            "step_key": "focus",
+            "title": "Fokus Analisis",
+            "question": "Fokus analisis apa yang ingin kamu prioritaskan?",
+            "options": [
+                {"id": 1, "label": "Evaluasi IPK & tren nilai", "value": "ipk_trend"},
+                {"id": 2, "label": "Rekomendasi SKS semester depan", "value": "sks_recommendation"},
+                {"id": 3, "label": "Strategi perbaikan nilai", "value": "grade_recovery"},
+            ],
+            "allow_manual": True,
+            "required": True,
+            "source_hint": "mixed",
+        },
+        {
+            "step_key": "jurusan",
+            "title": "Profil Jurusan",
+            "question": "Konfirmasi jurusan kamu.",
+            "options": major_options,
+            "allow_manual": True,
+            "required": True,
+            "source_hint": "profile",
+        },
+        {
+            "step_key": "career",
+            "title": "Target Karier",
+            "question": "Target karier kamu setelah lulus?",
+            "options": career_options,
+            "allow_manual": True,
+            "required": False,
+            "source_hint": "profile",
+        },
+        {
+            "step_key": "output_style",
+            "title": "Format Output",
+            "question": "Mau hasil akhir dalam format apa?",
+            "options": [
+                {"id": 1, "label": "Ringkas + Action Plan", "value": "concise"},
+                {"id": 2, "label": "Detail + Penjelasan", "value": "detailed"},
+            ],
+            "allow_manual": False,
+            "required": True,
+            "source_hint": "mixed",
+        },
+    ]
+
+    return {
+        "version": "v3_dynamic",
+        "data_level": data_level,
+        "profile_hints": {
+            "confidence_summary": profile_hints.get("confidence_summary"),
+            "has_relevant_docs": bool(documents_summary),
+        },
+        "documents_summary": documents_summary,
+        "steps": steps[:3],
+        "meta": {
+            "doc_type_detected": "academic_document",
+            "major_inferred": (major_candidates[0].get("label") if major_candidates else None),
+            "major_confidence": float((major_candidates[0].get("confidence") if major_candidates else 0.0) or 0.0),
+            "generation_mode": "fallback_rule",
+            "requires_major_confirmation": (profile_hints.get("confidence_summary") != "high"),
+        },
+    }

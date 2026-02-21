@@ -2,6 +2,7 @@
 import json
 import logging
 import time
+import os
 
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponseServerError
@@ -38,6 +39,10 @@ QUOTA_BYTES = 10 * 1024 * 1024  # 10MB
 
 def _rid(request) -> str:
     return getattr(request, "request_id", "-")
+
+
+def _planner_v3_enabled() -> bool:
+    return str(os.environ.get("PLANNER_V3_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _log_extra(request) -> dict:
@@ -677,6 +682,138 @@ def chat_api(request):
         logger.error(f" [CHAT CRASH] user={user.username}(id={user.id}) ip={ip} err={repr(e)}",
                      extra=_log_extra(request), exc_info=True)
         return JsonResponse({"error": "Terjadi kesalahan pada server AI."}, status=500)
+
+
+@csrf_exempt
+@login_required
+def planner_start_v3_api(request):
+    user = request.user
+    ip = _get_client_ip(request)
+    if not _planner_v3_enabled():
+        return JsonResponse({"status": "error", "error": "Planner v3 dinonaktifkan."}, status=404)
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "error": "Method not allowed"}, status=405)
+    try:
+        session_id = None
+        reuse_doc_ids = []
+        files = request.FILES.getlist("files")
+        if request.content_type and "application/json" in request.content_type:
+            data = json.loads(request.body or "{}")
+            session_id_raw = data.get("session_id")
+            if session_id_raw is not None and str(session_id_raw).isdigit():
+                session_id = int(session_id_raw)
+            reuse_doc_ids = [
+                int(x) for x in (data.get("reuse_doc_ids") or []) if str(x).isdigit()
+            ]
+        else:
+            session_id_raw = request.POST.get("session_id")
+            if session_id_raw and str(session_id_raw).isdigit():
+                session_id = int(session_id_raw)
+            reuse_doc_ids = [
+                int(x)
+                for x in request.POST.getlist("reuse_doc_ids")
+                if str(x).isdigit()
+            ]
+        payload = service.planner_start_v3(
+            user=user,
+            files=files,
+            reuse_doc_ids=reuse_doc_ids,
+            session_id=session_id,
+        )
+        status = 200 if payload.get("status") == "success" else 400
+        logger.info(
+            " [PLANNER V3 START] user=%s(id=%s) ip=%s status=%s docs=%s",
+            user.username,
+            user.id,
+            ip,
+            payload.get("status"),
+            len(payload.get("documents_summary") or []),
+            extra=_log_extra(request),
+        )
+        return JsonResponse(payload, status=status)
+    except Exception as e:
+        logger.error(
+            " [PLANNER V3 START ERROR] user=%s(id=%s) ip=%s err=%s",
+            user.username,
+            user.id,
+            ip,
+            repr(e),
+            extra=_log_extra(request),
+            exc_info=True,
+        )
+        return JsonResponse({"status": "error", "error": "Terjadi kesalahan server."}, status=500)
+
+
+@csrf_exempt
+@login_required
+def planner_execute_v3_api(request):
+    user = request.user
+    ip = _get_client_ip(request)
+    if not _planner_v3_enabled():
+        return JsonResponse({"status": "error", "error": "Planner v3 dinonaktifkan."}, status=404)
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "error": "Method not allowed"}, status=405)
+    try:
+        data = json.loads(request.body or "{}")
+        planner_run_id = str(data.get("planner_run_id") or "").strip()
+        answers = data.get("answers") or {}
+        if not planner_run_id:
+            return JsonResponse({"status": "error", "error": "planner_run_id wajib diisi."}, status=400)
+        if not isinstance(answers, dict):
+            return JsonResponse({"status": "error", "error": "answers harus object."}, status=400)
+        session_id = data.get("session_id")
+        session_id = int(session_id) if str(session_id).isdigit() else None
+        client_summary = str(data.get("client_summary") or "")
+        payload = service.planner_execute_v3(
+            user=user,
+            planner_run_id=planner_run_id,
+            answers=answers,
+            session_id=session_id,
+            client_summary=client_summary,
+            request_id=_rid(request),
+        )
+        status = 200 if payload.get("status") == "success" else 400
+        logger.info(
+            " [PLANNER V3 EXECUTE] user=%s(id=%s) ip=%s status=%s run=%s",
+            user.username,
+            user.id,
+            ip,
+            payload.get("status"),
+            planner_run_id,
+            extra=_log_extra(request),
+        )
+        return JsonResponse(payload, status=status)
+    except Exception as e:
+        logger.error(
+            " [PLANNER V3 EXECUTE ERROR] user=%s(id=%s) ip=%s err=%s",
+            user.username,
+            user.id,
+            ip,
+            repr(e),
+            extra=_log_extra(request),
+            exc_info=True,
+        )
+        return JsonResponse({"status": "error", "error": "Terjadi kesalahan server."}, status=500)
+
+
+@csrf_exempt
+@login_required
+def planner_cancel_v3_api(request):
+    user = request.user
+    if not _planner_v3_enabled():
+        return JsonResponse({"status": "error", "error": "Planner v3 dinonaktifkan."}, status=404)
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "error": "Method not allowed"}, status=405)
+    try:
+        data = json.loads(request.body or "{}")
+        planner_run_id = str(data.get("planner_run_id") or "").strip()
+        if not planner_run_id:
+            return JsonResponse({"status": "error", "error": "planner_run_id wajib diisi."}, status=400)
+        payload = service.planner_cancel_v3(user=user, planner_run_id=planner_run_id)
+        status = 200 if payload.get("status") == "success" else 400
+        return JsonResponse(payload, status=status)
+    except Exception:
+        return JsonResponse({"status": "error", "error": "Terjadi kesalahan server."}, status=500)
 
 
 @csrf_exempt

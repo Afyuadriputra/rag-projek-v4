@@ -101,6 +101,17 @@ class PlannerEngineTests(TestCase):
         payload = planner_engine.get_step_payload(state)
         self.assertIn("Kami mendeteksi jurusan", payload.get("answer", ""))
 
+    def test_build_wizard_blueprint_v3_has_steps_and_docs(self):
+        blueprint = planner_engine.build_wizard_blueprint_v3(
+            data_level={"level": 2, "has_transcript": True, "has_schedule": False},
+            profile_hints={"confidence_summary": "medium"},
+            documents_summary=[{"id": 1, "title": "KHS.pdf"}],
+        )
+        self.assertEqual(blueprint.get("version"), "v3")
+        steps = blueprint.get("steps") or []
+        self.assertTrue(len(steps) >= 3)
+        self.assertIn("documents_summary", blueprint)
+
 
 class PlannerApiTests(TestCase):
     def setUp(self):

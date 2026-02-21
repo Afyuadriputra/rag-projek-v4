@@ -8,10 +8,37 @@ import KnowledgeSidebar from "@/components/organisms/KnowledgeSidebar";
 import ChatThread from "@/components/organisms/ChatThread";
 import ChatComposer from "@/components/molecules/ChatComposer";
 import Toast from "@/components/molecules/Toast";
+import PlannerOnboardingCard from "@/components/planner/PlannerOnboardingCard";
+import PlannerWizardCard from "@/components/planner/PlannerWizardCard";
+import PlannerReviewCard from "@/components/planner/PlannerReviewCard";
+import PlannerProgressOverlay from "@/components/planner/PlannerProgressOverlay";
 
 // API & Types
-import { sendChat, uploadDocuments, getDocuments, getSessions, createSession, deleteSession, getSessionTimeline, renameSession, deleteDocument } from "@/lib/api";
-import type { DocumentDto, DocumentsResponse, ChatSessionDto, ChatResponse, PlannerModeResponse, TimelineItem } from "@/lib/api";
+import {
+  sendChat,
+  uploadDocuments,
+  getDocuments,
+  getSessions,
+  createSession,
+  deleteSession,
+  getSessionTimeline,
+  renameSession,
+  deleteDocument,
+  plannerStartV3,
+  plannerExecuteV3,
+  plannerCancelV3,
+} from "@/lib/api";
+import type {
+  DocumentDto,
+  DocumentsResponse,
+  ChatSessionDto,
+  ChatResponse,
+  PlannerModeResponse,
+  TimelineItem,
+  PlannerWizardStep,
+  PlannerProfileHintsSummary,
+  PlannerStartResponse,
+} from "@/lib/api";
 import type { ChatItem } from "@/components/molecules/ChatBubble";
 
 // --- Types ---
@@ -131,6 +158,15 @@ export default function Index() {
   const [sessionsHasNext, setSessionsHasNext] = useState(false);
   const [sessionsLoadingMore, setSessionsLoadingMore] = useState(false);
   const [mode, setMode] = useState<"chat" | "planner">("chat");
+  const [plannerUiState, setPlannerUiState] = useState<"idle" | "onboarding" | "uploading" | "ready" | "reviewing" | "executing" | "done">("idle");
+  const [plannerRunId, setPlannerRunId] = useState<string | null>(null);
+  const [wizardSteps, setWizardSteps] = useState<PlannerWizardStep[]>([]);
+  const [wizardAnswers, setWizardAnswers] = useState<Record<string, string>>({});
+  const [wizardIndex, setWizardIndex] = useState(0);
+  const [plannerDocs, setPlannerDocs] = useState<Array<{ id: number; title: string }>>([]);
+  const [plannerProgressMessage, setPlannerProgressMessage] = useState("Memvalidasi dokumen...");
+  const [plannerRelevanceError, setPlannerRelevanceError] = useState<string | null>(null);
+  const [plannerMajorSummary, setPlannerMajorSummary] = useState<PlannerProfileHintsSummary | null>(null);
   const [plannerStateBySession, setPlannerStateBySession] = useState<Record<number, Record<string, unknown>>>({});
   const [plannerInitializedBySession, setPlannerInitializedBySession] = useState<Record<number, boolean>>({});
   const [plannerWarningBySession, setPlannerWarningBySession] = useState<Record<number, string | null>>({});
@@ -330,12 +366,12 @@ export default function Index() {
   }, [items, composerH]);
 
   useEffect(() => {
-    if (mode !== "planner") return;
-    ensurePlannerStarted().catch(() => {
-      // ignore
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, activeSession]);
+    if (mode === "planner") {
+      setPlannerUiState((prev) => (prev === "idle" ? "onboarding" : prev));
+      return;
+    }
+    setPlannerUiState("idle");
+  }, [mode]);
 
   const upsertPlannerSystemMessage = (
     sessionId: number,
@@ -546,17 +582,9 @@ export default function Index() {
     }
   };
 
-  const ensurePlannerStarted = async () => {
-    if (mode !== "planner") return;
-    if (!activeSessionIdNum) return;
-    const alreadyInit = !!plannerInitializedBySession[activeSessionIdNum];
-    const hasPlannerStep = !!(plannerStateBySession[activeSessionIdNum] && (plannerStateBySession[activeSessionIdNum] as any).current_step);
-    if (alreadyInit || hasPlannerStep || loading) return;
-    await sendMessage({ message: "", echoUser: false, sendMode: "planner", isAutoPlannerStart: true });
-  };
-
   // --- Handlers ---
   const onSend = async (message: string) => {
+    if (mode === "planner" && plannerUiState !== "done" && plannerUiState !== "idle") return;
     await sendMessage({ message, echoUser: true });
   };
 
@@ -572,15 +600,204 @@ export default function Index() {
 
   const onToggleMode = async (nextMode: "chat" | "planner") => {
     if (nextMode === mode || loading) return;
+    if (mode === "planner" && plannerRunId && plannerUiState !== "done" && plannerUiState !== "idle") {
+      try {
+        await plannerCancelV3(plannerRunId);
+      } catch {
+        // no-op
+      }
+      setPlannerRunId(null);
+      setWizardSteps([]);
+      setWizardAnswers({});
+      setWizardIndex(0);
+      setPlannerDocs([]);
+      setPlannerRelevanceError(null);
+      setPlannerMajorSummary(null);
+      setPlannerUiState("idle");
+    }
     setMode(nextMode);
   };
 
   const onUploadClick = () => fileInputRef.current?.click();
 
+  const applyPlannerStartSuccess = (res: PlannerStartResponse) => {
+    setPlannerRunId(res.planner_run_id || null);
+    setWizardSteps(res.wizard_blueprint?.steps || []);
+    setWizardAnswers({});
+    setWizardIndex(0);
+    setPlannerDocs((res.documents_summary || []).map((d) => ({ id: Number(d.id), title: String(d.title) })));
+    setPlannerRelevanceError(null);
+    setPlannerMajorSummary(res.profile_hints_summary || null);
+    setPlannerUiState("ready");
+  };
+
+  const handlePlannerStartError = (res: PlannerStartResponse, fallbackMsg: string) => {
+    const errMsg = res.error || fallbackMsg;
+    if (res.error_code === "IRRELEVANT_DOCUMENTS") {
+      setPlannerRelevanceError(errMsg);
+      setPlannerMajorSummary(res.profile_hints_summary || null);
+      setPlannerUiState("onboarding");
+      return;
+    }
+    setToast({ open: true, kind: "error", msg: errMsg });
+    setPlannerUiState("onboarding");
+  };
+
+  const startPlannerFromFiles = async (files: FileList | File[]) => {
+    const normalized = Array.isArray(files) ? files : Array.from(files);
+    if (!normalized.length) return;
+    setPlannerUiState("uploading");
+    setPlannerProgressMessage("Memvalidasi dokumen...");
+    setPlannerRelevanceError(null);
+    setLoading(true);
+    try {
+      setPlannerProgressMessage("Mengekstrak teks...");
+      const res = await plannerStartV3({
+        files: normalized,
+        sessionId: activeSession,
+      });
+      if (res.status !== "success" || !res.planner_run_id || !res.wizard_blueprint) {
+        handlePlannerStartError(res, "Planner start gagal.");
+        return;
+      }
+      setPlannerProgressMessage("Menyusun sesi planner...");
+      applyPlannerStartSuccess(res);
+      await refreshDocuments();
+    } catch (e: any) {
+      setToast({ open: true, kind: "error", msg: e?.message || "Planner start gagal." });
+      setPlannerUiState("onboarding");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onPlannerReuseExisting = async () => {
+    const ids = documents.filter((d) => d.is_embedded).map((d) => d.id);
+    if (!ids.length) {
+      setToast({ open: true, kind: "error", msg: "Tidak ada dokumen existing yang siap dipakai." });
+      return;
+    }
+    setPlannerUiState("uploading");
+    setPlannerProgressMessage("Mengenali tipe dokumen...");
+    setPlannerRelevanceError(null);
+    setLoading(true);
+    try {
+      const res = await plannerStartV3({
+        sessionId: activeSession,
+        reuseDocIds: ids,
+      });
+      if (res.status !== "success" || !res.planner_run_id || !res.wizard_blueprint) {
+        handlePlannerStartError(res, "Planner start gagal.");
+        return;
+      }
+      applyPlannerStartSuccess(res);
+    } catch (e: any) {
+      setToast({ open: true, kind: "error", msg: e?.message || "Planner start gagal." });
+      setPlannerUiState("onboarding");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onPlannerSelectOption = (value: string) => {
+    const step = wizardSteps[wizardIndex];
+    if (!step) return;
+    setWizardAnswers((prev) => ({ ...prev, [step.step_key]: value }));
+  };
+
+  const onPlannerManualChange = (value: string) => {
+    const step = wizardSteps[wizardIndex];
+    if (!step) return;
+    setWizardAnswers((prev) => ({ ...prev, [step.step_key]: value }));
+  };
+
+  const onPlannerNext = () => {
+    if (wizardIndex >= wizardSteps.length - 1) {
+      setPlannerUiState("reviewing");
+      return;
+    }
+    setWizardIndex((v) => Math.min(v + 1, wizardSteps.length - 1));
+  };
+
+  const onPlannerBack = () => {
+    setWizardIndex((v) => Math.max(v - 1, 0));
+  };
+
+  const onPlannerEdit = (stepKey: string) => {
+    const idx = wizardSteps.findIndex((s) => s.step_key === stepKey);
+    if (idx >= 0) {
+      setWizardIndex(idx);
+      setPlannerUiState("ready");
+    }
+  };
+
+  const onPlannerExecute = async () => {
+    if (!plannerRunId) return;
+    setPlannerUiState("executing");
+    setPlannerProgressMessage("Menyusun hasil akhir...");
+    setLoading(true);
+    try {
+      const firstAnswer = Object.values(wizardAnswers)[0] || "akademik umum";
+      const summary = `Analisis planner fokus ${firstAnswer}`;
+      const userTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      setItems((prev) => [
+        ...prev,
+        {
+          id: uid(),
+          role: "user",
+          text: summary,
+          time: userTime,
+          message_kind: "user",
+          session_id: activeSessionIdNum,
+          updated_at_ts: Date.now(),
+        },
+      ]);
+      const res = await plannerExecuteV3({
+        planner_run_id: plannerRunId,
+        session_id: activeSession,
+        answers: wizardAnswers,
+        client_summary: summary,
+      });
+      if (res.status !== "success" || !res.answer) {
+        throw new Error(res.error || "Eksekusi planner gagal.");
+      }
+      setItems((prev) => [
+        ...prev,
+        {
+          id: uid(),
+          role: "assistant",
+          text: res.answer || "",
+          time: userTime,
+          response_type: "chat",
+          message_kind: "assistant_chat",
+          sources: res.sources || [],
+          session_id: activeSessionIdNum,
+          updated_at_ts: Date.now(),
+        },
+      ]);
+      setPlannerUiState("done");
+      setPlannerRunId(null);
+      setWizardSteps([]);
+      setWizardAnswers({});
+      setWizardIndex(0);
+      setPlannerDocs([]);
+      setPlannerRelevanceError(null);
+    } catch (e: any) {
+      setToast({ open: true, kind: "error", msg: e?.message || "Eksekusi planner gagal." });
+      setPlannerUiState("reviewing");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onUploadChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    await handleFilesUpload(files);
+    if (mode === "planner" && (plannerUiState === "onboarding" || plannerUiState === "uploading")) {
+      await startPlannerFromFiles(files);
+    } else {
+      await handleFilesUpload(files);
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -869,6 +1086,44 @@ export default function Index() {
               scrollbarColor: dark ? "rgba(212,212,216,0.42) transparent" : "rgba(63,63,70,0.35) transparent",
             }}
           >
+            {mode === "planner" && plannerUiState === "onboarding" && (
+              <PlannerOnboardingCard
+                hasEmbeddedDocs={documents.some((d) => d.is_embedded)}
+                onUploadNew={onUploadClick}
+                onReuseExisting={onPlannerReuseExisting}
+                relevanceError={plannerRelevanceError}
+                majorSummary={plannerMajorSummary}
+                disabled={loading || deletingDocId !== null}
+              />
+            )}
+            {mode === "planner" && plannerUiState === "uploading" && (
+              <PlannerProgressOverlay message={plannerProgressMessage} />
+            )}
+            {mode === "planner" && plannerUiState === "ready" && wizardSteps[wizardIndex] && (
+              <PlannerWizardCard
+                step={wizardSteps[wizardIndex]}
+                index={wizardIndex}
+                total={wizardSteps.length}
+                value={wizardAnswers[wizardSteps[wizardIndex].step_key] || ""}
+                onSelectOption={onPlannerSelectOption}
+                onChangeManual={onPlannerManualChange}
+                onNext={onPlannerNext}
+                onBack={onPlannerBack}
+                disabled={loading || deletingDocId !== null}
+              />
+            )}
+            {mode === "planner" && plannerUiState === "reviewing" && (
+              <PlannerReviewCard
+                answers={wizardAnswers}
+                docs={plannerDocs}
+                onEdit={onPlannerEdit}
+                onExecute={onPlannerExecute}
+                executing={loading}
+              />
+            )}
+            {mode === "planner" && plannerUiState === "executing" && (
+              <PlannerProgressOverlay message={plannerProgressMessage} />
+            )}
             {mode === "planner" && plannerWarning && (
               <div className="mx-auto mb-3 mt-1 w-[min(900px,92%)]" data-testid="planner-warning-banner">
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-300">
@@ -889,7 +1144,11 @@ export default function Index() {
           <ChatComposer
             onSend={onSend}
             onUploadClick={onUploadClick}
-            loading={loading || deletingDocId !== null}
+            loading={
+              loading ||
+              deletingDocId !== null ||
+              (mode === "planner" && plannerUiState !== "done" && plannerUiState !== "idle")
+            }
             deletingDoc={deletingDocId !== null}
             docs={documents.map((d) => ({ id: d.id, title: d.title }))}
           />
