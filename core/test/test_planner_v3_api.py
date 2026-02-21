@@ -128,6 +128,8 @@ class PlannerV3ApiTests(TestCase):
         payload = res.json()
         self.assertEqual(payload.get("status"), "success")
         self.assertTrue(payload.get("planner_run_id"))
+        self.assertTrue(payload.get("intent_candidates"))
+        self.assertEqual(payload.get("next_action"), "choose_intent")
         self.assertTrue((payload.get("wizard_blueprint") or {}).get("steps"))
 
     def test_start_with_specific_reuse_doc_ids_success(self):
@@ -397,11 +399,113 @@ class PlannerV3ApiTests(TestCase):
         run = PlannerRun.objects.get(id=run_id)
         self.assertEqual(run.status, PlannerRun.STATUS_COMPLETED)
 
+    def test_next_step_success(self):
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="KHS.pdf",
+            file=SimpleUploadedFile("khs.pdf", b"x"),
+            is_embedded=True,
+        )
+        start = self.client.post(
+            "/api/planner/start/",
+            data=json.dumps({"reuse_doc_ids": []}),
+            content_type="application/json",
+        ).json()
+        run_id = start["planner_run_id"]
+        intent = (start.get("intent_candidates") or [])[0]
+        res = self.client.post(
+            "/api/planner/next-step/",
+            data=json.dumps(
+                {
+                    "planner_run_id": run_id,
+                    "step_key": "intent",
+                    "answer_value": intent.get("value") or "ipk_trend",
+                    "answer_mode": "option",
+                    "client_step_seq": 1,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        payload = res.json()
+        self.assertEqual(payload.get("status"), "success")
+        self.assertTrue(payload.get("progress"))
+        self.assertIn("can_generate_now", payload)
+        run = PlannerRun.objects.get(id=run_id)
+        self.assertEqual(run.current_depth, 1)
+        self.assertTrue(run.path_taken)
+
+    def test_next_step_rejects_wrong_sequence(self):
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="KHS.pdf",
+            file=SimpleUploadedFile("khs.pdf", b"x"),
+            is_embedded=True,
+        )
+        start = self.client.post(
+            "/api/planner/start/",
+            data=json.dumps({"reuse_doc_ids": []}),
+            content_type="application/json",
+        ).json()
+        run_id = start["planner_run_id"]
+        res = self.client.post(
+            "/api/planner/next-step/",
+            data=json.dumps(
+                {
+                    "planner_run_id": run_id,
+                    "step_key": "intent",
+                    "answer_value": "ipk_trend",
+                    "answer_mode": "option",
+                    "client_step_seq": 2,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("client_step_seq", res.json().get("error", ""))
+
+    @patch("core.service.ask_bot")
+    def test_execute_rejects_inconsistent_path(self, ask_bot_mock):
+        ask_bot_mock.return_value = {"answer": "ok", "sources": []}
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="KHS.pdf",
+            file=SimpleUploadedFile("khs.pdf", b"x"),
+            is_embedded=True,
+        )
+        start = self.client.post(
+            "/api/planner/start/",
+            data=json.dumps({"reuse_doc_ids": []}),
+            content_type="application/json",
+        ).json()
+        run_id = start["planner_run_id"]
+        run = PlannerRun.objects.get(id=run_id)
+        run.path_taken = [{"seq": 1, "step_key": "intent", "answer_value": "ipk_trend", "answer_mode": "option"}]
+        run.answers_snapshot = {"intent": "ipk_trend"}
+        run.current_depth = 1
+        run.status = PlannerRun.STATUS_COLLECTING
+        run.save(update_fields=["path_taken", "answers_snapshot", "current_depth", "status"])
+        res = self.client.post(
+            "/api/planner/execute/",
+            data=json.dumps(
+                {
+                    "planner_run_id": run_id,
+                    "answers": {"intent": "ipk_trend"},
+                    "path_taken": [],
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("path_taken", res.json().get("error", ""))
+
     @patch.dict(os.environ, {"PLANNER_V3_ENABLED": "0"})
     def test_planner_v3_endpoints_disabled_by_flag(self):
         res_start = self.client.post("/api/planner/start/", data=json.dumps({}), content_type="application/json")
+        res_next = self.client.post("/api/planner/next-step/", data=json.dumps({}), content_type="application/json")
         res_execute = self.client.post("/api/planner/execute/", data=json.dumps({}), content_type="application/json")
         res_cancel = self.client.post("/api/planner/cancel/", data=json.dumps({}), content_type="application/json")
         self.assertEqual(res_start.status_code, 404)
+        self.assertEqual(res_next.status_code, 404)
         self.assertEqual(res_execute.status_code, 404)
         self.assertEqual(res_cancel.status_code, 404)

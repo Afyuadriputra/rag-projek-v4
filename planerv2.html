@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Adaptive Planner v3.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .slide-out-left { animation: slideOutLeft 0.3s ease-in forwards; }
+        .collapse-card { animation: collapseCard 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideOutLeft { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-20px); } }
+        @keyframes collapseCard {
+            0% { opacity: 1; transform: scale(1); max-height: 500px; margin-bottom: 1rem; }
+            40% { opacity: 0; transform: scale(0.95); max-height: 200px; margin-bottom: 1rem; }
+            100% { opacity: 0; transform: scale(0.9); max-height: 0; margin-bottom: 0; padding: 0; overflow: hidden; border-width: 0; }
+        }
+
+        /* Micro-interactions */
+        .btn-press { transition: transform 0.1s, box-shadow 0.1s; }
+        .btn-press:active:not(:disabled) { transform: scale(0.98); }
+        
+        /* Shimmer Loading for API Latency Masking */
+        .shimmer-box {
+            background: #f6f7f8;
+            background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+            background-repeat: no-repeat;
+            background-size: 800px 100%; 
+            animation-duration: 1.5s;
+            animation-fill-mode: forwards; 
+            animation-iteration-count: infinite;
+            animation-name: placeholderShimmer;
+            animation-timing-function: linear;
+        }
+        @keyframes placeholderShimmer {
+            0% { background-position: -468px 0; }
+            100% { background-position: 468px 0; }
+        }
+    </style>
+    <!-- Chosen Palette: Slate & Indigo (Professional, Academic, Trustworthy) -->
+    <!-- Application Structure Plan: 
+         1. Chat Window Simulation to show integration.
+         2. Dynamic Card Container that swaps states: Onboarding -> Analyzing -> Intent Selection (Step 1) -> Skeleton Loading -> Dynamic Step (Step N) -> Collapse.
+         3. Persistent Chat Input (disabled during planner).
+         This structure proves the "Adaptive Decision Tree" concept without cluttering the main timeline.
+    -->
+    <!-- Visualization & Content Choices:
+         - Visualizing the latency masking with a 'Skeleton Loader' when moving from Step 1 to Step 2, reflecting the `POST /api/planner/next-step/` call.
+         - Explicitly showing the "Generate Sekarang" button as requested in the PRD.
+         - Major confirmation badge shown in the intent selection state.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 md:p-8">
+
+    <div class="max-w-4xl w-full grid md:grid-cols-2 gap-8 items-start">
+        
+        <!-- Explainer Panel -->
+        <div class="space-y-6">
+            <div>
+                <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">v3.1 Simulation</span>
+                <h1 class="text-3xl font-extrabold text-slate-900 mt-3 mb-2">Adaptive Decision Tree</h1>
+                <p class="text-slate-600 leading-relaxed">
+                    Simulasi antarmuka untuk rancangan Planner v3.1. Perhatikan transisi dari <strong>Intent Awal</strong> menuju <strong>Dynamic Step</strong>, serta penggunaan <em>Skeleton Loading</em> untuk menyamarkan latensi API.
+                </p>
+            </div>
+            
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h3 class="font-bold text-slate-800 flex items-center gap-2"><span class="text-xl">&#128269;</span> Fokus Observasi UX:</h3>
+                <ul class="space-y-3 text-sm text-slate-600">
+                    <li class="flex items-start gap-2">
+                        <span class="text-green-500 font-bold">&#10003;</span>
+                        <span><strong>Major Inferencing:</strong> UI menampilkan tebakan jurusan berdasarkan dokumen.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-green-500 font-bold">&#10003;</span>
+                        <span><strong>Latency Masking:</strong> Animasi <em>shimmer</em> saat simulasi memanggil endpoint <code>/next-step</code>.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-green-500 font-bold">&#10003;</span>
+                        <span><strong>Escape Hatch:</strong> Tombol "Analisis Dokumen Sekarang" yang selalu hadir di bawah opsi.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Phone Simulator -->
+        <div class="relative w-full max-w-[400px] mx-auto bg-white rounded-[2.5rem] shadow-2xl border-[10px] border-slate-900 overflow-hidden h-[700px] flex flex-col">
+            <!-- Header -->
+            <div class="bg-white/90 backdrop-blur-md border-b border-slate-100 p-4 flex items-center justify-between z-20 absolute top-0 w-full">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">AI</div>
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-800 leading-tight">Academic AI</h3>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" id="status-indicator"></span>
+                            <span class="text-[10px] text-slate-500 font-medium uppercase tracking-wider" id="status-text">Adaptive Mode</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="resetApp()" class="text-slate-400 hover:text-indigo-600 text-xs font-bold uppercase tracking-wider transition-colors">Reset</button>
+            </div>
+
+            <!-- Scrollable Canvas -->
+            <div id="chat-canvas" class="flex-1 bg-slate-50 p-4 pt-20 overflow-y-auto flex flex-col relative">
+                
+                <!-- Chat Timeline (Starts Empty) -->
+                <div id="chat-timeline" class="space-y-4 mb-4"></div>
+
+                <!-- Dynamic Planner Container -->
+                <div id="planner-container" class="mt-auto w-full transition-all">
+                    <!-- Cards injected here -->
+                </div>
+
+            </div>
+
+            <!-- Chat Composer (Disabled during planning) -->
+            <div class="bg-white p-3 border-t border-slate-100 z-20 relative">
+                <div id="composer-overlay" class="absolute inset-0 bg-slate-50/80 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                    <span class="text-xs font-bold text-slate-500 tracking-wide">PLANNER AKTIF</span>
+                </div>
+                <div class="flex gap-2 bg-slate-100 rounded-full p-1 border border-slate-200">
+                    <input type="text" disabled placeholder="Ketik pesan..." class="w-full bg-transparent border-0 px-4 py-2 text-sm focus:outline-none opacity-40">
+                    <div class="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-white opacity-50">&#8593;</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            runId: null,
+            depth: 0,
+            maxDepth: 4,
+            pathTaken: [],
+            fileName: "KHS_Semester_4_TIF.pdf",
+            majorInferred: "Teknik Informatika",
+            majorConfidence: "High"
+        };
+
+        const container = document.getElementById('planner-container');
+        const timeline = document.getElementById('chat-timeline');
+
+        // --- Initialization ---
+        function init() {
+            renderOnboarding();
+        }
+
+        function scrollToBottom() {
+            const canvas = document.getElementById('chat-canvas');
+            setTimeout(() => { canvas.scrollTop = canvas.scrollHeight; }, 50);
+        }
+
+        // --- Stage 1: Onboarding ---
+        function renderOnboarding() {
+            container.innerHTML = `
+                <div class="slide-up">
+                    <div class="flex gap-3 mb-4 opacity-80">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">AI</div>
+                        <div class="bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-none shadow-sm">
+                            <p class="text-xs text-slate-700 font-medium leading-relaxed">Mari buat rencana akademik. Silakan gunakan dokumen existing atau unggah baru.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                        <div class="p-4 border-b border-slate-50 bg-slate-50 flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                                <span>&#9881;</span> Setup Dokumen
+                            </span>
+                        </div>
+                        <div class="p-4 space-y-3">
+                            <button onclick="startPlannerMock()" class="btn-press w-full bg-indigo-50 border border-indigo-200 hover:border-indigo-400 text-indigo-700 rounded-xl p-3 flex items-center justify-between group">
+                                <div class="flex items-center gap-2 text-sm font-semibold">
+                                    <span class="text-lg">&#128196;</span> Gunakan File Aktif
+                                </div>
+                                <span class="text-[10px] bg-indigo-200 text-indigo-800 px-2 py-1 rounded font-bold max-w-[100px] truncate">${state.fileName}</span>
+                            </button>
+                            
+                            <button onclick="startPlannerMock()" class="btn-press w-full border border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-50 text-slate-600 rounded-xl p-3 flex justify-center items-center gap-2 text-sm font-semibold transition-colors">
+                                <span class="text-lg text-slate-400">&#8681;</span> Unggah Baru
+                            </button>
+
+                            <p class="text-[10px] text-slate-400 text-center px-2">Untuk hasil akurat, pastikan unggah KHS, KRS, atau Transkrip yang valid.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            scrollToBottom();
+        }
+
+        // --- Stage 2: Start API Call (Mock) ---
+        function startPlannerMock() {
+            // Render loading
+            container.innerHTML = `
+                <div class="slide-up bg-white rounded-2xl shadow-lg border border-slate-200 p-6 text-center">
+                    <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+                    <h4 class="text-sm font-bold text-slate-800 mb-1">Menganalisis Dokumen...</h4>
+                    <p class="text-xs text-slate-500">Mengekstrak profil dan menyusun intent awal</p>
+                </div>
+            `;
+            scrollToBottom();
+
+            // Simulate API /api/planner/start/
+            setTimeout(() => {
+                state.depth = 1;
+                renderIntentSelection();
+            }, 1500);
+        }
+
+        // --- Stage 3: Intent Selection (Step 1) ---
+        function renderIntentSelection() {
+            container.innerHTML = `
+                <div id="current-card" class="bg-white rounded-2xl shadow-xl border border-indigo-100 overflow-hidden slide-up">
+                    
+                    <!-- Major Detection Header -->
+                    <div class="bg-indigo-600 p-3 flex justify-between items-center">
+                        <div class="flex items-center gap-2 text-indigo-50">
+                            <span class="text-lg">&#127970;</span>
+                            <div>
+                                <p class="text-[9px] uppercase tracking-wider font-semibold opacity-80">Jurusan Terdeteksi</p>
+                                <p class="text-xs font-bold">${state.majorInferred}</p>
+                            </div>
+                        </div>
+                        <span class="text-[9px] bg-green-400/20 text-green-100 border border-green-400/30 px-2 py-0.5 rounded-full font-bold uppercase">
+                            High Conf
+                        </span>
+                    </div>
+
+                    <div class="p-5">
+                        <div class="flex justify-between items-start mb-4">
+                            <h4 class="text-sm font-bold text-slate-900 leading-snug">
+                                Apa fokus analisis yang Anda inginkan dari KHS ini?
+                            </h4>
+                            <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded ml-2 shrink-0">1/${state.maxDepth}</span>
+                        </div>
+                        
+                        <div class="space-y-2.5">
+                            <button onclick="handleNextStep('Evaluasi IPK & Prediksi Tren')" class="btn-press w-full text-left p-3.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 hover:bg-indigo-50/50 hover:shadow-sm text-sm font-semibold text-slate-700 transition-all flex justify-between items-center group">
+                                <span>Evaluasi IPK & Prediksi Tren</span>
+                                <span class="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">&#8594;</span>
+                            </button>
+                            <button onclick="handleNextStep('Rekomendasi Ulang Mata Kuliah')" class="btn-press w-full text-left p-3.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 hover:bg-indigo-50/50 hover:shadow-sm text-sm font-semibold text-slate-700 transition-all flex justify-between items-center group">
+                                <span>Rekomendasi Ulang Mata Kuliah</span>
+                                <span class="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">&#8594;</span>
+                            </button>
+                            <button onclick="handleNextStep('Strategi Ambil KRS Depan')" class="btn-press w-full text-left p-3.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 hover:bg-indigo-50/50 hover:shadow-sm text-sm font-semibold text-slate-700 transition-all flex justify-between items-center group">
+                                <span>Strategi Ambil KRS Depan</span>
+                                <span class="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">&#8594;</span>
+                            </button>
+                            
+                            <!-- Manual Option -->
+                            <div class="pt-2 mt-2 border-t border-slate-100">
+                                <button onclick="handleNextStep('Manual')" class="btn-press w-full text-left p-3 rounded-lg border border-dashed border-slate-300 hover:border-indigo-400 text-xs font-medium text-slate-500 flex items-center gap-2">
+                                    <span class="text-base">&#9998;</span> Tulis fokus spesifik lainnya...
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            scrollToBottom();
+        }
+
+        // --- Stage 4: Next-Step API Call (Latency Masking) ---
+        function handleNextStep(answer) {
+            state.pathTaken.push(answer);
+            state.depth++;
+
+            const currentCard = document.getElementById('current-card');
+            
+            // 1. Slide out current card slightly and fade
+            currentCard.classList.remove('slide-up');
+            currentCard.classList.add('slide-out-left');
+
+            setTimeout(() => {
+                // 2. Render Skeleton Loading
+                container.innerHTML = `
+                    <div id="current-card" class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden fade-in">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center mb-5">
+                                <div class="h-4 w-1/2 shimmer-box rounded"></div>
+                                <div class="h-4 w-8 shimmer-box rounded"></div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="h-12 w-full shimmer-box rounded-xl"></div>
+                                <div class="h-12 w-full shimmer-box rounded-xl"></div>
+                            </div>
+                            <div class="mt-4 text-center">
+                                <span class="text-[10px] text-slate-400 font-medium animate-pulse">Menyesuaikan percabangan AI berdasarkan jawaban...</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // 3. Simulate API /api/planner/next-step/ (1.5s latency)
+                setTimeout(() => {
+                    renderDynamicStep();
+                }, 1500);
+
+            }, 250); // wait for slide out
+        }
+
+        // --- Stage 5: Dynamic Step (The Branch) ---
+        function renderDynamicStep() {
+            // Mock response from LLM based on "Evaluasi IPK & Prediksi Tren"
+            container.innerHTML = `
+                <div id="current-card" class="bg-white rounded-2xl shadow-xl border border-indigo-100 overflow-hidden fade-in">
+                    
+                    <div class="bg-slate-50 p-3 border-b border-slate-100 flex items-center justify-between">
+                        <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase">
+                            <span class="text-indigo-500">&#10024;</span> Path: IPK Evaluasi
+                        </div>
+                        <span class="text-[9px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                            Step ${state.depth}/${state.maxDepth}
+                        </span>
+                    </div>
+
+                    <div class="p-5">
+                        <h4 class="text-sm font-bold text-slate-900 leading-snug mb-1">
+                            Apakah Anda memiliki target IPK kelulusan tertentu?
+                        </h4>
+                        <p class="text-[11px] text-slate-500 mb-4 font-medium">Sistem akan menghitung kelayakan berdasarkan sisa SKS Anda.</p>
+                        
+                        <div class="space-y-2.5 mb-5">
+                            <button onclick="handleFinalize()" class="btn-press w-full text-left p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 hover:shadow-sm text-sm font-semibold text-slate-700 transition-all">
+                                Target Cumlaude (> 3.50)
+                            </button>
+                            <button onclick="handleFinalize()" class="btn-press w-full text-left p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 hover:shadow-sm text-sm font-semibold text-slate-700 transition-all">
+                                Target Sangat Memuaskan (3.00 - 3.49)
+                            </button>
+                            <button onclick="handleFinalize()" class="btn-press w-full text-left p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 hover:shadow-sm text-sm font-semibold text-slate-700 transition-all">
+                                Bebas, yang penting lulus tepat waktu
+                            </button>
+                        </div>
+
+                        <!-- THE ESCAPE HATCH (Generate Sekarang) -->
+                        <div class="pt-4 border-t border-slate-100">
+                            <button onclick="handleFinalize()" class="btn-press w-full bg-slate-900 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-colors flex justify-center items-center gap-2 text-sm">
+                                <span>&#128640;</span> Sudah Cukup, Analisis Sekarang
+                            </button>
+                            <p class="text-center text-[9px] text-slate-400 mt-2 font-medium">Anda bisa melewati sisa pertanyaan.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            scrollToBottom();
+        }
+
+        // --- Stage 6: Final Execute ---
+        function handleFinalize() {
+            const card = document.getElementById('current-card');
+            
+            // Loading State on Card
+            card.innerHTML = `
+                <div class="p-8 text-center bg-white">
+                    <div class="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+                    <h4 class="text-sm font-bold text-slate-800">Mengeksekusi Analisis RAG...</h4>
+                    <p class="text-xs text-slate-500 mt-1">Mengintegrasikan dokumen dengan panduan akademik umum</p>
+                </div>
+            `;
+
+            // Simulate execution /api/planner/execute/
+            setTimeout(() => {
+                // Collapse Animation
+                card.classList.remove('fade-in');
+                card.classList.add('collapse-card');
+                
+                // Release Chat Composer lock
+                document.getElementById('composer-overlay').style.display = 'none';
+                document.getElementById('status-indicator').classList.replace('bg-indigo-500', 'bg-slate-400');
+                document.getElementById('status-indicator').classList.remove('animate-pulse');
+                document.getElementById('status-text').innerText = 'Chat Mode';
+                
+                setTimeout(() => {
+                    container.innerHTML = '';
+                    appendToTimeline('user', 'Tolong buatkan rencana studi berdasarkan KHS saya, fokus pada Evaluasi IPK dengan target Cumlaude.');
+                    
+                    setTimeout(() => {
+                        appendToTimeline('ai', `Berdasarkan KHS Semester 4 Anda (Major: ${state.majorInferred}), IPK kumulatif saat ini adalah 3.35.<br><br><b>Peluang Cumlaude (>3.50):</b><br>Masih sangat mungkin. Anda perlu mencetak IP Semester rata-rata 3.65 di 3 semester tersisa. <br><br><span class="text-[10px] text-slate-400 block mt-2 pt-2 border-t border-slate-100"><b>Disclaimer:</b> Kalkulasi didasarkan pada jumlah SKS di KHS. Untuk syarat kelulusan non-akademik, silakan merujuk ke pedoman kampus.</span>`);
+                    }, 800);
+                }, 400); // Wait for collapse
+            }, 2000);
+        }
+
+        function appendToTimeline(role, text) {
+            let html = '';
+            if(role === 'user') {
+                html = `
+                    <div class="flex gap-3 justify-end slide-up">
+                        <div class="bg-slate-900 text-white p-3 rounded-2xl rounded-tr-none max-w-[85%] shadow-sm text-sm font-medium leading-relaxed">
+                            ${text}
+                        </div>
+                    </div>
+                `;
+            } else {
+                html = `
+                    <div class="flex gap-3 slide-up">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0 mt-1">AI</div>
+                        <div class="bg-white border border-slate-200 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700 leading-relaxed w-full max-w-[90%]">
+                            ${text}
+                        </div>
+                    </div>
+                `;
+            }
+            timeline.insertAdjacentHTML('beforeend', html);
+            scrollToBottom();
+        }
+
+        function resetApp() {
+            state.depth = 0;
+            state.pathTaken = [];
+            timeline.innerHTML = '';
+            document.getElementById('composer-overlay').style.display = 'flex';
+            document.getElementById('status-indicator').classList.replace('bg-slate-400', 'bg-indigo-500');
+            document.getElementById('status-indicator').classList.add('animate-pulse');
+            document.getElementById('status-text').innerText = 'Adaptive Mode';
+            init();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

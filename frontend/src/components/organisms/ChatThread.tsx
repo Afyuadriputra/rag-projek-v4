@@ -23,9 +23,12 @@ export default function ChatThread({
     relevanceError?: string | null;
     majorSummary?: PlannerProfileHintsSummary | null;
     progressMessage: string;
+    progressMode?: "start" | "branching" | "execute";
     wizardSteps: PlannerWizardStep[];
     wizardIndex: number;
     wizardAnswers: Record<string, string>;
+    plannerCanGenerateNow: boolean;
+    plannerPathSummary: string;
     plannerDocs: Array<{ id: number; title: string }>;
     loading: boolean;
     deletingDocId: number | null;

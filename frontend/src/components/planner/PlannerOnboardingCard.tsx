@@ -23,11 +23,11 @@ export default function PlannerOnboardingCard({
   return (
     <GlassCard className="mx-auto w-[min(900px,92%)]">
       <PlannerHeader
-        title="Mode Planner Aktif"
-        subtitle="Untuk hasil optimal, unggah dokumen akademik relevan: KHS, KRS, Jadwal, Transkrip, atau Kurikulum."
+        title="Setup Dokumen Planner"
+        subtitle="Gunakan dokumen existing atau unggah baru untuk memulai analisis adaptif."
       />
       <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
-        Jika dokumen tidak relevan, planner akan ditunda sampai dokumen valid.
+        Untuk hasil akurat, gunakan KHS, KRS, Jadwal, Transkrip, atau Kurikulum yang valid.
       </p>
 
       {relevanceError && <PlannerRelevanceAlert message={relevanceError} />}
@@ -36,32 +36,34 @@ export default function PlannerOnboardingCard({
         <PlannerMajorCandidateChips majorSummary={majorSummary} />
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onUploadNew}
-          disabled={disabled}
-          className={cn(
-            "min-h-11 rounded-2xl px-4 py-2 text-xs font-semibold transition",
-            "bg-zinc-900 text-white hover:bg-black dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200",
-            disabled && "cursor-not-allowed opacity-60"
-          )}
-        >
-          Unggah Dokumen Baru
-        </button>
-        {hasEmbeddedDocs && (
+      <div className="mt-4 grid gap-2">
+        {hasEmbeddedDocs ? (
           <button
             type="button"
             onClick={onReuseExisting}
             disabled={disabled}
             className={cn(
-              "min-h-11 rounded-2xl border border-zinc-300 px-4 py-2 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50/85 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800/75",
+              "flex min-h-12 items-center justify-between rounded-2xl border border-indigo-300/70 bg-indigo-50/70 px-4 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 dark:border-indigo-800/70 dark:bg-indigo-950/30 dark:text-indigo-200 dark:hover:bg-indigo-950/50",
               disabled && "cursor-not-allowed opacity-60"
             )}
           >
-            Gunakan Dokumen Existing
+            <span>Gunakan Dokumen Existing</span>
+            <span className="rounded-full bg-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100">
+              Terdeteksi
+            </span>
           </button>
-        )}
+        ) : null}
+        <button
+          type="button"
+          onClick={onUploadNew}
+          disabled={disabled}
+          className={cn(
+            "min-h-12 rounded-2xl border border-dashed border-zinc-300/90 bg-white/70 px-4 py-2 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50/85 dark:border-zinc-600 dark:bg-zinc-900/35 dark:text-zinc-200 dark:hover:bg-zinc-900/60",
+            disabled && "cursor-not-allowed opacity-60"
+          )}
+        >
+          Unggah Dokumen Baru
+        </button>
       </div>
     </GlassCard>
   );

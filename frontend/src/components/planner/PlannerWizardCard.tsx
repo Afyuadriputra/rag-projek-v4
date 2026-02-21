@@ -15,6 +15,9 @@ export default function PlannerWizardCard({
   onChangeManual,
   onNext,
   onBack,
+  canGenerateNow = false,
+  onGenerateNow,
+  pathSummary = "",
   disabled = false,
 }: {
   step: PlannerWizardStep;
@@ -25,6 +28,9 @@ export default function PlannerWizardCard({
   onChangeManual: (v: string) => void;
   onNext: () => void;
   onBack: () => void;
+  canGenerateNow?: boolean;
+  onGenerateNow?: () => void;
+  pathSummary?: string;
   disabled?: boolean;
 }) {
   const sourceHintLabel =
@@ -64,6 +70,21 @@ export default function PlannerWizardCard({
           onLeft={onBack}
           onRight={onNext}
         />
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-zinc-200/70 pt-3 dark:border-zinc-700/70">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            {canGenerateNow
+              ? pathSummary || "Data sudah cukup. Kamu bisa langsung generate."
+              : "Jika sudah cukup, kamu bisa lanjut ke analisis tanpa menjawab semua langkah."}
+          </p>
+          <button
+            type="button"
+            disabled={disabled || !onGenerateNow}
+            onClick={onGenerateNow}
+            className="min-h-10 rounded-2xl bg-zinc-900 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-black disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Analisis Sekarang
+          </button>
+        </div>
       </div>
     </GlassCard>
   );

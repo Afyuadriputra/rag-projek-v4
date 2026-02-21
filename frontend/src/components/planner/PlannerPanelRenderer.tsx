@@ -12,9 +12,12 @@ export default function PlannerPanelRenderer({
   relevanceError,
   majorSummary,
   progressMessage,
+  progressMode = "start",
   wizardSteps,
   wizardIndex,
   wizardAnswers,
+  plannerCanGenerateNow,
+  plannerPathSummary,
   plannerDocs,
   loading,
   deletingDocId,
@@ -33,9 +36,12 @@ export default function PlannerPanelRenderer({
   relevanceError?: string | null;
   majorSummary?: PlannerProfileHintsSummary | null;
   progressMessage: string;
+  progressMode?: "start" | "branching" | "execute";
   wizardSteps: PlannerWizardStep[];
   wizardIndex: number;
   wizardAnswers: Record<string, string>;
+  plannerCanGenerateNow: boolean;
+  plannerPathSummary: string;
   plannerDocs: Array<{ id: number; title: string }>;
   loading: boolean;
   deletingDocId: number | null;
@@ -65,7 +71,7 @@ export default function PlannerPanelRenderer({
   }
 
   if (state === "uploading" || state === "executing") {
-    return <PlannerProgressOverlay message={progressMessage} />;
+    return <PlannerProgressOverlay message={progressMessage} mode={progressMode} />;
   }
 
   if (state === "ready" && wizardSteps[wizardIndex]) {
@@ -80,6 +86,9 @@ export default function PlannerPanelRenderer({
         onChangeManual={onChangeManual}
         onNext={onNext}
         onBack={onBack}
+        canGenerateNow={plannerCanGenerateNow}
+        onGenerateNow={onExecute}
+        pathSummary={plannerPathSummary}
         disabled={disabled}
       />
     );

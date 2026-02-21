@@ -168,6 +168,7 @@ export interface PlannerWizardStep {
   allow_manual: boolean;
   required?: boolean;
   source_hint?: "document" | "profile" | "mixed" | string;
+  reason?: string;
 }
 
 export interface PlannerDocRelevance {
@@ -203,10 +204,36 @@ export interface PlannerStartResponse {
   documents_summary?: Array<{ id: number; title: string; uploaded_at?: string }>;
   doc_relevance?: PlannerDocRelevance;
   profile_hints_summary?: PlannerProfileHintsSummary;
+  intent_candidates?: PlannerIntentCandidate[];
+  manual_intent_enabled?: boolean;
+  next_action?: "choose_intent" | string;
   error_code?: string;
   required_upload?: boolean;
   progress_hints?: string[];
   planner_meta?: Record<string, unknown>;
+  error?: string;
+}
+
+export interface PlannerIntentCandidate {
+  id: number;
+  label: string;
+  value: string;
+  reason?: string;
+}
+
+export interface PlannerNextStepResponse {
+  status: "success" | "error";
+  step?: PlannerWizardStep;
+  done_recommendation?: string;
+  progress?: { current: number; max: number };
+  can_generate_now?: boolean;
+  path_summary?: string;
+  path_taken?: Array<{
+    seq: number;
+    step_key: string;
+    answer_value: string;
+    answer_mode: "option" | "manual" | string;
+  }>;
   error?: string;
 }
 
@@ -361,9 +388,21 @@ export const plannerExecuteV3 = async (payload: {
   planner_run_id: string;
   session_id?: number;
   answers: Record<string, unknown>;
+  path_taken?: Array<Record<string, unknown>>;
   client_summary?: string;
 }) => {
   const response = await apiClient.post<PlannerExecuteResponse>("/planner/execute/", payload);
+  return response.data;
+};
+
+export const plannerNextStepV3 = async (payload: {
+  planner_run_id: string;
+  step_key: string;
+  answer_value: string;
+  answer_mode: "option" | "manual";
+  client_step_seq: number;
+}) => {
+  const response = await apiClient.post<PlannerNextStepResponse>("/planner/next-step/", payload);
   return response.data;
 };
 

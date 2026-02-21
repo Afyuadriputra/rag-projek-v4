@@ -21,6 +21,7 @@ import {
   renameSession,
   deleteDocument,
   plannerStartV3,
+  plannerNextStepV3,
   plannerExecuteV3,
   plannerCancelV3,
 } from "@/lib/api";
@@ -32,6 +33,7 @@ import type {
   PlannerModeResponse,
   TimelineItem,
   PlannerWizardStep,
+  PlannerIntentCandidate,
   PlannerProfileHintsSummary,
   PlannerStartResponse,
 } from "@/lib/api";
@@ -82,6 +84,22 @@ function buildPlannerPanelItem(
     planner_panel_state: state,
     session_id: sessionId,
     updated_at_ts: Date.now(),
+  };
+}
+
+function buildIntentStep(intentCandidates: PlannerIntentCandidate[]): PlannerWizardStep {
+  return {
+    step_key: "intent",
+    title: "Pilih Fokus Pertanyaan",
+    question: "Berikut kemungkinan pertanyaan berdasarkan dokumenmu. Pilih salah satu atau tulis manual.",
+    options: intentCandidates.slice(0, 4).map((x, idx) => ({
+      id: Number(x.id || idx + 1),
+      label: x.label || `Opsi ${idx + 1}`,
+      value: x.value || `intent_${idx + 1}`,
+    })),
+    allow_manual: true,
+    required: true,
+    source_hint: "mixed",
   };
 }
 
@@ -179,8 +197,13 @@ export default function Index() {
   const [wizardSteps, setWizardSteps] = useState<PlannerWizardStep[]>([]);
   const [wizardAnswers, setWizardAnswers] = useState<Record<string, string>>({});
   const [wizardIndex, setWizardIndex] = useState(0);
+  const [intentCandidates, setIntentCandidates] = useState<PlannerIntentCandidate[]>([]);
+  const [plannerPathTaken, setPlannerPathTaken] = useState<Array<Record<string, unknown>>>([]);
+  const [plannerCanGenerateNow, setPlannerCanGenerateNow] = useState(false);
+  const [plannerPathSummary, setPlannerPathSummary] = useState("");
   const [plannerDocs, setPlannerDocs] = useState<Array<{ id: number; title: string }>>([]);
   const [plannerProgressMessage, setPlannerProgressMessage] = useState("Memvalidasi dokumen...");
+  const [plannerProgressMode, setPlannerProgressMode] = useState<"start" | "branching" | "execute">("start");
   const [plannerRelevanceError, setPlannerRelevanceError] = useState<string | null>(null);
   const [plannerMajorSummary, setPlannerMajorSummary] = useState<PlannerProfileHintsSummary | null>(null);
   const [plannerStateBySession, setPlannerStateBySession] = useState<Record<number, Record<string, unknown>>>({});
@@ -634,9 +657,14 @@ export default function Index() {
       setWizardSteps([]);
       setWizardAnswers({});
       setWizardIndex(0);
+      setIntentCandidates([]);
+      setPlannerPathTaken([]);
+      setPlannerCanGenerateNow(false);
+      setPlannerPathSummary("");
       setPlannerDocs([]);
       setPlannerRelevanceError(null);
       setPlannerMajorSummary(null);
+      setPlannerProgressMode("start");
       setPlannerUiState("idle");
     }
     setMode(nextMode);
@@ -645,10 +673,22 @@ export default function Index() {
   const onUploadClick = () => fileInputRef.current?.click();
 
   const applyPlannerStartSuccess = (res: PlannerStartResponse) => {
+    const candidates = (res.intent_candidates || []).slice(0, 4);
+    const fallbackCandidates: PlannerIntentCandidate[] = candidates.length
+      ? candidates
+      : [
+          { id: 1, label: "Evaluasi IPK dan tren nilai", value: "ipk_trend" },
+          { id: 2, label: "Rencana SKS semester depan", value: "sks_plan" },
+          { id: 3, label: "Strategi perbaikan nilai", value: "grade_recovery" },
+        ];
     setPlannerRunId(res.planner_run_id || null);
-    setWizardSteps(res.wizard_blueprint?.steps || []);
+    setIntentCandidates(fallbackCandidates);
+    setWizardSteps([buildIntentStep(fallbackCandidates)]);
     setWizardAnswers({});
     setWizardIndex(0);
+    setPlannerPathTaken([]);
+    setPlannerCanGenerateNow(false);
+    setPlannerPathSummary("");
     setPlannerDocs((res.documents_summary || []).map((d) => ({ id: Number(d.id), title: String(d.title) })));
     setPlannerRelevanceError(null);
     setPlannerMajorSummary(res.profile_hints_summary || null);
@@ -657,6 +697,10 @@ export default function Index() {
 
   const handlePlannerStartError = (res: PlannerStartResponse, fallbackMsg: string) => {
     const errMsg = res.error || fallbackMsg;
+    setIntentCandidates([]);
+    setPlannerPathTaken([]);
+    setPlannerCanGenerateNow(false);
+    setPlannerPathSummary("");
     if (res.error_code === "IRRELEVANT_DOCUMENTS") {
       setPlannerRelevanceError(errMsg);
       setPlannerMajorSummary(res.profile_hints_summary || null);
@@ -671,6 +715,7 @@ export default function Index() {
     const normalized = Array.isArray(files) ? files : Array.from(files);
     if (!normalized.length) return;
     setPlannerUiState("uploading");
+    setPlannerProgressMode("start");
     setPlannerProgressMessage("Memvalidasi dokumen...");
     setPlannerRelevanceError(null);
     setLoading(true);
@@ -702,6 +747,7 @@ export default function Index() {
       return;
     }
     setPlannerUiState("uploading");
+    setPlannerProgressMode("start");
     setPlannerProgressMessage("Mengenali tipe dokumen...");
     setPlannerRelevanceError(null);
     setLoading(true);
@@ -735,12 +781,78 @@ export default function Index() {
     setWizardAnswers((prev) => ({ ...prev, [step.step_key]: value }));
   };
 
-  const onPlannerNext = () => {
-    if (wizardIndex >= wizardSteps.length - 1) {
+  const onPlannerNext = async () => {
+    const step = wizardSteps[wizardIndex];
+    if (!step || !plannerRunId) return;
+    const raw = String(wizardAnswers[step.step_key] || "").trim();
+    if (!raw) return;
+    const matchedOpt = (step.options || []).find((o) => String(o.value) === raw);
+    const answerMode: "option" | "manual" = matchedOpt ? "option" : "manual";
+    setLoading(true);
+    setPlannerUiState("uploading");
+    setPlannerProgressMode("branching");
+    setPlannerProgressMessage("Menyesuaikan percabangan AI berdasarkan jawaban...");
+    try {
+      const res = await plannerNextStepV3({
+        planner_run_id: plannerRunId,
+        step_key: step.step_key,
+        answer_value: raw,
+        answer_mode: answerMode,
+        client_step_seq: plannerPathTaken.length + 1,
+      });
+      if (res.status !== "success") {
+        throw new Error(res.error || "Gagal memproses langkah planner.");
+      }
+      setPlannerPathTaken((res.path_taken as Array<Record<string, unknown>>) || plannerPathTaken);
+      setPlannerCanGenerateNow(!!res.can_generate_now);
+      setPlannerPathSummary(String(res.path_summary || ""));
+      if (res.step) {
+        setWizardSteps((prev) => {
+          const next = [...prev];
+          const existsIdx = next.findIndex((s) => s.step_key === res.step?.step_key);
+          if (existsIdx >= 0) {
+            next[existsIdx] = res.step;
+            return next;
+          }
+          next.push(res.step);
+          return next;
+        });
+        setWizardIndex((v) => v + 1);
+        setPlannerUiState("ready");
+        return;
+      }
       setPlannerUiState("reviewing");
-      return;
+    } catch (e: any) {
+      const apiErr = e?.response?.data;
+      const errCode = String(apiErr?.error_code || "");
+      const expectedStepKey = String(apiErr?.expected_step_key || "");
+      const expectedSeq = Number(apiErr?.expected_seq || 0);
+
+      if (
+        (errCode === "STEP_KEY_MISMATCH" || errCode === "INVALID_STEP_SEQUENCE") &&
+        expectedStepKey
+      ) {
+        const idx = wizardSteps.findIndex((s) => s.step_key === expectedStepKey);
+        if (idx >= 0) {
+          setWizardIndex(idx);
+        }
+        if (expectedSeq > 0 && Number.isFinite(expectedSeq)) {
+          const normalized = Math.max(0, expectedSeq - 1);
+          if (plannerPathTaken.length > normalized) {
+            setPlannerPathTaken((prev) => prev.slice(0, normalized));
+          }
+        }
+      }
+
+      setPlannerUiState("ready");
+      setToast({
+        open: true,
+        kind: "error",
+        msg: apiErr?.error || e?.message || "Gagal memproses langkah planner.",
+      });
+    } finally {
+      setLoading(false);
     }
-    setWizardIndex((v) => Math.min(v + 1, wizardSteps.length - 1));
   };
 
   const onPlannerBack = () => {
@@ -758,6 +870,7 @@ export default function Index() {
   const onPlannerExecute = async () => {
     if (!plannerRunId) return;
     setPlannerUiState("executing");
+    setPlannerProgressMode("execute");
     setPlannerProgressMessage("Menyusun hasil akhir...");
     setLoading(true);
     try {
@@ -780,6 +893,7 @@ export default function Index() {
         planner_run_id: plannerRunId,
         session_id: activeSession,
         answers: wizardAnswers,
+        path_taken: plannerPathTaken,
         client_summary: summary,
       });
       if (res.status !== "success" || !res.answer) {
@@ -804,8 +918,13 @@ export default function Index() {
       setWizardSteps([]);
       setWizardAnswers({});
       setWizardIndex(0);
+      setIntentCandidates([]);
+      setPlannerPathTaken([]);
+      setPlannerCanGenerateNow(false);
+      setPlannerPathSummary("");
       setPlannerDocs([]);
       setPlannerRelevanceError(null);
+      setPlannerProgressMode("start");
     } catch (e: any) {
       setToast({ open: true, kind: "error", msg: e?.message || "Eksekusi planner gagal." });
       setPlannerUiState("reviewing");
@@ -1122,9 +1241,12 @@ export default function Index() {
                 relevanceError: plannerRelevanceError,
                 majorSummary: plannerMajorSummary,
                 progressMessage: plannerProgressMessage,
+                progressMode: plannerProgressMode,
                 wizardSteps,
                 wizardIndex,
                 wizardAnswers,
+                plannerCanGenerateNow,
+                plannerPathSummary,
                 plannerDocs,
                 loading,
                 deletingDocId,

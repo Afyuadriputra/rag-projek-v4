@@ -1021,6 +1021,253 @@ def _collect_planner_context_snippets(user: User, docs_summary: List[Dict[str, A
     return snippets
 
 
+def _sanitize_intent_candidates(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    seen = set()
+    for i, c in enumerate(candidates[:4], start=1):
+        if not isinstance(c, dict):
+            continue
+        label = str(c.get("label") or "").strip()[:140]
+        value = str(c.get("value") or "").strip()[:120]
+        reason = str(c.get("reason") or "").strip()[:220]
+        if not label:
+            continue
+        if not value:
+            value = f"intent_{i}"
+        low = value.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        out.append({"id": i, "label": label, "value": value, "reason": reason})
+    return out
+
+
+def _build_default_intent_candidates(
+    docs_summary: List[Dict[str, Any]],
+    profile_hints: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    question_candidates = profile_hints.get("question_candidates") or []
+    dynamic: List[Dict[str, Any]] = []
+    for q in question_candidates:
+        if not isinstance(q, dict):
+            continue
+        step = str(q.get("step") or "").strip().lower()
+        text = str(q.get("question") or "").strip()
+        if not step or not text:
+            continue
+        label = text if len(text) <= 80 else text[:80].rstrip() + "..."
+        dynamic.append(
+            {
+                "label": label,
+                "value": f"focus_{step}",
+                "reason": "Ditetapkan dari profil dan konteks dokumen.",
+            }
+        )
+    if dynamic:
+        return _sanitize_intent_candidates(dynamic)
+    docs_text = ", ".join([str(d.get("title") or "") for d in docs_summary[:3]])
+    return [
+        {
+            "id": 1,
+            "label": "Evaluasi IPK dan tren nilai per semester",
+            "value": "ipk_trend",
+            "reason": f"Dokumen terdeteksi: {docs_text}",
+        },
+        {
+            "id": 2,
+            "label": "Rekomendasi SKS dan prioritas mata kuliah berikutnya",
+            "value": "sks_plan",
+            "reason": "Cocok untuk perencanaan semester berikut.",
+        },
+        {
+            "id": 3,
+            "label": "Strategi perbaikan nilai pada mata kuliah berisiko",
+            "value": "grade_recovery",
+            "reason": "Fokus untuk peningkatan performa akademik.",
+        },
+    ]
+
+
+def _generate_intent_candidates_llm(
+    *,
+    user: User,
+    docs_summary: List[Dict[str, Any]],
+    profile_hints: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    runtime_cfg = get_runtime_openrouter_config()
+    if not str(runtime_cfg.get("api_key") or "").strip():
+        return []
+    cfg = {
+        **runtime_cfg,
+        "timeout": max(4, int(os.environ.get("PLANNER_BLUEPRINT_TIMEOUT_SEC", "12"))),
+        "max_retries": 0,
+    }
+    snippets = _collect_planner_context_snippets(user=user, docs_summary=docs_summary, k=4)
+    docs_text = "\n".join([f"- {d.get('title')}" for d in docs_summary[:6]])
+    snippets_text = "\n".join([f"- [{s.get('source')}] {s.get('snippet')}" for s in snippets[:4]])
+    prompt = (
+        "Kamu adalah AI Academic Planner Indonesia. "
+        "Buat 3-4 intent pertanyaan awal paling relevan berdasarkan dokumen user.\n"
+        "Output HARUS JSON valid berupa array object: "
+        "[{\"label\":str,\"value\":str,\"reason\":str}]\n"
+        "Aturan: fokus akademik, singkat, tidak duplikat, tidak hardcode generik.\n\n"
+        f"Profile hints: confidence={profile_hints.get('confidence_summary')} "
+        f"major={(profile_hints.get('major_candidates') or [])[:2]}\n"
+        f"Dokumen:\n{docs_text}\n"
+        f"Top snippets:\n{snippets_text}\n"
+    )
+    backup_models = get_backup_models(str(cfg.get("model") or ""), cfg.get("backup_models"))
+    max_models = max(1, int(os.environ.get("PLANNER_BLUEPRINT_MAX_MODELS", "1")))
+    for model_name in backup_models[:max_models]:
+        try:
+            llm = build_llm(model_name, cfg)
+            raw = invoke_text(llm, prompt).strip()
+            parsed = json.loads(raw) if raw else []
+            if not isinstance(parsed, list):
+                continue
+            cleaned = _sanitize_intent_candidates([x for x in parsed if isinstance(x, dict)])
+            if cleaned:
+                return cleaned
+        except Exception:
+            continue
+    return []
+
+
+def _build_intent_step(intent_candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
+    options = [
+        {"id": int(x.get("id") or i + 1), "label": str(x.get("label") or f"Opsi {i + 1}"), "value": str(x.get("value") or f"intent_{i+1}")}
+        for i, x in enumerate(intent_candidates[:4])
+    ]
+    return {
+        "step_key": "intent",
+        "title": "Pilih Fokus Pertanyaan",
+        "question": "Berikut kemungkinan pertanyaan berdasarkan dokumenmu. Pilih salah satu atau tulis manual.",
+        "options": options,
+        "allow_manual": True,
+        "required": True,
+        "source_hint": "mixed",
+        "reason": "Intent dibentuk dari deteksi dokumen dan profil.",
+    }
+
+
+def _sanitize_dynamic_step(step: Dict[str, Any], fallback_step_key: str) -> Dict[str, Any]:
+    if not isinstance(step, dict):
+        return {}
+    options = step.get("options") if isinstance(step.get("options"), list) else []
+    clean_opts = []
+    for i, o in enumerate(options[:4], start=1):
+        if not isinstance(o, dict):
+            continue
+        label = str(o.get("label") or "").strip()[:120]
+        value = str(o.get("value") or "").strip()[:100]
+        if not label:
+            continue
+        if not value:
+            value = f"opt_{i}"
+        clean_opts.append({"id": int(o.get("id") or i), "label": label, "value": value})
+    allow_manual = bool(step.get("allow_manual", True))
+    if not allow_manual and len(clean_opts) < 2:
+        return {}
+    step_key = str(step.get("step_key") or "").strip()[:40] or fallback_step_key
+    return {
+        "step_key": step_key,
+        "title": str(step.get("title") or "Pertanyaan Lanjutan")[:120],
+        "question": str(step.get("question") or "Lanjutkan analisis planner.")[:320],
+        "options": clean_opts,
+        "allow_manual": allow_manual,
+        "required": bool(step.get("required", True)),
+        "source_hint": str(step.get("source_hint") or "mixed")[:20],
+        "reason": str(step.get("reason") or "Pertanyaan ini membantu mempertajam analisis.")[:240],
+    }
+
+
+def _planner_path_summary(path_taken: List[Dict[str, Any]]) -> str:
+    if not path_taken:
+        return "Belum ada jawaban."
+    tails = path_taken[-3:]
+    parts = [f"{x.get('step_key')}: {x.get('answer_value')}" for x in tails]
+    return " -> ".join(parts)
+
+
+def _generate_next_step_llm(
+    *,
+    user: User,
+    run: PlannerRun,
+    latest_step_key: str,
+    latest_answer: str,
+) -> Dict[str, Any]:
+    runtime_cfg = get_runtime_openrouter_config()
+    if not str(runtime_cfg.get("api_key") or "").strip():
+        return {}
+    cfg = {
+        **runtime_cfg,
+        "timeout": max(4, int(os.environ.get("PLANNER_NEXT_TIMEOUT_SEC", "8"))),
+        "max_retries": max(0, int(os.environ.get("PLANNER_NEXT_MAX_RETRIES", "1"))),
+    }
+    docs_summary = run.documents_snapshot if isinstance(run.documents_snapshot, list) else []
+    snippets = _collect_planner_context_snippets(user=user, docs_summary=docs_summary, k=4)
+    snippets_text = "\n".join([f"- [{s.get('source')}] {s.get('snippet')}" for s in snippets[:4]])
+    answers = run.answers_snapshot if isinstance(run.answers_snapshot, dict) else {}
+    path = run.path_taken if isinstance(run.path_taken, list) else []
+    prompt = (
+        "Kamu adalah AI Academic Planner Indonesia. "
+        "Berdasarkan path jawaban user, buat SATU pertanyaan lanjutan paling informatif.\n"
+        "Jika informasi sudah cukup, set ready_to_generate=true.\n"
+        "Output HARUS JSON object valid: "
+        "{\"ready_to_generate\":bool,\"step\":{step_key,title,question,options,allow_manual,required,source_hint,reason}}\n"
+        "step boleh null jika ready_to_generate=true.\n"
+        "Hindari mengulang pertanyaan sebelumnya.\n\n"
+        f"Depth saat ini: {run.current_depth}/{run.max_depth}\n"
+        f"Jawaban terkini: {latest_step_key}={latest_answer}\n"
+        f"Semua jawaban: {answers}\n"
+        f"Path: {path}\n"
+        f"Top snippets:\n{snippets_text}\n"
+    )
+    backup_models = get_backup_models(str(cfg.get("model") or ""), cfg.get("backup_models"))
+    max_models = max(1, int(os.environ.get("PLANNER_BLUEPRINT_MAX_MODELS", "1")))
+    for model_name in backup_models[:max_models]:
+        try:
+            llm = build_llm(model_name, cfg)
+            raw = invoke_text(llm, prompt).strip()
+            obj = _safe_json_obj(raw)
+            if not obj:
+                continue
+            ready = bool(obj.get("ready_to_generate"))
+            step = obj.get("step")
+            clean_step = _sanitize_dynamic_step(step, fallback_step_key=f"followup_{run.current_depth + 1}") if isinstance(step, dict) else {}
+            if ready and not clean_step:
+                return {"ready_to_generate": True}
+            if clean_step:
+                return {"ready_to_generate": ready, "step": clean_step}
+        except Exception:
+            continue
+    return {}
+
+
+def _fallback_next_step(run: PlannerRun) -> Dict[str, Any]:
+    depth = int(run.current_depth or 0)
+    if depth >= int(run.max_depth or 4):
+        return {"ready_to_generate": True}
+    key = f"followup_{depth + 1}"
+    return {
+        "ready_to_generate": False,
+        "step": {
+            "step_key": key,
+            "title": "Pendalaman Analisis",
+            "question": "Agar hasil lebih tajam, aspek mana yang ingin diperdalam lagi?",
+            "options": [
+                {"id": 1, "label": "Prioritas mata kuliah", "value": "priority_subject"},
+                {"id": 2, "label": "Manajemen beban SKS", "value": "credit_load"},
+                {"id": 3, "label": "Strategi belajar", "value": "study_strategy"},
+            ],
+            "allow_manual": True,
+            "required": True,
+            "source_hint": "mixed",
+            "reason": "Langkah fallback untuk mempertajam keputusan sebelum generate.",
+        },
+    }
+
+
 def assess_documents_relevance(user: User, docs_summary: List[Dict[str, Any]]) -> Dict[str, Any]:
     titles = [str(d.get("title") or "").lower() for d in docs_summary]
     reasons: List[str] = []
@@ -1282,19 +1529,52 @@ def planner_start_v3(
             "required_upload": True,
         }
 
+    intent_candidates = _generate_intent_candidates_llm(
+        user=user,
+        docs_summary=docs_summary,
+        profile_hints=profile_hints,
+    )
+    if not intent_candidates:
+        intent_candidates = _build_default_intent_candidates(
+            docs_summary=docs_summary,
+            profile_hints=profile_hints,
+        )
+
+    intent_step = _build_intent_step(intent_candidates)
+    start_blueprint = {
+        "version": "v3_dynamic",
+        "steps": [intent_step],
+        "meta": {
+            **(wizard_blueprint.get("meta") or {}),
+            "generation_mode": "adaptive_start",
+        },
+    }
+
     run = PlannerRun.objects.create(
         user=user,
         session=planner_session,
         status=PlannerRun.STATUS_READY,
-        wizard_blueprint=wizard_blueprint,
+        wizard_blueprint=start_blueprint,
         documents_snapshot=docs_summary,
+        intent_candidates_snapshot=intent_candidates,
+        decision_tree_state={"expected_step_key": "intent", "next_seq": 1, "can_generate_now": False},
+        path_taken=[],
+        current_depth=0,
+        max_depth=4,
+        grounding_policy="doc_first_fallback",
+        profile_hints_snapshot=profile_hints,
+        doc_relevance_snapshot={
+            "is_relevant": True,
+            "score": relevance.get("relevance_score", 0.0),
+            "reasons": relevance.get("relevance_reasons") or [],
+        },
         expires_at=timezone.now() + timedelta(hours=_planner_v3_expiry_hours()),
     )
     return {
         "status": "success",
         "planner_run_id": str(run.id),
         "session_id": planner_session.id,
-        "wizard_blueprint": wizard_blueprint,
+        "wizard_blueprint": start_blueprint,
         "documents_summary": docs_summary,
         "required_upload": False,
         "progress_hints": _planner_v3_progress_hints(),
@@ -1307,12 +1587,134 @@ def planner_start_v3(
             "major_candidates": (profile_hints.get("major_candidates") or [])[:3],
             "confidence_summary": profile_hints.get("confidence_summary"),
         },
+        "intent_candidates": intent_candidates,
+        "manual_intent_enabled": True,
+        "next_action": "choose_intent",
         "planner_meta": {
             "event_type": "start_v3",
             "had_upload": had_upload,
             "reuse_count": len(reuse_doc_ids),
             "generation_mode": generation_mode,
         },
+    }
+
+
+def planner_next_step_v3(
+    *,
+    user: User,
+    planner_run_id: str,
+    step_key: str,
+    answer_value: str,
+    answer_mode: str,
+    client_step_seq: int,
+) -> Dict[str, Any]:
+    run = get_planner_run_for_user(user=user, run_id=planner_run_id)
+    if not run:
+        return {"status": "error", "error": "planner_run_id tidak ditemukan."}
+    if run.status in {PlannerRun.STATUS_CANCELLED, PlannerRun.STATUS_EXPIRED, PlannerRun.STATUS_COMPLETED}:
+        return {"status": "error", "error": f"Planner run sudah {run.status}."}
+    if timezone.now() > run.expires_at:
+        run.status = PlannerRun.STATUS_EXPIRED
+        run.save(update_fields=["status", "updated_at"])
+        return {"status": "error", "error": "Planner run sudah kedaluwarsa."}
+
+    tree = run.decision_tree_state if isinstance(run.decision_tree_state, dict) else {}
+    expected_step = str(tree.get("expected_step_key") or "intent")
+    next_seq = int(tree.get("next_seq") or 1)
+    if int(client_step_seq or 0) != next_seq:
+        return {
+            "status": "error",
+            "error": "Urutan langkah tidak valid (client_step_seq).",
+            "error_code": "INVALID_STEP_SEQUENCE",
+            "expected_step_key": expected_step,
+            "expected_seq": next_seq,
+        }
+    submitted_step = str(step_key or "").strip()
+    if submitted_step != expected_step:
+        # Self-heal: pada beberapa kondisi UI bisa stale dan mengirim step sebelumnya.
+        # Selama urutan seq benar dan expected_step tersedia, lanjutkan dengan expected_step
+        # agar flow planner tidak macet di 400 berulang.
+        if submitted_step and expected_step and submitted_step in set((run.answers_snapshot or {}).keys()):
+            logger.warning(
+                "planner_next_step_v3 step mismatch recovered run=%s submitted=%s expected=%s seq=%s",
+                run.id,
+                submitted_step,
+                expected_step,
+                next_seq,
+            )
+            submitted_step = expected_step
+        else:
+            return {
+                "status": "error",
+                "error": "step_key tidak sesuai urutan planner.",
+                "error_code": "STEP_KEY_MISMATCH",
+                "expected_step_key": expected_step,
+                "expected_seq": next_seq,
+            }
+
+    normalized_mode = str(answer_mode or "").strip().lower()
+    if normalized_mode not in {"option", "manual"}:
+        return {"status": "error", "error": "answer_mode tidak valid."}
+    answer_text = str(answer_value or "").strip()
+    if not answer_text:
+        return {"status": "error", "error": "answer_value wajib diisi."}
+
+    answers = dict(run.answers_snapshot or {})
+    answers[submitted_step] = answer_text
+    path = list(run.path_taken or [])
+    path.append(
+        {
+            "seq": next_seq,
+            "step_key": submitted_step,
+            "answer_value": answer_text,
+            "answer_mode": normalized_mode,
+        }
+    )
+
+    run.current_depth = int(run.current_depth or 0) + 1
+    reached_max = run.current_depth >= int(run.max_depth or 4)
+    next_payload: Dict[str, Any] = {"ready_to_generate": reached_max}
+    if not reached_max:
+        next_payload = _generate_next_step_llm(
+            user=user,
+            run=run,
+            latest_step_key=submitted_step,
+            latest_answer=answer_text,
+        ) or {}
+        if not next_payload:
+            next_payload = _fallback_next_step(run)
+    ready_to_generate = bool(next_payload.get("ready_to_generate"))
+    next_step = next_payload.get("step") if isinstance(next_payload.get("step"), dict) else None
+
+    run.answers_snapshot = answers
+    run.path_taken = path
+    run.status = PlannerRun.STATUS_COLLECTING
+    tree["next_seq"] = next_seq + 1
+    tree["can_generate_now"] = bool(ready_to_generate or reached_max)
+    if next_step:
+        tree["expected_step_key"] = str(next_step.get("step_key") or f"followup_{run.current_depth+1}")
+    else:
+        tree["expected_step_key"] = ""
+    run.decision_tree_state = tree
+    run.save(
+        update_fields=[
+            "answers_snapshot",
+            "path_taken",
+            "current_depth",
+            "status",
+            "decision_tree_state",
+            "updated_at",
+        ]
+    )
+
+    return {
+        "status": "success",
+        "step": next_step,
+        "done_recommendation": "Data sudah cukup untuk generate." if not next_step else "",
+        "progress": {"current": int(run.current_depth), "max": int(run.max_depth or 4)},
+        "can_generate_now": bool(tree.get("can_generate_now")),
+        "path_summary": _planner_path_summary(path),
+        "path_taken": path,
     }
 def get_planner_run_for_user(user: User, run_id: str) -> PlannerRun | None:
     try:
@@ -1372,6 +1774,7 @@ def planner_execute_v3(
     user: User,
     planner_run_id: str,
     answers: Dict[str, Any],
+    path_taken: List[Dict[str, Any]] | None = None,
     session_id: int | None = None,
     client_summary: str = "",
     request_id: str = "-",
@@ -1381,30 +1784,51 @@ def planner_execute_v3(
         return {"status": "error", "error": "planner_run_id tidak ditemukan."}
     if run.status in {PlannerRun.STATUS_CANCELLED, PlannerRun.STATUS_EXPIRED}:
         return {"status": "error", "error": f"Planner run sudah {run.status}."}
-    if run.status not in {PlannerRun.STATUS_READY, PlannerRun.STATUS_STARTED}:
+    if run.status not in {PlannerRun.STATUS_READY, PlannerRun.STATUS_STARTED, PlannerRun.STATUS_COLLECTING}:
         return {"status": "error", "error": "Planner run tidak dalam status siap eksekusi."}
     if timezone.now() > run.expires_at:
         run.status = PlannerRun.STATUS_EXPIRED
         run.save(update_fields=["status", "updated_at"])
         return {"status": "error", "error": "Planner run sudah kedaluwarsa."}
 
-    err = _validate_planner_answers(run.wizard_blueprint, answers or {})
-    if err:
-        return {"status": "error", "error": err}
+    if path_taken is not None:
+        if not isinstance(path_taken, list):
+            return {"status": "error", "error": "path_taken harus array."}
+        server_path = list(run.path_taken or [])
+        if path_taken != server_path:
+            return {"status": "error", "error": "path_taken tidak konsisten dengan state server."}
+
+    merged_answers = {**(run.answers_snapshot or {}), **(answers or {})}
+    if not merged_answers:
+        return {"status": "error", "error": "Belum ada jawaban planner untuk dieksekusi."}
+    valid_keys = {str(x.get("step_key")) for x in (run.path_taken or []) if isinstance(x, dict) and x.get("step_key")}
+    if valid_keys:
+        unknown = [k for k in merged_answers.keys() if k not in valid_keys]
+        if unknown:
+            return {"status": "error", "error": f"Jawaban memuat step tidak dikenal: {', '.join(sorted(unknown))}"}
+    # Backward compatibility untuk test/flow lama yang masih mengirim wizard blueprint.
+    if not valid_keys:
+        err = _validate_planner_answers(run.wizard_blueprint, merged_answers)
+        if err:
+            return {"status": "error", "error": err}
 
     run.status = PlannerRun.STATUS_EXECUTING
-    run.answers_snapshot = answers or {}
+    run.answers_snapshot = merged_answers
     run.save(update_fields=["status", "answers_snapshot", "updated_at"])
 
     session = get_or_create_chat_session(user=user, session_id=session_id or run.session_id)
-    summary = (client_summary or "").strip() or _build_planner_v3_user_summary(answers=answers, docs=run.documents_snapshot)
+    summary = (client_summary or "").strip() or _build_planner_v3_user_summary(answers=merged_answers, docs=run.documents_snapshot)
     context_payload = {
         "planner_run_id": str(run.id),
         "documents": run.documents_snapshot,
-        "answers": answers,
+        "answers": merged_answers,
+        "path_taken": run.path_taken,
+        "grounding_policy": run.grounding_policy,
     }
     planner_prompt = (
         "Buat analisis akademik berbasis dokumen user dan jawaban wizard berikut.\n"
+        "Aturan grounding: utamakan fakta dari dokumen. Jika data dokumen tidak cukup, beri disclaimer jelas "
+        "('Data dokumen rujukan belum cukup ...') lalu lanjutkan panduan umum akademik.\n"
         f"Data: {context_payload}\n\n"
         f"Permintaan user: {summary}"
     )
@@ -1417,6 +1841,7 @@ def planner_execute_v3(
     run.status = PlannerRun.STATUS_COMPLETED
     run.save(update_fields=["status", "updated_at"])
 
+    fallback_used = (len(sources) == 0) or ("Data dokumen rujukan belum cukup" in answer)
     return {
         "status": "success",
         "answer": answer,
@@ -1425,6 +1850,9 @@ def planner_execute_v3(
         "planner_meta": {
             "event_type": "generate",
             "planner_run_id": str(run.id),
+            "grounding_mode": "doc_first_fallback",
+            "fallback_used": bool(fallback_used),
+            "path_depth": len(run.path_taken or []),
         },
     }
 

@@ -757,10 +757,13 @@ def planner_execute_v3_api(request):
         data = json.loads(request.body or "{}")
         planner_run_id = str(data.get("planner_run_id") or "").strip()
         answers = data.get("answers") or {}
+        path_taken = data.get("path_taken")
         if not planner_run_id:
             return JsonResponse({"status": "error", "error": "planner_run_id wajib diisi."}, status=400)
         if not isinstance(answers, dict):
             return JsonResponse({"status": "error", "error": "answers harus object."}, status=400)
+        if path_taken is not None and (not isinstance(path_taken, list)):
+            return JsonResponse({"status": "error", "error": "path_taken harus array."}, status=400)
         session_id = data.get("session_id")
         session_id = int(session_id) if str(session_id).isdigit() else None
         client_summary = str(data.get("client_summary") or "")
@@ -768,6 +771,7 @@ def planner_execute_v3_api(request):
             user=user,
             planner_run_id=planner_run_id,
             answers=answers,
+            path_taken=path_taken,
             session_id=session_id,
             client_summary=client_summary,
             request_id=_rid(request),
@@ -786,6 +790,65 @@ def planner_execute_v3_api(request):
     except Exception as e:
         logger.error(
             " [PLANNER V3 EXECUTE ERROR] user=%s(id=%s) ip=%s err=%s",
+            user.username,
+            user.id,
+            ip,
+            repr(e),
+            extra=_log_extra(request),
+            exc_info=True,
+        )
+        return JsonResponse({"status": "error", "error": "Terjadi kesalahan server."}, status=500)
+
+
+@csrf_exempt
+@login_required
+def planner_next_step_v3_api(request):
+    user = request.user
+    ip = _get_client_ip(request)
+    if not _planner_v3_enabled():
+        return JsonResponse({"status": "error", "error": "Planner v3 dinonaktifkan."}, status=404)
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "error": "Method not allowed"}, status=405)
+    try:
+        data = json.loads(request.body or "{}")
+        planner_run_id = str(data.get("planner_run_id") or "").strip()
+        step_key = str(data.get("step_key") or "").strip()
+        answer_value = str(data.get("answer_value") or "").strip()
+        answer_mode = str(data.get("answer_mode") or "").strip().lower()
+        client_step_seq_raw = data.get("client_step_seq")
+        if not planner_run_id:
+            return JsonResponse({"status": "error", "error": "planner_run_id wajib diisi."}, status=400)
+        if not step_key:
+            return JsonResponse({"status": "error", "error": "step_key wajib diisi."}, status=400)
+        if not answer_value:
+            return JsonResponse({"status": "error", "error": "answer_value wajib diisi."}, status=400)
+        if answer_mode not in {"option", "manual"}:
+            return JsonResponse({"status": "error", "error": "answer_mode tidak valid."}, status=400)
+        if not str(client_step_seq_raw).isdigit():
+            return JsonResponse({"status": "error", "error": "client_step_seq wajib angka."}, status=400)
+        payload = service.planner_next_step_v3(
+            user=user,
+            planner_run_id=planner_run_id,
+            step_key=step_key,
+            answer_value=answer_value,
+            answer_mode=answer_mode,
+            client_step_seq=int(client_step_seq_raw),
+        )
+        status = 200 if payload.get("status") == "success" else 400
+        logger.info(
+            " [PLANNER V3 NEXT] user=%s(id=%s) ip=%s status=%s run=%s seq=%s",
+            user.username,
+            user.id,
+            ip,
+            payload.get("status"),
+            planner_run_id,
+            client_step_seq_raw,
+            extra=_log_extra(request),
+        )
+        return JsonResponse(payload, status=status)
+    except Exception as e:
+        logger.error(
+            " [PLANNER V3 NEXT ERROR] user=%s(id=%s) ip=%s err=%s",
             user.username,
             user.id,
             ip,

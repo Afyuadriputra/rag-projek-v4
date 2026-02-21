@@ -89,6 +89,7 @@ class PlannerHistory(models.Model):
 class PlannerRun(models.Model):
     STATUS_STARTED = "started"
     STATUS_READY = "ready"
+    STATUS_COLLECTING = "collecting"
     STATUS_EXECUTING = "executing"
     STATUS_COMPLETED = "completed"
     STATUS_CANCELLED = "cancelled"
@@ -96,6 +97,7 @@ class PlannerRun(models.Model):
     STATUS_CHOICES = [
         (STATUS_STARTED, "Started"),
         (STATUS_READY, "Ready"),
+        (STATUS_COLLECTING, "Collecting"),
         (STATUS_EXECUTING, "Executing"),
         (STATUS_COMPLETED, "Completed"),
         (STATUS_CANCELLED, "Cancelled"),
@@ -109,6 +111,14 @@ class PlannerRun(models.Model):
     wizard_blueprint = models.JSONField(default=dict, blank=True)
     documents_snapshot = models.JSONField(default=list, blank=True)
     answers_snapshot = models.JSONField(default=dict, blank=True)
+    intent_candidates_snapshot = models.JSONField(default=list, blank=True)
+    decision_tree_state = models.JSONField(default=dict, blank=True)
+    path_taken = models.JSONField(default=list, blank=True)
+    current_depth = models.PositiveSmallIntegerField(default=0)
+    max_depth = models.PositiveSmallIntegerField(default=4)
+    grounding_policy = models.CharField(max_length=64, default="doc_first_fallback")
+    profile_hints_snapshot = models.JSONField(default=dict, blank=True)
+    doc_relevance_snapshot = models.JSONField(default=dict, blank=True)
     expires_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
