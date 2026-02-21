@@ -131,6 +131,7 @@ def build_storage_payload(total_bytes: int, quota_bytes: int) -> Dict[str, Any]:
     """
     quota_bytes = max(int(quota_bytes), 1)
     used_pct = int(min(100, (total_bytes / quota_bytes) * 100))
+
     return {
         "used_bytes": int(total_bytes),
         "quota_bytes": int(quota_bytes),
@@ -341,6 +342,162 @@ def _append_verified_grade_rescue(
     return (answer or "").rstrip() + verified_block
 
 
+def _is_transcript_recap_query(message: str) -> bool:
+    q = (message or "").strip().lower()
+    if not q:
+        return False
+    recap_tokens = {"rekap", "rangkum", "ringkas", "daftar", "list"}
+    acad_tokens = {
+        "mata kuliah",
+        "matakuliah",
+        "mk",
+        "transkrip",
+        "khs",
+        "krs",
+        "semester",
+        "sks",
+        "ipk",
+        "ips",
+    }
+    if "total sks" in q:
+        return True
+    return any(t in q for t in recap_tokens) and any(t in q for t in acad_tokens)
+
+
+def _safe_int_sks(raw: str) -> int | None:
+    s = (raw or "").strip().replace(",", ".")
+    if not s:
+        return None
+    m = re.search(r"\d+(?:\.\d+)?", s)
+    if not m:
+        return None
+    try:
+        return int(round(float(m.group(0))))
+    except Exception:
+        return None
+
+
+def _extract_course_row_from_chunk(row_text: str, meta: Dict[str, Any]) -> Dict[str, Any] | None:
+    txt = (row_text or "").strip()
+    if not txt or not txt.lower().startswith("csv_row"):
+        return None
+
+    # format: CSV_ROW 1: key=val | key=val
+    if ":" in txt:
+        txt = txt.split(":", 1)[1].strip()
+    cells = [c.strip() for c in txt.split("|") if c.strip()]
+    data: Dict[str, str] = {}
+    for cell in cells:
+        if "=" not in cell:
+            continue
+        k, v = cell.split("=", 1)
+        key = (k or "").strip().lower()
+        val = (v or "").strip()
+        if key:
+            data[key] = val
+
+    course = (data.get("mata_kuliah") or "").strip()
+    if not course:
+        return None
+    lc_course = course.lower()
+    if "jumlah sks" in lc_course or lc_course.startswith("total"):
+        return None
+
+    semester_raw = (data.get("semester") or str(meta.get("semester") or "")).strip()
+    sm = re.search(r"\d+", semester_raw)
+    semester = int(sm.group(0)) if sm else 0
+
+    sks_val = _safe_int_sks(data.get("sks", ""))
+    if sks_val is None or sks_val < 0 or sks_val > 12:
+        sks_val = 0
+
+    source = str(meta.get("source") or "-").strip() or "-"
+    return {
+        "semester": semester,
+        "course": course,
+        "sks": sks_val,
+        "source": source,
+    }
+
+
+def _build_transcript_recap_answer(user: User) -> Dict[str, Any] | None:
+    try:
+        vs = get_vectorstore()
+        col = getattr(vs, "_collection", None) or getattr(vs, "collection", None)
+        if col is None:
+            return None
+        where = {"$and": [{"user_id": str(user.id)}, {"chunk_kind": "row"}]}
+        try:
+            got = col.get(where=where, include=["documents", "metadatas", "ids"])
+        except TypeError:
+            got = col.get(where=where)
+    except Exception:
+        return None
+
+    docs = list(got.get("documents", []) or [])
+    metas = list(got.get("metadatas", []) or [])
+    if not docs:
+        return None
+
+    rows: List[Dict[str, Any]] = []
+    for idx, row_text in enumerate(docs):
+        meta = metas[idx] if idx < len(metas) and isinstance(metas[idx], dict) else {}
+        parsed = _extract_course_row_from_chunk(str(row_text or ""), meta)
+        if parsed:
+            rows.append(parsed)
+
+    if not rows:
+        return None
+
+    deduped: List[Dict[str, Any]] = []
+    seen = set()
+    for r in rows:
+        key = (
+            int(r.get("semester") or 0),
+            str(r.get("course") or "").strip().lower(),
+            int(r.get("sks") or 0),
+            str(r.get("source") or "").strip().lower(),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(r)
+
+    deduped.sort(key=lambda x: (int(x.get("semester") or 0), str(x.get("course") or "").lower()))
+
+    per_semester: Dict[int, int] = {}
+    for r in deduped:
+        smt = int(r.get("semester") or 0)
+        per_semester[smt] = per_semester.get(smt, 0) + int(r.get("sks") or 0)
+    grand_total = sum(per_semester.values())
+
+    lines: List[str] = []
+    lines.append("## Rekap Mata Kuliah dari Dokumen")
+    lines.append("")
+    lines.append("| Semester | Mata Kuliah | SKS | Sumber |")
+    lines.append("|---|---|---:|---|")
+    for r in deduped:
+        smt = int(r.get("semester") or 0)
+        smt_label = "-" if smt <= 0 else str(smt)
+        course = str(r.get("course") or "-").replace("|", "/")
+        sks = int(r.get("sks") or 0)
+        source = str(r.get("source") or "-").replace("|", "/")
+        lines.append(f"| {smt_label} | {course} | {sks} | {source} |")
+
+    lines.append("")
+    lines.append("### Ringkasan SKS per Semester")
+    for smt in sorted(per_semester):
+        label = "-" if smt <= 0 else f"Semester {smt}"
+        lines.append(f"- {label}: **{per_semester[smt]} SKS**")
+    lines.append(f"- Total SKS keseluruhan: **{grand_total} SKS**")
+    lines.append("")
+    lines.append("Jika kamu mau, saya bisa lanjutkan analisis: tren nilai, mata kuliah berisiko, dan saran topik skripsi.")
+
+    source_names = sorted({str(r.get("source") or "").strip() for r in deduped if str(r.get("source") or "").strip()})
+    sources = [{"source": s} for s in source_names[:12]]
+    return {"answer": "\n".join(lines), "sources": sources, "meta": {"mode": "deterministic_transcript_recap"}}
+
+
 def _planner_context_for_user(user: User, query: str) -> str:
     try:
         vectorstore = get_vectorstore()
@@ -429,6 +586,7 @@ def chat_and_save(user: User, message: str, request_id: str = "-", session_id: i
         )
         result: Dict[str, Any] = {"answer": _build_grade_rescue_response(parsed_grade, calc), "sources": []}
     else:
+        # LLM-first: semua query non-grade-rescue diproses via RAG+LLM.
         result = ask_bot(user.id, message, request_id=request_id)
 
     # Normalisasi output (biar backward compatible kalau suatu saat ask_bot return string)
@@ -1181,12 +1339,274 @@ def _sanitize_dynamic_step(step: Dict[str, Any], fallback_step_key: str) -> Dict
     }
 
 
+def _fallback_options_from_context(
+    *,
+    latest_answer: str,
+    question: str,
+    step_key: str,
+) -> List[Dict[str, Any]]:
+    """
+    Bangun opsi default kontekstual jika LLM mengembalikan step tanpa opsi memadai.
+    Tujuan UX: user tetap mendapat quick options (tidak langsung textarea saja).
+    """
+    q = (question or "").lower()
+    ans = (latest_answer or "").strip()
+    sk = (step_key or "").lower()
+
+    if "ipk" in q or "cumlaude" in q:
+        labels = [
+            ("Target Cumlaude (> 3.50)", "target_cumlaude"),
+            ("Target Sangat Memuaskan (3.00 - 3.49)", "target_sangat_memuaskan"),
+            ("Fokus lulus tepat waktu", "target_tepat_waktu"),
+        ]
+    elif "skripsi" in q or "topik" in q or "minat" in q or "spesialisasi" in q or "focus" in q or "fokus" in q:
+        labels = [
+            ("Pengembangan Perangkat Lunak", "minat_software_engineering"),
+            ("Kecerdasan Buatan", "minat_artificial_intelligence"),
+            ("Keamanan Siber", "minat_cybersecurity"),
+        ]
+    elif "krs" in q or "sks" in q or "beban" in q or "jadwal" in q:
+        labels = [
+            ("Ambil beban SKS normal", "load_normal"),
+            ("Ambil beban SKS ringan", "load_light"),
+            ("Ambil beban SKS agresif", "load_aggressive"),
+        ]
+    else:
+        prefix = re.sub(r"[^a-z0-9_]+", "_", (ans or "pilihan").lower()).strip("_")[:32] or "pilihan"
+        key_prefix = re.sub(r"[^a-z0-9_]+", "_", sk).strip("_")[:24] or "followup"
+        labels = [
+            (f"Fokus utama: {ans[:40] or 'Prioritas akademik'}", f"{key_prefix}_{prefix}_utama"),
+            ("Butuh rekomendasi strategi", f"{key_prefix}_{prefix}_strategi"),
+            ("Butuh analisis risiko & mitigasi", f"{key_prefix}_{prefix}_risiko"),
+        ]
+
+    out: List[Dict[str, Any]] = []
+    for i, (label, value) in enumerate(labels[:4], start=1):
+        out.append({"id": i, "label": str(label)[:120], "value": str(value)[:100]})
+    return out
+
+
+def _ensure_step_has_options(
+    *,
+    step: Dict[str, Any],
+    latest_answer: str,
+) -> Dict[str, Any]:
+    """
+    Pastikan step dynamic selalu punya opsi.
+    Jika opsi < 2, isi opsi fallback kontekstual.
+    """
+    if not isinstance(step, dict):
+        return step
+    opts = step.get("options") if isinstance(step.get("options"), list) else []
+    if len(opts) >= 2:
+        return step
+    question = str(step.get("question") or "")
+    step_key = str(step.get("step_key") or "followup")
+    step["options"] = _fallback_options_from_context(
+        latest_answer=latest_answer,
+        question=question,
+        step_key=step_key,
+    )
+    step["allow_manual"] = True
+    return step
+
+
 def _planner_path_summary(path_taken: List[Dict[str, Any]]) -> str:
     if not path_taken:
         return "Belum ada jawaban."
     tails = path_taken[-3:]
     parts = [f"{x.get('step_key')}: {x.get('answer_value')}" for x in tails]
     return " -> ".join(parts)
+
+
+def _confidence_to_level(conf: float) -> str:
+    if conf >= 0.75:
+        return "high"
+    if conf >= 0.5:
+        return "medium"
+    return "low"
+
+
+_MAJOR_SIGNAL_MAP: Dict[str, List[str]] = {
+    "Teknik Informatika": [
+        "teknik informatika",
+        "informatika",
+        "ilmu komputer",
+        "computer science",
+        "pemrograman",
+        "algoritma",
+        "struktur data",
+        "kecerdasan buatan",
+        "pembelajaran mendalam",
+    ],
+    "Sistem Informasi": [
+        "sistem informasi",
+        "information systems",
+        "analisis sistem",
+        "manajemen sistem informasi",
+        "erp",
+    ],
+    "Manajemen": [
+        "manajemen",
+        "management",
+        "manajemen keuangan",
+        "manajemen pemasaran",
+    ],
+}
+
+
+def _infer_major_from_docs_context(user: User, docs_summary: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Infer jurusan dari bukti dokumen (judul + top snippets RAG).
+    Menghasilkan kandidat top dengan confidence ringan.
+    """
+    titles = [str(d.get("title") or "").lower() for d in (docs_summary or [])]
+    snippets = _collect_planner_context_snippets(user=user, docs_summary=docs_summary or [], k=6)
+    snippet_texts = [str(s.get("snippet") or "").lower() for s in snippets]
+    corpus = titles + snippet_texts
+    if not corpus:
+        return {"label": "", "score": 0.0, "evidence": []}
+
+    scores: Dict[str, float] = {}
+    evidence: Dict[str, List[str]] = {}
+    for major, signals in _MAJOR_SIGNAL_MAP.items():
+        s = 0.0
+        ev: List[str] = []
+        for sig in signals:
+            sig_l = sig.lower()
+            title_hits = sum(1 for t in titles if sig_l in t)
+            snippet_hits = sum(1 for t in snippet_texts if sig_l in t)
+            if title_hits or snippet_hits:
+                s += (title_hits * 1.8) + (snippet_hits * 0.7)
+                if len(ev) < 3:
+                    ev.append(sig)
+        scores[major] = s
+        evidence[major] = ev
+
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    top_label, top_score = ranked[0] if ranked else ("", 0.0)
+    second_score = ranked[1][1] if len(ranked) > 1 else 0.0
+    if top_score <= 0:
+        return {"label": "", "score": 0.0, "evidence": []}
+
+    # Confidence dipengaruhi margin antar kandidat agar tidak mudah salah klasifikasi.
+    margin = max(0.0, float(top_score - second_score))
+    conf = min(0.95, 0.45 + (top_score * 0.06) + (margin * 0.08))
+    return {"label": top_label, "score": round(conf, 4), "evidence": evidence.get(top_label, [])[:3]}
+
+
+def _extract_major_state(profile_hints: Dict[str, Any], user: User, docs_summary: List[Dict[str, Any]]) -> Dict[str, Any]:
+    candidates = profile_hints.get("major_candidates") or []
+    top = candidates[0] if candidates else {}
+    profile_label = str(top.get("label") or "").strip()
+    profile_conf = float(top.get("confidence") or 0.0)
+
+    doc_major = _infer_major_from_docs_context(user=user, docs_summary=docs_summary)
+    doc_label = str(doc_major.get("label") or "").strip()
+    doc_conf = float(doc_major.get("score") or 0.0)
+
+    # Gunakan evidensi dokumen sebagai prioritas jika confidence memadai atau konflik kuat.
+    label = profile_label
+    conf = profile_conf
+    source = "inferred"
+    evidence = list((top.get("evidence") or [])[:3]) if isinstance(top, dict) else []
+    if doc_label and (doc_conf >= 0.72 or (doc_label != profile_label and doc_conf >= (profile_conf + 0.08))):
+        label = doc_label
+        conf = doc_conf
+        source = "inferred_document"
+        evidence = list((doc_major.get("evidence") or [])[:3])
+
+    # Gate: jika confidence rendah, jangan klaim jurusan spesifik.
+    if conf < 0.62:
+        label = ""
+        source = "unknown"
+
+    return {
+        "major_label": label,
+        "major_confidence_score": round(conf, 4),
+        "major_confidence_level": _confidence_to_level(conf),
+        "source": source,
+        "evidence": evidence,
+    }
+
+
+def _estimate_dynamic_total(*, docs_summary: List[Dict[str, Any]], relevance_score: float, depth: int = 0) -> int:
+    # Estimasi langkah total dinamis, tetap dibatasi 2..4.
+    complexity = min(2, max(0, len(docs_summary) // 3))
+    rel_penalty = 1 if relevance_score < 0.75 else 0
+    est = 3 + complexity + rel_penalty
+    est = max(est, depth + 1)
+    return max(2, min(4, est))
+
+
+def _normalize_slug_text(text: str) -> str:
+    txt = re.sub(r"[^a-z0-9 ]+", " ", (text or "").lower())
+    txt = re.sub(r"\s+", " ", txt).strip()
+    return txt
+
+
+def _is_redundant_question(next_question: str, path_taken: List[Dict[str, Any]]) -> bool:
+    nq = _normalize_slug_text(next_question)
+    if not nq:
+        return False
+    nq_tokens = {t for t in nq.split(" ") if len(t) >= 4}
+    if not nq_tokens:
+        return False
+    for p in path_taken[-3:]:
+        prev_q = _normalize_slug_text(str(p.get("question") or ""))
+        if not prev_q:
+            continue
+        prev_tokens = {t for t in prev_q.split(" ") if len(t) >= 4}
+        if not prev_tokens:
+            continue
+        inter = len(nq_tokens.intersection(prev_tokens))
+        union = len(nq_tokens.union(prev_tokens)) or 1
+        if (inter / union) >= 0.55:
+            return True
+    return False
+
+
+_MAJOR_OVERRIDE_PATTERNS = [
+    re.compile(r"\bjurusan\s+(?:saya|aku)\s+(?:yang\s+benar|sebenarnya)\s+([a-zA-Z ]{3,80})", re.IGNORECASE),
+    re.compile(r"\b(jurusan|prodi)\s+(saya|aku)\s+(?:itu|adalah)\s+([a-zA-Z ]{3,80})", re.IGNORECASE),
+    re.compile(r"\bsaya\s+(?:dari|berjurusan)\s+([a-zA-Z ]{3,80})", re.IGNORECASE),
+]
+
+
+def _extract_major_override_from_answer(answer: str) -> str:
+    txt = (answer or "").strip()
+    if not txt:
+        return ""
+    for pat in _MAJOR_OVERRIDE_PATTERNS:
+        m = pat.search(txt)
+        if m:
+            val = m.group(m.lastindex or 1)
+            val = re.sub(r"\s+", " ", val).strip(" .,:;")
+            if len(val) >= 3:
+                return val.title()
+    return ""
+
+
+def _build_step_path_label(step: Dict[str, Any], latest_answer: str) -> str:
+    title = str(step.get("title") or "").strip()
+    if title:
+        return title
+    ans = str(latest_answer or "").strip()
+    if ans:
+        return f"Path: {ans[:40]}"
+    return "Path Analisis"
+
+
+def _build_human_step_label(step_key: str) -> str:
+    mapping = {
+        "intent": "Fokus Analisis",
+        "topic_interest": "Minat Bidang",
+        "topic_area": "Area Spesifik",
+    }
+    if step_key in mapping:
+        return mapping[step_key]
+    txt = step_key.replace("_", " ").strip()
+    return txt[:1].upper() + txt[1:] if txt else "Langkah"
 
 
 def _generate_next_step_llm(
@@ -1209,6 +1629,9 @@ def _generate_next_step_llm(
     snippets_text = "\n".join([f"- [{s.get('source')}] {s.get('snippet')}" for s in snippets[:4]])
     answers = run.answers_snapshot if isinstance(run.answers_snapshot, dict) else {}
     path = run.path_taken if isinstance(run.path_taken, list) else []
+    major_state = run.major_state_snapshot if isinstance(run.major_state_snapshot, dict) else {}
+    major_source = str(major_state.get("source") or "inferred")
+    major_label = str(major_state.get("major_label") or "").strip()
     prompt = (
         "Kamu adalah AI Academic Planner Indonesia. "
         "Berdasarkan path jawaban user, buat SATU pertanyaan lanjutan paling informatif.\n"
@@ -1216,8 +1639,11 @@ def _generate_next_step_llm(
         "Output HARUS JSON object valid: "
         "{\"ready_to_generate\":bool,\"step\":{step_key,title,question,options,allow_manual,required,source_hint,reason}}\n"
         "step boleh null jika ready_to_generate=true.\n"
-        "Hindari mengulang pertanyaan sebelumnya.\n\n"
+        "Hindari mengulang pertanyaan sebelumnya.\n"
+        "Jangan tanyakan konfirmasi jurusan jika major_source=user_override.\n\n"
         f"Depth saat ini: {run.current_depth}/{run.max_depth}\n"
+        f"Estimated total saat ini: {run.estimated_total_snapshot}\n"
+        f"Major state: label={major_label} source={major_source}\n"
         f"Jawaban terkini: {latest_step_key}={latest_answer}\n"
         f"Semua jawaban: {answers}\n"
         f"Path: {path}\n"
@@ -1273,10 +1699,12 @@ def assess_documents_relevance(user: User, docs_summary: List[Dict[str, Any]]) -
     reasons: List[str] = []
     strong_keywords = {
         "khs", "krs", "jadwal", "transkrip", "kurikulum", "mata kuliah", "nilai", "ipk", "ips", "sks", "semester",
+        "rencana studi", "kartu rencana studi", "kartu hasil studi",
     }
     weak_keywords = {
-        "dosen", "kelas", "ruang", "kuliah", "akademik", "prodi", "jurusan",
+        "dosen", "kelas", "ruang", "kuliah", "akademik", "prodi", "jurusan", "studi", "skripsi",
     }
+    table_indicators = {"hari", "jam", "sks", "mata_kuliah", "mata kuliah", "dosen_pengampu", "ruang"}
 
     strong_hits = 0
     weak_hits = 0
@@ -1292,27 +1720,39 @@ def assess_documents_relevance(user: User, docs_summary: List[Dict[str, Any]]) -
     snippets = _collect_planner_context_snippets(user=user, docs_summary=docs_summary, k=4)
     snippet_strong_hits = 0
     snippet_weak_hits = 0
+    table_like_hits = 0
     for s in snippets:
         low = (s.get("snippet") or "").lower()
         if not low:
             continue
         snippet_strong_hits += len([kw for kw in strong_keywords if kw in low])
         snippet_weak_hits += len([kw for kw in weak_keywords if kw in low])
+        table_like_hits += len([kw for kw in table_indicators if kw in low])
     if snippet_strong_hits or snippet_weak_hits:
         reasons.append("Cuplikan dokumen mendukung konteks akademik.")
+    if table_like_hits >= 2:
+        reasons.append("Struktur isi dokumen menyerupai tabel akademik (hari/jam/sks/mata kuliah).")
 
     if strong_hits >= 1:
         score = max(
             0.75,
             min(
                 1.0,
-                (strong_hits * 0.35) + (weak_hits * 0.08) + (snippet_strong_hits * 0.06) + (snippet_weak_hits * 0.02),
+                (strong_hits * 0.35)
+                + (weak_hits * 0.08)
+                + (snippet_strong_hits * 0.06)
+                + (snippet_weak_hits * 0.02)
+                + (table_like_hits * 0.03),
             ),
         )
     else:
         score = min(
             1.0,
-            (strong_hits * 0.35) + (weak_hits * 0.08) + (snippet_strong_hits * 0.06) + (snippet_weak_hits * 0.02),
+            (strong_hits * 0.35)
+            + (weak_hits * 0.08)
+            + (snippet_strong_hits * 0.06)
+            + (snippet_weak_hits * 0.02)
+            + (table_like_hits * 0.03),
         )
     is_relevant = score >= 0.55
     blocked_reason = "" if is_relevant else (
@@ -1472,7 +1912,9 @@ def planner_start_v3(
         if upload_result.get("status") != "success":
             return {
                 "status": "error",
+                "error_code": "UPLOAD_FAILED",
                 "error": upload_result.get("msg") or "Upload gagal.",
+                "hint": "Periksa format/ukuran file lalu coba lagi.",
                 "required_upload": True,
             }
 
@@ -1480,30 +1922,47 @@ def planner_start_v3(
     if not docs_summary:
         return {
             "status": "error",
+            "error_code": "NO_EMBEDDED_DOCS",
             "error": "Belum ada dokumen embedded yang valid. Upload atau pilih dokumen existing dulu.",
+            "hint": "Gunakan KHS/KRS/Jadwal/Transkrip/Kurikulum.",
             "required_upload": True,
             "progress_hints": _planner_v3_progress_hints(),
             "recommended_docs": ["KHS", "KRS", "Jadwal", "Transkrip", "Kurikulum"],
         }
 
     relevance = assess_documents_relevance(user=user, docs_summary=docs_summary)
-    if not relevance.get("is_relevant"):
+    relevance_score = float(relevance.get("relevance_score") or 0.0)
+    relevance_warning = ""
+    if (not relevance.get("is_relevant")) and (relevance_score >= 0.5):
+        relevance_warning = (
+            "Dokumen terdeteksi borderline relevan. Planner tetap dilanjutkan, "
+            "namun akurasi bisa meningkat jika menambahkan KHS/KRS/Transkrip."
+        )
+    elif not relevance.get("is_relevant"):
         return {
             "status": "error",
             "error_code": "IRRELEVANT_DOCUMENTS",
             "error": relevance.get("blocked_reason") or "Dokumen tidak relevan.",
+            "hint": "Upload dokumen akademik inti agar planner dapat menganalisis dengan benar.",
             "required_upload": True,
             "doc_relevance": {
                 "is_relevant": False,
-                "score": relevance.get("relevance_score", 0.0),
+                "score": relevance_score,
                 "reasons": relevance.get("relevance_reasons") or [],
             },
+            "reasons": relevance.get("relevance_reasons") or [],
             "recommended_docs": ["KHS", "KRS", "Jadwal", "Transkrip", "Kurikulum"],
             "progress_hints": _planner_v3_progress_hints(),
         }
 
     data_level = planner_engine.detect_data_level(user)
     profile_hints = extract_profile_hints(user)
+    major_state = _extract_major_state(profile_hints, user=user, docs_summary=docs_summary)
+    estimated_total = _estimate_dynamic_total(
+        docs_summary=docs_summary,
+        relevance_score=relevance_score,
+        depth=1,
+    )
 
     wizard_blueprint = _generate_planner_blueprint_llm(
         user=user,
@@ -1525,7 +1984,9 @@ def planner_start_v3(
     if not wizard_blueprint:
         return {
             "status": "error",
+            "error_code": "BLUEPRINT_GENERATION_FAILED",
             "error": "Gagal menyusun blueprint planner. Coba upload dokumen yang lebih jelas.",
+            "hint": "Gunakan dokumen akademik dengan teks terbaca jelas.",
             "required_upload": True,
         }
 
@@ -1549,6 +2010,13 @@ def planner_start_v3(
             "generation_mode": "adaptive_start",
         },
     }
+    major_unknown_warning = (
+        "Jurusan belum dapat dipastikan dari dokumen saat ini. "
+        "Anda bisa koreksi manual atau unggah KHS/KRS/Transkrip yang lebih jelas."
+        if str(major_state.get("source") or "") == "unknown"
+        else ""
+    )
+    merged_warning = " ".join([x for x in [relevance_warning, major_unknown_warning] if x]).strip() or None
 
     run = PlannerRun.objects.create(
         user=user,
@@ -1557,7 +2025,13 @@ def planner_start_v3(
         wizard_blueprint=start_blueprint,
         documents_snapshot=docs_summary,
         intent_candidates_snapshot=intent_candidates,
-        decision_tree_state={"expected_step_key": "intent", "next_seq": 1, "can_generate_now": False},
+        decision_tree_state={
+            "expected_step_key": "intent",
+            "next_seq": 1,
+            "can_generate_now": False,
+            "current_step_question": str(intent_step.get("question") or ""),
+            "current_path_label": "Intent Awal",
+        },
         path_taken=[],
         current_depth=0,
         max_depth=4,
@@ -1568,6 +2042,9 @@ def planner_start_v3(
             "score": relevance.get("relevance_score", 0.0),
             "reasons": relevance.get("relevance_reasons") or [],
         },
+        major_state_snapshot=major_state,
+        estimated_total_snapshot=estimated_total,
+        ui_state_snapshot={"show_major_header": True, "show_path_header": False},
         expires_at=timezone.now() + timedelta(hours=_planner_v3_expiry_hours()),
     )
     return {
@@ -1580,13 +2057,22 @@ def planner_start_v3(
         "progress_hints": _planner_v3_progress_hints(),
         "doc_relevance": {
             "is_relevant": True,
-            "score": relevance.get("relevance_score", 0.0),
+            "score": relevance_score,
             "reasons": relevance.get("relevance_reasons") or [],
         },
+        "warning": merged_warning,
         "profile_hints_summary": {
             "major_candidates": (profile_hints.get("major_candidates") or [])[:3],
             "confidence_summary": profile_hints.get("confidence_summary"),
         },
+        "planner_header": {
+            "major_label": major_state.get("major_label") or "Belum terdeteksi",
+            "major_confidence_level": major_state.get("major_confidence_level") or "low",
+            "major_confidence_score": major_state.get("major_confidence_score") or 0.0,
+            "doc_context_label": str((docs_summary[0].get("title") if docs_summary else "") or "Dokumen Akademik"),
+        },
+        "progress": {"current": 1, "estimated_total": int(estimated_total), "style": "dynamic_estimate"},
+        "ui_hints": {"show_major_header": True, "show_path_header": False},
         "intent_candidates": intent_candidates,
         "manual_intent_enabled": True,
         "next_action": "choose_intent",
@@ -1595,6 +2081,7 @@ def planner_start_v3(
             "had_upload": had_upload,
             "reuse_count": len(reuse_doc_ids),
             "generation_mode": generation_mode,
+            "major_source": major_state.get("source") or "inferred",
         },
     }
 
@@ -1610,13 +2097,28 @@ def planner_next_step_v3(
 ) -> Dict[str, Any]:
     run = get_planner_run_for_user(user=user, run_id=planner_run_id)
     if not run:
-        return {"status": "error", "error": "planner_run_id tidak ditemukan."}
+        return {
+            "status": "error",
+            "error_code": "RUN_NOT_FOUND",
+            "error": "planner_run_id tidak ditemukan.",
+            "hint": "Mulai ulang planner dari onboarding.",
+        }
     if run.status in {PlannerRun.STATUS_CANCELLED, PlannerRun.STATUS_EXPIRED, PlannerRun.STATUS_COMPLETED}:
-        return {"status": "error", "error": f"Planner run sudah {run.status}."}
+        return {
+            "status": "error",
+            "error_code": "RUN_INVALID_STATUS",
+            "error": f"Planner run sudah {run.status}.",
+            "hint": "Mulai run planner baru.",
+        }
     if timezone.now() > run.expires_at:
         run.status = PlannerRun.STATUS_EXPIRED
         run.save(update_fields=["status", "updated_at"])
-        return {"status": "error", "error": "Planner run sudah kedaluwarsa."}
+        return {
+            "status": "error",
+            "error_code": "RUN_EXPIRED",
+            "error": "Planner run sudah kedaluwarsa.",
+            "hint": "Mulai ulang planner agar state valid.",
+        }
 
     tree = run.decision_tree_state if isinstance(run.decision_tree_state, dict) else {}
     expected_step = str(tree.get("expected_step_key") or "intent")
@@ -1654,18 +2156,28 @@ def planner_next_step_v3(
 
     normalized_mode = str(answer_mode or "").strip().lower()
     if normalized_mode not in {"option", "manual"}:
-        return {"status": "error", "error": "answer_mode tidak valid."}
+        return {"status": "error", "error_code": "INVALID_ANSWER_MODE", "error": "answer_mode tidak valid."}
     answer_text = str(answer_value or "").strip()
     if not answer_text:
-        return {"status": "error", "error": "answer_value wajib diisi."}
+        return {"status": "error", "error_code": "EMPTY_ANSWER", "error": "answer_value wajib diisi."}
+
+    major_state = dict(run.major_state_snapshot or {})
+    major_override = _extract_major_override_from_answer(answer_text)
+    if major_override:
+        major_state["major_label"] = major_override
+        major_state["source"] = "user_override"
+        major_state["major_confidence_level"] = "high"
+        major_state["major_confidence_score"] = 0.99
 
     answers = dict(run.answers_snapshot or {})
     answers[submitted_step] = answer_text
+    tree_question = str(tree.get("current_step_question") or "")
     path = list(run.path_taken or [])
     path.append(
         {
             "seq": next_seq,
             "step_key": submitted_step,
+            "question": tree_question,
             "answer_value": answer_text,
             "answer_mode": normalized_mode,
         }
@@ -1681,20 +2193,50 @@ def planner_next_step_v3(
             latest_step_key=submitted_step,
             latest_answer=answer_text,
         ) or {}
+        # Anti-redundancy guard: regen sekali jika pertanyaan terlalu mirip.
+        if isinstance(next_payload.get("step"), dict):
+            q = str((next_payload.get("step") or {}).get("question") or "")
+            if _is_redundant_question(q, path):
+                regen = _generate_next_step_llm(
+                    user=user,
+                    run=run,
+                    latest_step_key=submitted_step,
+                    latest_answer=f"{answer_text} (hindari pertanyaan mirip)",
+                ) or {}
+                if isinstance(regen.get("step"), dict):
+                    rq = str((regen.get("step") or {}).get("question") or "")
+                    if not _is_redundant_question(rq, path):
+                        next_payload = regen
         if not next_payload:
             next_payload = _fallback_next_step(run)
     ready_to_generate = bool(next_payload.get("ready_to_generate"))
     next_step = next_payload.get("step") if isinstance(next_payload.get("step"), dict) else None
+    if next_step:
+        next_step = _ensure_step_has_options(step=next_step, latest_answer=answer_text)
 
     run.answers_snapshot = answers
     run.path_taken = path
     run.status = PlannerRun.STATUS_COLLECTING
+    run.major_state_snapshot = major_state
     tree["next_seq"] = next_seq + 1
     tree["can_generate_now"] = bool(ready_to_generate or reached_max)
+    if submitted_step == "intent":
+        tree["current_path_label"] = f"{answer_text[:48]}"
+    else:
+        tree["current_path_label"] = _build_step_path_label(next_step or {}, answer_text)
     if next_step:
         tree["expected_step_key"] = str(next_step.get("step_key") or f"followup_{run.current_depth+1}")
+        tree["current_step_question"] = str(next_step.get("question") or "")
     else:
         tree["expected_step_key"] = ""
+        tree["current_step_question"] = ""
+    estimated_total = _estimate_dynamic_total(
+        docs_summary=(run.documents_snapshot or []),
+        relevance_score=float((run.doc_relevance_snapshot or {}).get("score") or 0.0),
+        depth=int(run.current_depth),
+    )
+    run.estimated_total_snapshot = estimated_total
+    run.ui_state_snapshot = {"show_major_header": run.current_depth <= 1, "show_path_header": run.current_depth > 1}
     run.decision_tree_state = tree
     run.save(
         update_fields=[
@@ -1702,6 +2244,9 @@ def planner_next_step_v3(
             "path_taken",
             "current_depth",
             "status",
+            "major_state_snapshot",
+            "estimated_total_snapshot",
+            "ui_state_snapshot",
             "decision_tree_state",
             "updated_at",
         ]
@@ -1711,9 +2256,27 @@ def planner_next_step_v3(
         "status": "success",
         "step": next_step,
         "done_recommendation": "Data sudah cukup untuk generate." if not next_step else "",
-        "progress": {"current": int(run.current_depth), "max": int(run.max_depth or 4)},
+        "step_header": {
+            "path_label": str(tree.get("current_path_label") or "Path Analisis"),
+            "reason": str((next_step or {}).get("reason") or "Pertanyaan dipilih untuk mempertajam analisis."),
+        },
+        "progress": {
+            "current": int(run.current_depth),
+            "estimated_total": int(run.estimated_total_snapshot or 4),
+            "max_depth": int(run.max_depth or 4),
+        },
         "can_generate_now": bool(tree.get("can_generate_now")),
         "path_summary": _planner_path_summary(path),
+        "major_state": {
+            "major_label": str(major_state.get("major_label") or "Belum terdeteksi"),
+            "source": str(major_state.get("source") or "inferred"),
+            "major_confidence_level": str(major_state.get("major_confidence_level") or "low"),
+            "major_confidence_score": float(major_state.get("major_confidence_score") or 0.0),
+        },
+        "ui_hints": {
+            "show_major_header": bool((run.ui_state_snapshot or {}).get("show_major_header")),
+            "show_path_header": bool((run.ui_state_snapshot or {}).get("show_path_header")),
+        },
         "path_taken": path,
     }
 def get_planner_run_for_user(user: User, run_id: str) -> PlannerRun | None:
@@ -1781,36 +2344,45 @@ def planner_execute_v3(
 ) -> Dict[str, Any]:
     run = get_planner_run_for_user(user=user, run_id=planner_run_id)
     if not run:
-        return {"status": "error", "error": "planner_run_id tidak ditemukan."}
+        return {"status": "error", "error_code": "RUN_NOT_FOUND", "error": "planner_run_id tidak ditemukan."}
     if run.status in {PlannerRun.STATUS_CANCELLED, PlannerRun.STATUS_EXPIRED}:
-        return {"status": "error", "error": f"Planner run sudah {run.status}."}
+        return {"status": "error", "error_code": "RUN_INVALID_STATUS", "error": f"Planner run sudah {run.status}."}
     if run.status not in {PlannerRun.STATUS_READY, PlannerRun.STATUS_STARTED, PlannerRun.STATUS_COLLECTING}:
-        return {"status": "error", "error": "Planner run tidak dalam status siap eksekusi."}
+        return {"status": "error", "error_code": "RUN_NOT_READY", "error": "Planner run tidak dalam status siap eksekusi."}
     if timezone.now() > run.expires_at:
         run.status = PlannerRun.STATUS_EXPIRED
         run.save(update_fields=["status", "updated_at"])
-        return {"status": "error", "error": "Planner run sudah kedaluwarsa."}
+        return {"status": "error", "error_code": "RUN_EXPIRED", "error": "Planner run sudah kedaluwarsa."}
 
     if path_taken is not None:
         if not isinstance(path_taken, list):
-            return {"status": "error", "error": "path_taken harus array."}
+            return {"status": "error", "error_code": "INVALID_PATH", "error": "path_taken harus array."}
         server_path = list(run.path_taken or [])
         if path_taken != server_path:
-            return {"status": "error", "error": "path_taken tidak konsisten dengan state server."}
+            return {
+                "status": "error",
+                "error_code": "PATH_MISMATCH",
+                "error": "path_taken tidak konsisten dengan state server.",
+                "hint": "Lakukan refresh dan lanjutkan dari state terbaru.",
+            }
 
     merged_answers = {**(run.answers_snapshot or {}), **(answers or {})}
     if not merged_answers:
-        return {"status": "error", "error": "Belum ada jawaban planner untuk dieksekusi."}
+        return {"status": "error", "error_code": "EMPTY_ANSWERS", "error": "Belum ada jawaban planner untuk dieksekusi."}
     valid_keys = {str(x.get("step_key")) for x in (run.path_taken or []) if isinstance(x, dict) and x.get("step_key")}
     if valid_keys:
         unknown = [k for k in merged_answers.keys() if k not in valid_keys]
         if unknown:
-            return {"status": "error", "error": f"Jawaban memuat step tidak dikenal: {', '.join(sorted(unknown))}"}
+            return {
+                "status": "error",
+                "error_code": "UNKNOWN_STEP_KEY",
+                "error": f"Jawaban memuat step tidak dikenal: {', '.join(sorted(unknown))}",
+            }
     # Backward compatibility untuk test/flow lama yang masih mengirim wizard blueprint.
     if not valid_keys:
         err = _validate_planner_answers(run.wizard_blueprint, merged_answers)
         if err:
-            return {"status": "error", "error": err}
+            return {"status": "error", "error_code": "INVALID_ANSWERS", "error": err}
 
     run.status = PlannerRun.STATUS_EXECUTING
     run.answers_snapshot = merged_answers
@@ -1842,6 +2414,7 @@ def planner_execute_v3(
     run.save(update_fields=["status", "updated_at"])
 
     fallback_used = (len(sources) == 0) or ("Data dokumen rujukan belum cukup" in answer)
+    major_state = run.major_state_snapshot if isinstance(run.major_state_snapshot, dict) else {}
     return {
         "status": "success",
         "answer": answer,
@@ -1853,6 +2426,8 @@ def planner_execute_v3(
             "grounding_mode": "doc_first_fallback",
             "fallback_used": bool(fallback_used),
             "path_depth": len(run.path_taken or []),
+            "estimated_total_at_execute": int(run.estimated_total_snapshot or run.max_depth or 4),
+            "major_source": str(major_state.get("source") or "inferred"),
         },
     }
 

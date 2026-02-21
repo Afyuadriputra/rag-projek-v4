@@ -34,6 +34,7 @@ import type {
   TimelineItem,
   PlannerWizardStep,
   PlannerIntentCandidate,
+  PlannerHeaderMeta,
   PlannerProfileHintsSummary,
   PlannerStartResponse,
 } from "@/lib/api";
@@ -201,6 +202,11 @@ export default function Index() {
   const [plannerPathTaken, setPlannerPathTaken] = useState<Array<Record<string, unknown>>>([]);
   const [plannerCanGenerateNow, setPlannerCanGenerateNow] = useState(false);
   const [plannerPathSummary, setPlannerPathSummary] = useState("");
+  const [plannerHeader, setPlannerHeader] = useState<PlannerHeaderMeta | null>(null);
+  const [plannerMajorSource, setPlannerMajorSource] = useState<"user_override" | "inferred" | string>("inferred");
+  const [plannerStepHeader, setPlannerStepHeader] = useState<{ path_label?: string; reason?: string } | null>(null);
+  const [progressCurrent, setProgressCurrent] = useState(1);
+  const [progressEstimatedTotal, setProgressEstimatedTotal] = useState(4);
   const [plannerDocs, setPlannerDocs] = useState<Array<{ id: number; title: string }>>([]);
   const [plannerProgressMessage, setPlannerProgressMessage] = useState("Memvalidasi dokumen...");
   const [plannerProgressMode, setPlannerProgressMode] = useState<"start" | "branching" | "execute">("start");
@@ -661,6 +667,11 @@ export default function Index() {
       setPlannerPathTaken([]);
       setPlannerCanGenerateNow(false);
       setPlannerPathSummary("");
+      setPlannerHeader(null);
+      setPlannerMajorSource("inferred");
+      setPlannerStepHeader(null);
+      setProgressCurrent(1);
+      setProgressEstimatedTotal(4);
       setPlannerDocs([]);
       setPlannerRelevanceError(null);
       setPlannerMajorSummary(null);
@@ -689,6 +700,11 @@ export default function Index() {
     setPlannerPathTaken([]);
     setPlannerCanGenerateNow(false);
     setPlannerPathSummary("");
+    setPlannerHeader(res.planner_header || null);
+    setPlannerMajorSource(String((res.planner_meta as any)?.major_source || "inferred"));
+    setPlannerStepHeader(null);
+    setProgressCurrent(Number(res.progress?.current || 1));
+    setProgressEstimatedTotal(Number(res.progress?.estimated_total || 4));
     setPlannerDocs((res.documents_summary || []).map((d) => ({ id: Number(d.id), title: String(d.title) })));
     setPlannerRelevanceError(null);
     setPlannerMajorSummary(res.profile_hints_summary || null);
@@ -701,6 +717,11 @@ export default function Index() {
     setPlannerPathTaken([]);
     setPlannerCanGenerateNow(false);
     setPlannerPathSummary("");
+    setPlannerHeader(null);
+    setPlannerMajorSource("inferred");
+    setPlannerStepHeader(null);
+    setProgressCurrent(1);
+    setProgressEstimatedTotal(4);
     if (res.error_code === "IRRELEVANT_DOCUMENTS") {
       setPlannerRelevanceError(errMsg);
       setPlannerMajorSummary(res.profile_hints_summary || null);
@@ -733,8 +754,19 @@ export default function Index() {
       applyPlannerStartSuccess(res);
       await refreshDocuments();
     } catch (e: any) {
-      setToast({ open: true, kind: "error", msg: e?.message || "Planner start gagal." });
-      setPlannerUiState("onboarding");
+      const apiErr = e?.response?.data;
+      setToast({
+        open: true,
+        kind: "error",
+        msg: [apiErr?.error, apiErr?.hint].filter(Boolean).join(" ") || e?.message || "Planner start gagal.",
+      });
+      if (apiErr?.error_code === "IRRELEVANT_DOCUMENTS") {
+        setPlannerRelevanceError(apiErr?.error || "Dokumen tidak relevan untuk planner.");
+        setPlannerUiState("onboarding");
+      }
+      else {
+        setPlannerUiState("onboarding");
+      }
     } finally {
       setLoading(false);
     }
@@ -762,8 +794,18 @@ export default function Index() {
       }
       applyPlannerStartSuccess(res);
     } catch (e: any) {
-      setToast({ open: true, kind: "error", msg: e?.message || "Planner start gagal." });
-      setPlannerUiState("onboarding");
+      const apiErr = e?.response?.data;
+      setToast({
+        open: true,
+        kind: "error",
+        msg: [apiErr?.error, apiErr?.hint].filter(Boolean).join(" ") || e?.message || "Planner start gagal.",
+      });
+      if (apiErr?.error_code === "IRRELEVANT_DOCUMENTS") {
+        setPlannerRelevanceError(apiErr?.error || "Dokumen tidak relevan untuk planner.");
+        setPlannerUiState("onboarding");
+      } else {
+        setPlannerUiState("onboarding");
+      }
     } finally {
       setLoading(false);
     }
@@ -787,6 +829,7 @@ export default function Index() {
     const raw = String(wizardAnswers[step.step_key] || "").trim();
     if (!raw) return;
     const matchedOpt = (step.options || []).find((o) => String(o.value) === raw);
+    const answerPayload = matchedOpt ? String(matchedOpt.label || raw).trim() : raw;
     const answerMode: "option" | "manual" = matchedOpt ? "option" : "manual";
     setLoading(true);
     setPlannerUiState("uploading");
@@ -796,7 +839,7 @@ export default function Index() {
       const res = await plannerNextStepV3({
         planner_run_id: plannerRunId,
         step_key: step.step_key,
-        answer_value: raw,
+        answer_value: answerPayload,
         answer_mode: answerMode,
         client_step_seq: plannerPathTaken.length + 1,
       });
@@ -806,18 +849,41 @@ export default function Index() {
       setPlannerPathTaken((res.path_taken as Array<Record<string, unknown>>) || plannerPathTaken);
       setPlannerCanGenerateNow(!!res.can_generate_now);
       setPlannerPathSummary(String(res.path_summary || ""));
+      setPlannerStepHeader(res.step_header || null);
+      setPlannerMajorSource(String(res.major_state?.source || plannerMajorSource));
+      if (res.major_state?.major_label) {
+        setPlannerHeader((prev) => ({
+          ...(prev || {
+            major_confidence_level: "low",
+            major_confidence_score: 0,
+            doc_context_label: "Dokumen Akademik",
+          }),
+          major_label: String(res.major_state?.major_label || prev?.major_label || "Belum terdeteksi"),
+          major_confidence_level: String(
+            res.major_state?.major_confidence_level || prev?.major_confidence_level || "low"
+          ) as "high" | "medium" | "low" | string,
+          major_confidence_score: Number(res.major_state?.major_confidence_score ?? prev?.major_confidence_score ?? 0),
+        }));
+      }
+      setProgressCurrent(Number(res.progress?.current || progressCurrent));
+      setProgressEstimatedTotal(Number(res.progress?.estimated_total || progressEstimatedTotal));
       if (res.step) {
-        setWizardSteps((prev) => {
-          const next = [...prev];
-          const existsIdx = next.findIndex((s) => s.step_key === res.step?.step_key);
-          if (existsIdx >= 0) {
-            next[existsIdx] = res.step;
-            return next;
-          }
-          next.push(res.step);
-          return next;
-        });
-        setWizardIndex((v) => v + 1);
+        const currentSteps = wizardSteps;
+        const existingIdx = currentSteps.findIndex((s) => s.step_key === res.step?.step_key);
+        let nextSteps: PlannerWizardStep[] = currentSteps;
+        let nextIndex = wizardIndex;
+
+        if (existingIdx >= 0) {
+          nextSteps = [...currentSteps];
+          nextSteps[existingIdx] = res.step;
+          nextIndex = existingIdx;
+        } else {
+          nextSteps = [...currentSteps, res.step];
+          nextIndex = nextSteps.length - 1;
+        }
+
+        setWizardSteps(nextSteps);
+        setWizardIndex(nextIndex);
         setPlannerUiState("ready");
         return;
       }
@@ -848,7 +914,7 @@ export default function Index() {
       setToast({
         open: true,
         kind: "error",
-        msg: apiErr?.error || e?.message || "Gagal memproses langkah planner.",
+        msg: [apiErr?.error, apiErr?.hint].filter(Boolean).join(" ") || e?.message || "Gagal memproses langkah planner.",
       });
     } finally {
       setLoading(false);
@@ -922,6 +988,11 @@ export default function Index() {
       setPlannerPathTaken([]);
       setPlannerCanGenerateNow(false);
       setPlannerPathSummary("");
+      setPlannerHeader(null);
+      setPlannerMajorSource("inferred");
+      setPlannerStepHeader(null);
+      setProgressCurrent(1);
+      setProgressEstimatedTotal(4);
       setPlannerDocs([]);
       setPlannerRelevanceError(null);
       setPlannerProgressMode("start");
@@ -1244,6 +1315,11 @@ export default function Index() {
                 progressMode: plannerProgressMode,
                 wizardSteps,
                 wizardIndex,
+                progressCurrent,
+                progressEstimatedTotal,
+                plannerHeader,
+                plannerMajorSource,
+                plannerStepHeader,
                 wizardAnswers,
                 plannerCanGenerateNow,
                 plannerPathSummary,

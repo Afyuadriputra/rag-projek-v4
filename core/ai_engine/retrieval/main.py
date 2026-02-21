@@ -6,6 +6,7 @@ from typing import Dict, Any, List
 
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.documents import Document
 from django.core.cache import cache
 from core.models import AcademicDocument
 
@@ -35,17 +36,28 @@ def _env_int(name: str, default: int) -> int:
 
 
 def _build_chroma_filter(user_id: int, query: str, doc_ids: List[int] | None = None) -> Dict[str, Any]:
+    ql = (query or "").lower()
+
+    def _is_multi_semester_recap_query(text: str) -> bool:
+        has_recap = any(k in text for k in ["rekap", "ringkas", "rangkum", "semua", "keseluruhan"])
+        has_semester = "semester" in text
+        has_range = bool(re.search(r"semester\s*\d+\s*[-s/dampai]+\s*\d+", text))
+        has_words = any(k in text for k in ["awal sampai akhir", "semua semester", "dari semester"])
+        return has_semester and (has_recap or has_range or has_words)
+
+    multi_semester_recap = _is_multi_semester_recap_query(ql)
     base_filter: Dict[str, Any] = {"user_id": str(user_id)}
     if doc_ids:
         base_filter["doc_id"] = {"$in": [str(x) for x in doc_ids]}
     sem_match = _SEMESTER_RE.search(query)
-    if sem_match:
+    if sem_match and not multi_semester_recap:
         try:
             base_filter["semester"] = int(sem_match.group(1))
         except Exception:
             pass
     doc_type = infer_doc_type(query)
-    if doc_type:
+    # Untuk rekap lintas semester, hindari filter doc_type agar konteks tidak terpotong.
+    if doc_type and not multi_semester_recap:
         base_filter["doc_type"] = doc_type
     if len(base_filter) == 1:
         return base_filter
@@ -167,6 +179,17 @@ def _classify_query_intent(query: str) -> str:
     return "doc_targeted" if any(x in ql for x in doc_markers) else "general_academic"
 
 
+def _is_multi_semester_recap_query(query: str) -> bool:
+    ql = (query or "").lower()
+    if "semester" not in ql:
+        return False
+    has_recap = any(k in ql for k in ["rekap", "ringkas", "rangkum", "semua", "keseluruhan"])
+    has_range = bool(re.search(r"semester\s*\d+\s*(?:-|s/d|sd|sampai|to)\s*\d+", ql))
+    has_words = any(k in ql for k in ["awal sampai akhir", "semua semester", "dari semester"])
+    has_course_focus = any(k in ql for k in ["mata kuliah", "sks", "transkrip", "khs", "krs"])
+    return (has_recap or has_range or has_words) and has_course_focus
+
+
 def _build_mention_ambiguous_response(mentions: List[str]) -> str:
     mention_text = ", ".join([f"`@{m}`" for m in mentions[:3]])
     return (
@@ -208,6 +231,39 @@ def _rewrite_queries(query: str) -> List[str]:
     if "kelas" in q.lower() and "ruang" not in q.lower():
         variants.append(q + " ruang kelas")
     return list(dict.fromkeys([v.strip() for v in variants if v.strip()]))[:3]
+
+
+def _load_full_row_context_docs(user_id: int, doc_ids: List[int] | None = None) -> List[Any]:
+    """
+    Ambil SELURUH row chunk (CSV_ROW) untuk user sebagai konteks rekap lintas semester.
+    Tetap RAG-first sebagai knowledge base, tetapi tidak dibatasi top-k semantic retrieval.
+    """
+    try:
+        vs = get_vectorstore()
+        col = getattr(vs, "_collection", None) or getattr(vs, "collection", None)
+        if col is None:
+            return []
+        where_parts: List[Dict[str, Any]] = [{"user_id": str(user_id)}, {"chunk_kind": "row"}]
+        if doc_ids:
+            where_parts.append({"doc_id": {"$in": [str(x) for x in doc_ids]}})
+        where: Dict[str, Any] = {"$and": where_parts}
+        try:
+            got = col.get(where=where, include=["documents", "metadatas", "ids"])
+        except TypeError:
+            got = col.get(where=where)
+
+        documents = list(got.get("documents", []) or [])
+        metadatas = list(got.get("metadatas", []) or [])
+        out: List[Any] = []
+        for i, text in enumerate(documents):
+            txt = str(text or "").strip()
+            if not txt:
+                continue
+            md = metadatas[i] if i < len(metadatas) and isinstance(metadatas[i], dict) else {}
+            out.append(Document(page_content=txt, metadata=md))
+        return _dedup_docs(out)
+    except Exception:
+        return []
 
 
 _CITATION_RE = re.compile(r"\[(?:source:[^\]]+|\d+)\]", re.IGNORECASE)
@@ -478,6 +534,13 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
         use_hybrid = _env_bool("RAG_GENERAL_HYBRID_RETRIEVAL", default=False)
         use_rerank = _env_bool("RAG_GENERAL_RERANK_ENABLED", default=False)
         use_query_rewrite = _env_bool("RAG_GENERAL_QUERY_REWRITE", default=False)
+        if query_intent == "doc_targeted":
+            dense_k = _env_int("RAG_DOC_TARGETED_DENSE_K", 18)
+            bm25_k = _env_int("RAG_DOC_TARGETED_BM25_K", 28)
+            rerank_top_n = _env_int("RAG_DOC_TARGETED_RERANK_TOP_N", 10)
+            use_hybrid = _env_bool("RAG_DOC_TARGETED_HYBRID_RETRIEVAL", default=True)
+            use_rerank = _env_bool("RAG_DOC_TARGETED_RERANK_ENABLED", default=True)
+            use_query_rewrite = _env_bool("RAG_DOC_TARGETED_QUERY_REWRITE", default=True)
     elif mode == "doc_referenced":
         dense_k = _env_int("RAG_DOC_DENSE_K", 12)
         bm25_k = _env_int("RAG_DOC_BM25_K", 20)
@@ -513,49 +576,56 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
     rerank_ms = 0
 
     if mode != "llm_only":
-        vectorstore = get_vectorstore()
-        chroma_where = _build_chroma_filter(user_id=user_id, query=q, doc_ids=resolved_doc_ids if resolved_doc_ids else None)
-
         retrieval_t0 = time.time()
-        query_variants = _rewrite_queries(q) if use_query_rewrite else [q]
-        for query_variant in query_variants:
-            scored = retrieve_dense(vectorstore=vectorstore, query=query_variant, k=dense_k, filter_where=chroma_where)
-            if scored:
-                dense_scored.extend(scored)
-        dense_docs = [d for d, _ in dense_scored]
-        dense_docs = _dedup_docs(dense_docs)
-        dense_all.extend(dense_docs)
+        is_recap_all = _is_multi_semester_recap_query(q)
+        if is_recap_all:
+            # Khusus rekap lintas semester: gunakan seluruh row chunks user sebagai context.
+            # Ini tetap LLM-first, tapi knowledge base tidak dipotong top-k.
+            dense_all = _load_full_row_context_docs(user_id=user_id, doc_ids=resolved_doc_ids if resolved_doc_ids else None)
+            final_docs = list(dense_all)
+            final_scored = []
+            dense_scored = []
+        else:
+            vectorstore = get_vectorstore()
+            chroma_where = _build_chroma_filter(user_id=user_id, query=q, doc_ids=resolved_doc_ids if resolved_doc_ids else None)
+            query_variants = _rewrite_queries(q) if use_query_rewrite else [q]
+            for query_variant in query_variants:
+                scored = retrieve_dense(vectorstore=vectorstore, query=query_variant, k=dense_k, filter_where=chroma_where)
+                if scored:
+                    dense_scored.extend(scored)
+            dense_docs = [d for d, _ in dense_scored]
+            dense_docs = _dedup_docs(dense_docs)
+            dense_all.extend(dense_docs)
 
-        if not dense_all and isinstance(chroma_where, dict) and "$and" in chroma_where:
-            fallback_scored = retrieve_dense(
-                vectorstore=vectorstore,
-                query=q,
-                k=dense_k,
-                filter_where={"user_id": str(user_id)},
-            )
-            dense_all = _dedup_docs([d for d, _ in fallback_scored])
-            dense_scored = fallback_scored
+            if not dense_all and isinstance(chroma_where, dict) and "$and" in chroma_where:
+                fallback_scored = retrieve_dense(
+                    vectorstore=vectorstore,
+                    query=q,
+                    k=dense_k,
+                    filter_where={"user_id": str(user_id)},
+                )
+                dense_all = _dedup_docs([d for d, _ in fallback_scored])
+                dense_scored = fallback_scored
 
-        final_docs = list(dense_all)
-        final_scored = list(dense_scored)
-        if use_hybrid and dense_all:
-            sparse_scored = retrieve_sparse_bm25(query=q, docs_pool=dense_all, k=bm25_k)
-            bm25_hits = len(sparse_scored)
-            fused = fuse_rrf(dense_docs=dense_scored, sparse_docs=sparse_scored, k=max(dense_k, bm25_k))
-            final_docs = [d for d, _ in fused]
-            final_scored = list(fused)
+            final_docs = list(dense_all)
+            final_scored = list(dense_scored)
+            if use_hybrid and dense_all:
+                sparse_scored = retrieve_sparse_bm25(query=q, docs_pool=dense_all, k=bm25_k)
+                bm25_hits = len(sparse_scored)
+                fused = fuse_rrf(dense_docs=dense_scored, sparse_docs=sparse_scored, k=max(dense_k, bm25_k))
+                final_docs = [d for d, _ in fused]
+                final_scored = list(fused)
 
+            if use_rerank and final_docs:
+                rerank_t0 = time.time()
+                final_docs = rerank_documents(
+                    query=q,
+                    docs=final_docs[: max(dense_k, bm25_k)],
+                    model_name=rerank_model,
+                    top_n=rerank_top_n,
+                )
+                rerank_ms = int((time.time() - rerank_t0) * 1000)
         retrieval_ms = int((time.time() - retrieval_t0) * 1000)
-
-        if use_rerank and final_docs:
-            rerank_t0 = time.time()
-            final_docs = rerank_documents(
-                query=q,
-                docs=final_docs[: max(dense_k, bm25_k)],
-                model_name=rerank_model,
-                top_n=rerank_top_n,
-            )
-            rerank_ms = int((time.time() - rerank_t0) * 1000)
 
     final_limit = rerank_top_n if use_rerank else dense_k
     docs = final_docs[: max(1, final_limit)]
@@ -620,6 +690,16 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
                     f"[Referenced Documents]\n{', '.join(resolved_titles)}\n"
                     "Instruksi: prioritaskan dokumen rujukan ini sebagai sumber utama; "
                     "jika tidak cukup, jelaskan batasannya lalu beri fallback umum."
+                )
+            if _is_multi_semester_recap_query(q):
+                q_for_prompt = (
+                    f"{q_for_prompt}\n\n"
+                    "[Instruksi Rekap Ketat]\n"
+                    "- Gunakan HANYA data di context.\n"
+                    "- Jangan hilangkan baris mata kuliah jika ada di context.\n"
+                    "- Jangan menukar semester antar mata kuliah.\n"
+                    "- Jika kolom kosong, tulis '-'.\n"
+                    "- Jangan hitung total SKS jika tidak diminta eksplisit.\n"
                 )
             result = qa_chain.invoke({"input": q_for_prompt, "context": docs})
 

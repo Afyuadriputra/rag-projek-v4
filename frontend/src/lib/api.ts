@@ -171,6 +171,13 @@ export interface PlannerWizardStep {
   reason?: string;
 }
 
+export interface PlannerHeaderMeta {
+  major_label: string;
+  major_confidence_level: "high" | "medium" | "low" | string;
+  major_confidence_score: number;
+  doc_context_label?: string;
+}
+
 export interface PlannerDocRelevance {
   is_relevant: boolean;
   score: number;
@@ -204,10 +211,16 @@ export interface PlannerStartResponse {
   documents_summary?: Array<{ id: number; title: string; uploaded_at?: string }>;
   doc_relevance?: PlannerDocRelevance;
   profile_hints_summary?: PlannerProfileHintsSummary;
+  planner_header?: PlannerHeaderMeta;
+  progress?: { current: number; estimated_total: number; style?: string };
+  ui_hints?: { show_major_header?: boolean; show_path_header?: boolean };
   intent_candidates?: PlannerIntentCandidate[];
   manual_intent_enabled?: boolean;
   next_action?: "choose_intent" | string;
   error_code?: string;
+  hint?: string;
+  reasons?: string[];
+  warning?: string | null;
   required_upload?: boolean;
   progress_hints?: string[];
   planner_meta?: Record<string, unknown>;
@@ -225,15 +238,26 @@ export interface PlannerNextStepResponse {
   status: "success" | "error";
   step?: PlannerWizardStep;
   done_recommendation?: string;
-  progress?: { current: number; max: number };
+  step_header?: { path_label?: string; reason?: string };
+  progress?: { current: number; estimated_total?: number; max_depth?: number };
   can_generate_now?: boolean;
   path_summary?: string;
+  major_state?: {
+    major_label?: string;
+    source?: "user_override" | "inferred" | "inferred_document" | "unknown" | string;
+    major_confidence_level?: "high" | "medium" | "low" | string;
+    major_confidence_score?: number;
+  };
+  ui_hints?: { show_major_header?: boolean; show_path_header?: boolean };
   path_taken?: Array<{
     seq: number;
     step_key: string;
+    question?: string;
     answer_value: string;
     answer_mode: "option" | "manual" | string;
   }>;
+  error_code?: string;
+  hint?: string;
   error?: string;
 }
 
@@ -243,6 +267,8 @@ export interface PlannerExecuteResponse {
   sources?: ChatSource[];
   session_id?: number;
   planner_meta?: Record<string, unknown>;
+  error_code?: string;
+  hint?: string;
   error?: string;
 }
 

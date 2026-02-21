@@ -10,6 +10,13 @@ export default function PlannerWizardCard({
   step,
   index,
   total,
+  progressCurrent,
+  progressTotal,
+  showMajorHeader = false,
+  majorLabel = "",
+  majorConfidenceLevel = "low",
+  pathLabel = "",
+  stepReason = "",
   value,
   onSelectOption,
   onChangeManual,
@@ -23,6 +30,13 @@ export default function PlannerWizardCard({
   step: PlannerWizardStep;
   index: number;
   total: number;
+  progressCurrent?: number;
+  progressTotal?: number;
+  showMajorHeader?: boolean;
+  majorLabel?: string;
+  majorConfidenceLevel?: "high" | "medium" | "low" | string;
+  pathLabel?: string;
+  stepReason?: string;
   value: string;
   onSelectOption: (v: string) => void;
   onChangeManual: (v: string) => void;
@@ -33,6 +47,15 @@ export default function PlannerWizardCard({
   pathSummary?: string;
   disabled?: boolean;
 }) {
+  const current = progressCurrent || index + 1;
+  const estimatedTotal = progressTotal || total;
+  const confText =
+    majorConfidenceLevel === "high"
+      ? "High Conf"
+      : majorConfidenceLevel === "medium"
+        ? "Medium Conf"
+        : "Low Conf";
+
   const sourceHintLabel =
     step.source_hint === "document"
       ? "Dari Dokumen"
@@ -42,9 +65,28 @@ export default function PlannerWizardCard({
 
   return (
     <GlassCard className="mx-auto w-[min(900px,92%)]">
+      {showMajorHeader ? (
+        <div className="mb-3 rounded-2xl bg-indigo-600/95 p-3 text-white">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs uppercase tracking-wider text-indigo-100">Jurusan Terdeteksi</div>
+            <span className="rounded-full border border-indigo-300/60 bg-indigo-500/30 px-2 py-0.5 text-[10px] font-bold">
+              {confText}
+            </span>
+          </div>
+          <div className="mt-1 text-sm font-bold">{majorLabel || "-"}</div>
+        </div>
+      ) : (
+        <div className="mb-3 rounded-2xl border border-zinc-200/80 bg-zinc-50/90 p-3 dark:border-zinc-700 dark:bg-zinc-900/50">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-300">
+            ✨ Path: {pathLabel || "Analisis"}
+          </div>
+          {!!stepReason && <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{stepReason}</div>}
+        </div>
+      )}
+
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          Sesi {index + 1} dari {total}
+          Step {current}/{estimatedTotal}
         </span>
         <div className="inline-flex items-center gap-2">
           {!!step.required && <PillChip variant="warn">Wajib</PillChip>}

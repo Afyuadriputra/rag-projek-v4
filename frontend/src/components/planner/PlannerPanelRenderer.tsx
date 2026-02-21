@@ -3,6 +3,7 @@ import PlannerWizardCard from "@/components/planner/PlannerWizardCard";
 import PlannerReviewCard from "@/components/planner/PlannerReviewCard";
 import PlannerProgressOverlay from "@/components/planner/PlannerProgressOverlay";
 import type { PlannerProfileHintsSummary, PlannerWizardStep } from "@/lib/api";
+import type { PlannerHeaderMeta } from "@/lib/api";
 
 export type PlannerUiState = "idle" | "onboarding" | "uploading" | "ready" | "reviewing" | "executing" | "done";
 
@@ -15,6 +16,11 @@ export default function PlannerPanelRenderer({
   progressMode = "start",
   wizardSteps,
   wizardIndex,
+  progressCurrent = 1,
+  progressEstimatedTotal = 4,
+  plannerHeader,
+  plannerMajorSource = "inferred",
+  plannerStepHeader,
   wizardAnswers,
   plannerCanGenerateNow,
   plannerPathSummary,
@@ -39,6 +45,11 @@ export default function PlannerPanelRenderer({
   progressMode?: "start" | "branching" | "execute";
   wizardSteps: PlannerWizardStep[];
   wizardIndex: number;
+  progressCurrent?: number;
+  progressEstimatedTotal?: number;
+  plannerHeader?: PlannerHeaderMeta | null;
+  plannerMajorSource?: "user_override" | "inferred" | string;
+  plannerStepHeader?: { path_label?: string; reason?: string } | null;
   wizardAnswers: Record<string, string>;
   plannerCanGenerateNow: boolean;
   plannerPathSummary: string;
@@ -80,7 +91,18 @@ export default function PlannerPanelRenderer({
       <PlannerWizardCard
         step={step}
         index={wizardIndex}
-        total={wizardSteps.length}
+        total={progressEstimatedTotal || wizardSteps.length}
+        progressCurrent={progressCurrent}
+        progressTotal={progressEstimatedTotal}
+        showMajorHeader={wizardIndex === 0}
+        majorLabel={plannerHeader?.major_label || majorSummary?.major_candidates?.[0]?.label || ""}
+        majorConfidenceLevel={
+          plannerMajorSource === "user_override"
+            ? "high"
+            : (plannerHeader?.major_confidence_level || majorSummary?.confidence_summary || "low")
+        }
+        pathLabel={plannerStepHeader?.path_label || plannerPathSummary}
+        stepReason={plannerStepHeader?.reason || step.reason || ""}
         value={wizardAnswers[step.step_key] || ""}
         onSelectOption={onSelectOption}
         onChangeManual={onChangeManual}
@@ -99,6 +121,8 @@ export default function PlannerPanelRenderer({
       <PlannerReviewCard
         answers={wizardAnswers}
         docs={plannerDocs}
+        majorLabel={plannerHeader?.major_label || majorSummary?.major_candidates?.[0]?.label || ""}
+        majorSource={plannerMajorSource}
         onEdit={onEdit}
         onExecute={onExecute}
         executing={loading}

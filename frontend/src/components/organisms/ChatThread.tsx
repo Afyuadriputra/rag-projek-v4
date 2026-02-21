@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import ChatBubble from "@/components/molecules/ChatBubble";
 import type { ChatItem } from "@/components/molecules/ChatBubble";
 import PlannerPanelRenderer, { type PlannerUiState } from "@/components/planner/PlannerPanelRenderer";
-import type { PlannerProfileHintsSummary, PlannerWizardStep } from "@/lib/api";
+import type { PlannerHeaderMeta, PlannerProfileHintsSummary, PlannerWizardStep } from "@/lib/api";
 
 export default function ChatThread({
   items,
@@ -26,6 +26,11 @@ export default function ChatThread({
     progressMode?: "start" | "branching" | "execute";
     wizardSteps: PlannerWizardStep[];
     wizardIndex: number;
+    progressCurrent?: number;
+    progressEstimatedTotal?: number;
+    plannerHeader?: PlannerHeaderMeta | null;
+    plannerMajorSource?: "user_override" | "inferred" | string;
+    plannerStepHeader?: { path_label?: string; reason?: string } | null;
     wizardAnswers: Record<string, string>;
     plannerCanGenerateNow: boolean;
     plannerPathSummary: string;

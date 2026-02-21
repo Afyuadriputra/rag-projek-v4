@@ -722,12 +722,13 @@ def planner_start_v3_api(request):
         )
         status = 200 if payload.get("status") == "success" else 400
         logger.info(
-            " [PLANNER V3 START] user=%s(id=%s) ip=%s status=%s docs=%s",
+            " [PLANNER V3 START] user=%s(id=%s) ip=%s status=%s docs=%s est_total=%s",
             user.username,
             user.id,
             ip,
             payload.get("status"),
             len(payload.get("documents_summary") or []),
+            ((payload.get("progress") or {}).get("estimated_total") if isinstance(payload.get("progress"), dict) else "-"),
             extra=_log_extra(request),
         )
         return JsonResponse(payload, status=status)
@@ -778,12 +779,13 @@ def planner_execute_v3_api(request):
         )
         status = 200 if payload.get("status") == "success" else 400
         logger.info(
-            " [PLANNER V3 EXECUTE] user=%s(id=%s) ip=%s status=%s run=%s",
+            " [PLANNER V3 EXECUTE] user=%s(id=%s) ip=%s status=%s run=%s major_source=%s",
             user.username,
             user.id,
             ip,
             payload.get("status"),
             planner_run_id,
+            ((payload.get("planner_meta") or {}).get("major_source") if isinstance(payload.get("planner_meta"), dict) else "-"),
             extra=_log_extra(request),
         )
         return JsonResponse(payload, status=status)
@@ -836,13 +838,15 @@ def planner_next_step_v3_api(request):
         )
         status = 200 if payload.get("status") == "success" else 400
         logger.info(
-            " [PLANNER V3 NEXT] user=%s(id=%s) ip=%s status=%s run=%s seq=%s",
+            " [PLANNER V3 NEXT] user=%s(id=%s) ip=%s status=%s run=%s seq=%s est_total=%s major_source=%s",
             user.username,
             user.id,
             ip,
             payload.get("status"),
             planner_run_id,
             client_step_seq_raw,
+            ((payload.get("progress") or {}).get("estimated_total") if isinstance(payload.get("progress"), dict) else "-"),
+            ((payload.get("major_state") or {}).get("source") if isinstance(payload.get("major_state"), dict) else "-"),
             extra=_log_extra(request),
         )
         return JsonResponse(payload, status=status)

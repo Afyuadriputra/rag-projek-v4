@@ -509,3 +509,128 @@ class PlannerV3ApiTests(TestCase):
         self.assertEqual(res_next.status_code, 404)
         self.assertEqual(res_execute.status_code, 404)
         self.assertEqual(res_cancel.status_code, 404)
+
+    @patch("core.service._extract_major_state")
+    def test_start_major_unknown_returns_warning_and_meta_source(self, major_state_mock):
+        major_state_mock.return_value = {
+            "major_label": "",
+            "major_confidence_score": 0.31,
+            "major_confidence_level": "low",
+            "source": "unknown",
+            "evidence": [],
+        }
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="Dokumen Akademik Umum.pdf",
+            file=SimpleUploadedFile("doc.pdf", b"x"),
+            is_embedded=True,
+        )
+        res = self.client.post(
+            "/api/planner/start/",
+            data=json.dumps({"reuse_doc_ids": []}),
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        payload = res.json()
+        self.assertEqual(payload.get("status"), "success")
+        self.assertIn("Jurusan belum dapat dipastikan", str(payload.get("warning") or ""))
+        self.assertEqual((payload.get("planner_header") or {}).get("major_label"), "Belum terdeteksi")
+        self.assertEqual((payload.get("planner_meta") or {}).get("major_source"), "unknown")
+
+    @patch("core.service._generate_next_step_llm")
+    def test_next_step_manual_major_override_updates_major_state(self, next_llm_mock):
+        next_llm_mock.return_value = {
+            "ready_to_generate": False,
+            "step": {
+                "step_key": "followup_1",
+                "title": "Pendalaman",
+                "question": "Fokus berikutnya?",
+                "options": [{"id": 1, "label": "A", "value": "a"}, {"id": 2, "label": "B", "value": "b"}],
+                "allow_manual": True,
+                "required": True,
+                "source_hint": "mixed",
+                "reason": "test",
+            },
+        }
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="KHS.pdf",
+            file=SimpleUploadedFile("khs.pdf", b"x"),
+            is_embedded=True,
+        )
+        start = self.client.post(
+            "/api/planner/start/",
+            data=json.dumps({"reuse_doc_ids": []}),
+            content_type="application/json",
+        ).json()
+        run_id = start["planner_run_id"]
+        res = self.client.post(
+            "/api/planner/next-step/",
+            data=json.dumps(
+                {
+                    "planner_run_id": run_id,
+                    "step_key": "intent",
+                    "answer_value": "jurusan saya yang benar teknik informatika",
+                    "answer_mode": "manual",
+                    "client_step_seq": 1,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        payload = res.json()
+        self.assertEqual(payload.get("status"), "success")
+        major_state = payload.get("major_state") or {}
+        self.assertEqual(major_state.get("source"), "user_override")
+        self.assertEqual(major_state.get("major_label"), "Teknik Informatika")
+        run = PlannerRun.objects.get(id=run_id)
+        self.assertEqual((run.major_state_snapshot or {}).get("source"), "user_override")
+        self.assertEqual((run.major_state_snapshot or {}).get("major_label"), "Teknik Informatika")
+
+    @patch("core.service._generate_next_step_llm")
+    def test_next_step_injects_fallback_options_when_llm_returns_empty_options(self, next_llm_mock):
+        next_llm_mock.return_value = {
+            "ready_to_generate": False,
+            "step": {
+                "step_key": "followup_1",
+                "title": "Pendalaman Analisis",
+                "question": "Area spesifik mana yang ingin didalami?",
+                "options": [],
+                "allow_manual": True,
+                "required": True,
+                "source_hint": "mixed",
+                "reason": "test",
+            },
+        }
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="KHS.pdf",
+            file=SimpleUploadedFile("khs.pdf", b"x"),
+            is_embedded=True,
+        )
+        start = self.client.post(
+            "/api/planner/start/",
+            data=json.dumps({"reuse_doc_ids": []}),
+            content_type="application/json",
+        ).json()
+        run_id = start["planner_run_id"]
+        res = self.client.post(
+            "/api/planner/next-step/",
+            data=json.dumps(
+                {
+                    "planner_run_id": run_id,
+                    "step_key": "intent",
+                    "answer_value": "saya ingin fokus skripsi",
+                    "answer_mode": "manual",
+                    "client_step_seq": 1,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        payload = res.json()
+        self.assertEqual(payload.get("status"), "success")
+        step = payload.get("step") or {}
+        options = step.get("options") or []
+        self.assertGreaterEqual(len(options), 2)
+        self.assertTrue(all(isinstance(x, dict) and x.get("label") for x in options))
