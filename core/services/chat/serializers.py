@@ -40,39 +40,74 @@ def serialize_timeline_items(user: User, session: ChatSession, page: int = 1, pa
     offset = (page - 1) * page_size
 
     chat_qs = ChatHistory.objects.filter(user=user, session=session).order_by("timestamp")
-    planner_qs = PlannerHistory.objects.filter(user=user, session=session).order_by("timestamp")
+    planner_qs = PlannerHistory.objects.filter(user=user, session=session).order_by("created_at")
     mixed = []
     for item in chat_qs:
+        ts = item.timestamp
         mixed.append(
             {
                 "type": "chat",
-                "timestamp": item.timestamp,
+                "timestamp": ts,
                 "payload": {
                     "question": item.question,
                     "answer": item.answer,
-                    "time": item.timestamp.strftime("%H:%M"),
-                    "date": item.timestamp.strftime("%Y-%m-%d"),
+                    "time": ts.strftime("%H:%M"),
+                    "date": ts.strftime("%Y-%m-%d"),
                 },
             }
         )
     for item in planner_qs:
+        ts = getattr(item, "created_at", None) or getattr(item, "timestamp", None)
         mixed.append(
             {
                 "type": "planner",
-                "timestamp": item.timestamp,
+                "timestamp": ts,
                 "payload": {
-                    "payload_type": item.payload_type,
+                    "payload_type": getattr(item, "event_type", ""),
                     "payload": item.payload,
-                    "time": item.timestamp.strftime("%H:%M"),
-                    "date": item.timestamp.strftime("%Y-%m-%d"),
+                    "planner_step": getattr(item, "planner_step", ""),
+                    "text": getattr(item, "text", ""),
+                    "time": ts.strftime("%H:%M") if ts else "",
+                    "date": ts.strftime("%Y-%m-%d") if ts else "",
                 },
             }
         )
     mixed.sort(key=lambda x: x["timestamp"])
     total = len(mixed)
     items = mixed[offset:offset + page_size]
+    timeline: List[Dict[str, Any]] = []
+    for item in items:
+        payload = item.get("payload") or {}
+        if item.get("type") == "chat":
+            timeline.append(
+                {
+                    "kind": "chat_user",
+                    "text": payload.get("question", ""),
+                    "time": payload.get("time", ""),
+                    "date": payload.get("date", ""),
+                }
+            )
+            timeline.append(
+                {
+                    "kind": "chat_assistant",
+                    "text": payload.get("answer", ""),
+                    "time": payload.get("time", ""),
+                    "date": payload.get("date", ""),
+                }
+            )
+        else:
+            timeline.append(
+                {
+                    "kind": "planner_milestone",
+                    "text": payload.get("text", ""),
+                    "time": payload.get("time", ""),
+                    "date": payload.get("date", ""),
+                }
+            )
+
     return {
         "items": items,
+        "timeline": timeline,
         "pagination": {
             "page": page,
             "page_size": page_size,
@@ -80,4 +115,3 @@ def serialize_timeline_items(user: User, session: ChatSession, page: int = 1, pa
             "has_next": (offset + page_size) < total,
         },
     }
-

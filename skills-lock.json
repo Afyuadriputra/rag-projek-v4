@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "apple-hig-designer": {
+      "source": "jamesrochabrun/skills",
+      "sourceType": "github",
+      "computedHash": "fc2be0668901c29b6879c6cceaf11adb6e3730545cf1db8bad272984f345c860"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+    }
+  }
+}

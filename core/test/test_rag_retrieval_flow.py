@@ -295,6 +295,8 @@ class RagRetrievalFlowTests(SimpleTestCase):
         self.assertIn("Jawaban cepat", out.get("answer", ""))
         dense_mock.assert_not_called()
         self.assertEqual(out.get("meta", {}).get("mode"), "llm_only")
+        self.assertEqual(out.get("meta", {}).get("pipeline"), "rag_semantic")
+        self.assertIn("intent_route", out.get("meta", {}))
 
     @patch.dict(os.environ, {"RAG_DOC_RERANK_ENABLED": "0"}, clear=False)
     @patch("core.ai_engine.retrieval.main._resolve_user_doc_mentions")
@@ -332,6 +334,7 @@ class RagRetrievalFlowTests(SimpleTestCase):
 
         out = ask_bot(user_id=1, query="@Jadwal A.pdf jadwal senin?", request_id="t11")
         self.assertEqual(out.get("meta", {}).get("mode"), "doc_referenced")
+        self.assertEqual(out.get("meta", {}).get("pipeline"), "rag_semantic")
         self.assertIn("Jadwal A.pdf", out.get("meta", {}).get("referenced_documents", []))
         called_where = dense_mock.call_args.kwargs.get("filter_where", {})
         self.assertIn("$and", called_where)

@@ -1,247 +1,86 @@
-# Use Case — Academic RAG System
 
-Dokumen ini merinci use case utama sistem Academic RAG, mencakup aktor, alur normal, alternatif, error, dan log audit yang dihasilkan.
-
----
-
-## 1) Aktor & Peran
-
-- **Mahasiswa (User)**: mengelola knowledge base pribadi (upload dokumen), melakukan chat akademik, membuat & mengelola sesi chat.
-- **Admin**: mengelola kuota upload user, melihat log audit untuk aktivitas.
-- **Sistem (RAG Engine)**: memproses dokumen (ingest, embedding) dan menjawab pertanyaan.
-
----
-
-## 2) Use Case Utama
-
-### UC‑01 — Registrasi User
-**Aktor:** Mahasiswa  
-**Tujuan:** Membuat akun baru.  
-**Prekondisi:** User belum login.
-
-**Alur Normal:**
-1. User membuka `/register/`.
-2. User mengisi username, email, password, konfirmasi password.
-3. Sistem memvalidasi input.
-4. Sistem membuat akun dan otomatis membuat `UserQuota` default (10MB).
-5. Sistem login otomatis dan redirect ke `/`.
-
-**Alternatif / Error:**
-- Username sudah digunakan → tampil error.
-- Password tidak cocok → error validasi.
-- Error sistem → tampil error umum.
-
-**Audit Log:**
-- `action=register status=success user_id=...`
-- `action=register status=fail reason=duplicate_username`
-
----
-
-### UC‑02 — Login User
-**Aktor:** Mahasiswa  
-**Tujuan:** Masuk ke sistem.  
-**Prekondisi:** User terdaftar.
-
-**Alur Normal:**
-1. User membuka `/login/`.
-2. User isi username + password.
-3. Sistem autentikasi sukses.
-4. User redirect ke `/`.
-
-**Alternatif / Error:**
-- Kredensial salah → tampil error.
-- Rate limit (axes) → tampil pesan terkunci.
-
-**Audit Log:**
-- `action=login status=success user_id=...`
-- `action=login status=fail reason=invalid_credentials`
-- `action=login status=locked`
-
----
-
-### UC‑03 — Logout User
-**Aktor:** Mahasiswa  
-**Tujuan:** Keluar dari sistem.  
-**Prekondisi:** User login.
-
-**Alur Normal:**
-1. User klik menu profil → logout.
-2. Sistem mengakhiri session.
-3. Redirect ke `/login/`.
-
-**Audit Log:**
-- `action=logout status=success`
-
----
-
-### UC‑04 — Upload Dokumen Knowledge Base
-**Aktor:** Mahasiswa  
-**Tujuan:** Menambahkan file akademik ke knowledge base.  
-**Prekondisi:** User login, kuota tersedia.
-
-**Alur Normal:**
-1. User klik tombol upload.
-2. Pilih file (`pdf/xlsx/xls/csv/md/txt`).
-3. Sistem menyimpan file ke media storage.
-4. Sistem ingest dokumen → parsing → metadata → embedding ke Chroma.
-5. UI refresh daftar dokumen + storage.
-
-**Alternatif / Error:**
-- Kuota tidak cukup → upload ditolak.
-- File tidak didukung → error parsing.
-- File corrupt → parsing gagal.
-- Payload terlalu besar → 413.
-
-**Audit Log:**
-- `action=upload status=success ...`
-- `action=upload status=payload_too_large`
-- `action=upload status=error`
-
----
-
-### UC‑05 — Lihat Daftar Dokumen
-**Aktor:** Mahasiswa  
-**Tujuan:** Melihat dokumen di sidebar knowledge base.  
-**Prekondisi:** User login.
-
-**Alur Normal:**
-1. Sistem memanggil `GET /api/documents/`.
-2. Sistem menampilkan list dokumen + storage usage.
-
----
-
-### UC‑06 — Hapus Dokumen Knowledge Base
-**Aktor:** Mahasiswa  
-**Tujuan:** Menghapus dokumen & embedding.  
-**Prekondisi:** User login, dokumen milik user.
-
-**Alur Normal:**
-1. User klik delete dokumen.
-2. Modal konfirmasi muncul.
-3. User konfirmasi.
-4. Sistem hapus embedding di Chroma + file storage + DB record.
-5. UI update list dokumen.
-
-**Alternatif / Error:**
-- Dokumen tidak ditemukan → 404.
-- Error vector DB → log error.
-
-**Audit Log:**
-- `action=doc_delete status=success doc_id=...`
-- `action=doc_delete status=not_found doc_id=...`
-
----
-
-### UC‑07 — Chat Akademik (RAG)
-**Aktor:** Mahasiswa  
-**Tujuan:** Bertanya berdasarkan dokumen/knowledge base.  
-**Prekondisi:** User login.
-
-**Alur Normal:**
-1. User mengetik pertanyaan di chat.
-2. Sistem mencari context di vector DB (filter by user_id).
-3. LLM menjawab (LLM‑first, context optional).
-4. History tersimpan dalam session.
-
-**Alternatif / Error:**
-- session_id invalid → 400.
-- LLM error → 500, toast error.
-
-**Audit Log:**
-- (Chat log tercatat via request log + error log)
-
----
-
-### UC‑08 — Create Session Chat
-**Aktor:** Mahasiswa  
-**Tujuan:** Membuat sesi chat baru.  
-**Prekondisi:** User login.
-
-**Alur Normal:**
-1. User klik “Chat Baru”.
-2. Sistem membuat session.
-3. Session muncul di sidebar.
-
-**Audit Log:**
-- `action=session_create status=success session_id=...`
-
----
-
-### UC‑09 — Rename Session Chat
-**Aktor:** Mahasiswa  
-**Tujuan:** Mengubah judul sesi chat.  
-**Prekondisi:** User login.
-
-**Alur Normal:**
-1. User klik rename.
-2. User input judul baru.
-3. Sistem update title di DB.
-
-**Audit Log:**
-- `action=session_rename status=success session_id=...`
-
----
-
-### UC‑10 — Delete Session Chat
-**Aktor:** Mahasiswa  
-**Tujuan:** Menghapus sesi chat.  
-**Prekondisi:** User login.
-
-**Alur Normal:**
-1. User klik delete session.
-2. Modal konfirmasi muncul.
-3. Sistem hapus session + history.
-
-**Audit Log:**
-- `action=session_delete status=success session_id=...`
-
----
-
-### UC‑11 — Reingest Dokumen
-**Aktor:** Mahasiswa  
-**Tujuan:** Memproses ulang dokumen (refresh embedding).  
-**Prekondisi:** User login.
-
-**Alur Normal:**
-1. User (atau sistem) memanggil `/api/reingest/`.
-2. Sistem hapus embedding lama.
-3. Sistem ingest ulang dokumen.
-
-**Audit Log:**
-- `action=reingest status=success doc_ids=[...]`
-
----
-
-## 3) Use Case Admin
-
-### UC‑12 — Update Kuota User
-**Aktor:** Admin  
-**Tujuan:** Mengatur quota upload user.  
-**Prekondisi:** Admin login di Django Admin.
-
-**Alur Normal:**
-1. Admin buka Django Admin → UserQuota.
-2. Admin mengubah `quota_bytes` (atau input MB).
-3. Sistem menyimpan kuota baru.
-
-**Audit Log:**
-- `action=quota_update target_user=... old_quota=... new_quota=...`
-
----
-
-## 4) Non‑Functional Use Case
-
-### UC‑13 — Audit & Monitoring
-**Tujuan:** Memonitor aktivitas sistem.
-
-**Fitur:**
-- Request log (method, path, status, user, ip, ua).
-- Audit log di file `logs/audit.log`.
-- Rotating file harian, retensi 14 hari.
-
----
-
-## 5) Ringkasan
-
-Use case mencakup seluruh alur utama: **auth, upload, chat, session management, dokumen, reingest, dan admin quota**.  
-Audit log tersedia untuk menelusuri aktivitas penting (CCTV‑style monitoring).  
+**Gambaran Besar**
+
+* Stack: Django + Inertia + React/Vite + LangChain + Chroma local.
+* Pola arsitektur backend: **views -> service facade -> domain services -> ai_engine**.
+* RAG kamu sudah mature: ada ingestion modular, intent router, hybrid retrieval, rerank, structured analytics, guardrails, metrics.
+* Planner ada 2 mode: flow lama via **chat_api(mode="planner")** dan flow baru v3 via endpoint khusus.
+
+**Backend Inti**
+
+* Routing global dan app: [urls.py (line 8)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [urls.py (line 4)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Settings utama: SQLite lokal, Django-Vite, Inertia, Axes, middleware observability/presence/maintenance di [settings.py (line 73)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Model domain cukup lengkap:
+  * Dokumen/chat/planner: [models.py (line 8)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [models.py (line 21)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [models.py (line 33)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [models.py (line 50)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [models.py (line 82)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+  * Operasional sistem: [models.py (line 163)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [models.py (line 244)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [models.py (line 275)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [models.py (line 298)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Service facade menyatukan modul dan menjaga patch-compat lama: [service.py (line 1)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+
+**RAG Engine**
+
+* Embedding + vectorstore:
+  * Chroma persist di **chroma_db**, collection **academic_rag**, metadata filter by **user_id**: [config.py (line 11)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [config.py (line 105)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+  * Embedding default **multilingual-e5-large** + prefix **query:/passage:** untuk E5: [config.py (line 23)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Ingestion:
+  * Facade kompatibilitas: [ingest.py (line 323)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+  * Orchestrator modular extract/parse/chunk/write: [orchestrator.py (line 34)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+  * Parser chain: deterministic dulu (transcript rules), lalu LLM fallback: [parser_chain.py (line 43)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+  * Metadata chunk kaya (**user_id**, **doc_id**, **doc_type**, **chunk_kind**, dll): [metadata_builder.py (line 7)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Retrieval:
+  * Entry utama **ask_bot**: [main.py (line 439)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+  * Fitur penting:
+    * Query safety/guard (**crime**, **political persuasion**, weird query): [main.py (line 332)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+    * Mention file via **@nama_file** + resolusi dokumen user: [main.py (line 89)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+    * Intent routing (**analytical_tabular**, **semantic_policy**, **out_of_domain**): [intent_router.py (line 53)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+    * Structured analytics deterministic (transcript/schedule) + post-polish LLM tervalidasi: [structured_analytics.py (line 438)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+    * Dense/hybrid(BM25+RRF)/rerank parametrik via env: [main.py (line 747)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+    * Multi-model fallback OpenRouter + metrics per request: [llm.py (line 24)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [monitoring.py (line 95)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+
+**Planner System**
+
+* Legacy planner state-machine: [planner.py (line 1)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Planner v3 adaptif (run state, branching, execute/cancel):
+  * Start: [service.py (line 842)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#)
+  * Next step: [service.py (line 935)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#)
+  * Execute: [service.py (line 1038)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#)
+  * Cancel: [service.py (line 1119)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#)
+* Persist state v3 di **PlannerRun** (snapshot blueprint, answers, path, depth, expiry): [models.py (line 82)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+
+**Frontend**
+
+* Inertia bootstrapping dan CSRF axios: [main.tsx (line 1)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Halaman utama sangat stateful untuk chat + planner v3 lifecycle: [Index.tsx (line 180)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* API client typed lengkap untuk chat/docs/session/planner: [api.ts (line 1)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Komponen onboarding planner (file aktif kamu):
+  * Menampilkan error relevansi + kandidat jurusan + opsi reuse/upload dokumen: [PlannerOnboardingCard.tsx (line 8)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Renderer panel planner in-chat:
+  * State **onboarding/uploading/ready/reviewing/executing/done**: [PlannerPanelRenderer.tsx (line 7)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Integrasi build ke Django static (**core/static/dist**): [vite.config.ts (line 49)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+
+**Alur End-to-End**
+
+* Upload dokumen: frontend **uploadDocuments** -> **POST /api/upload/** -> ingest -> embed -> dokumen **is_embedded=true**.
+* Chat RAG: frontend **sendChat** -> **POST /api/chat/** -> **service.chat_and_save** -> **ask_bot** -> simpan **ChatHistory**.
+* Planner v3:
+  * Start (**/api/planner/start/**) validasi relevansi dokumen + buat **PlannerRun**.
+  * Next (**/api/planner/next-step/**) validasi sequence + branching adaptif.
+  * Execute (**/api/planner/execute/**) kirim prompt ringkasan ke RAG dengan grounding policy.
+
+**Temuan Penting (Risk/Tech Debt)**
+
+* Ada redefinisi fungsi planner dua kali (termasuk versi teks “mojibake”), sehingga function awal jadi dead code:
+  * **_build_planner_markdown** ganda: [service.py (line 115)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#) dan [service.py (line 175)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+  * **_ensure_planner_required_sections** ganda: [service.py (line 154)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#) dan [service.py (line 214)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Label opsi fallback planner masih karakter rusak di payload **planner_generate**:
+  * [service.py (line 399)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Endpoint API banyak pakai **@csrf_exempt** walau session auth:
+  * contoh [views.py (line 489)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [views.py (line 549)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [views.py (line 604)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* **DEBUG** default **True** dan **ALLOWED_HOSTS** hardcoded minimal:
+  * [settings.py (line 19)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [settings.py (line 21)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#).
+* Maintenance middleware untuk anonymous non-API pada akhirnya tetap **get_response**:
+  * [middleware.py (line 213)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [middleware.py (line 216)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#) (kemungkinan intentional, tapi worth review policy).
+
+**Kualitas & Testing**
+
+* Backend test suite sangat besar (terdeteksi ~279 test function di **core/test**).
+* Frontend ada unit test planner/chat ([Index.phase4.test.tsx (line 1)](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#)) dan e2e Playwright ([phase4-planner.spec.ts](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#), [security.spec.ts](https://file+.vscode-resource.vscode-cdn.net/c%3A/Users/M-SI/.vscode/extensions/openai.chatgpt-0.4.76-win32-x64/webview/#)).
+* Saya belum menjalankan test; ini audit statik kode.

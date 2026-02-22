@@ -14,7 +14,7 @@ from django.utils import timezone
 
 from core.academic import planner as planner_engine
 from core.academic.grade_calculator import analyze_transcript_risks, calculate_required_score
-from core.ai_engine.retrieval import ask_bot
+from core.ai_engine.retrieval.main import ask_bot
 from core.ai_engine.config import get_vectorstore
 from core.ai_engine.retrieval.llm import build_llm, get_backup_models, get_runtime_openrouter_config, invoke_text
 from core.ai_engine.retrieval.prompt import PLANNER_OUTPUT_TEMPLATE

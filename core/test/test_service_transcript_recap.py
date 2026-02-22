@@ -57,6 +57,7 @@ class ServiceTranscriptRecapTests(TestCase):
 
         ask_bot_mock.assert_called_once()
         self.assertEqual(payload["answer"], "jawaban llm")
+        self.assertIn("meta", payload)
         self.assertEqual(ChatHistory.objects.filter(user=self.user).count(), 1)
 
     @patch("core.service.ask_bot")

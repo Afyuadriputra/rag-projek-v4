@@ -26,7 +26,8 @@ class AcademicRAGSystemTests(TestCase):
             email="mhs@test.com",
             password="password123",
         )
-        self.client.login(username="mahasiswa_test", password="password123")
+        # Gunakan force_login agar kompatibel dengan backend Axes yang mensyaratkan request.
+        self.client.force_login(self.user)
 
     # =========================================================
     # 1) MODEL TESTS
@@ -84,7 +85,7 @@ class AcademicRAGSystemTests(TestCase):
     # =========================================================
     # 4) CHAT API
     # =========================================================
-    @patch("core.views.ask_bot")
+    @patch("core.service.ask_bot")
     def test_chat_api_success_saves_history(self, mock_ask_bot):
         mock_ask_bot.return_value = "Jawaban AI dummy"
 
@@ -136,7 +137,7 @@ class AcademicRAGSystemTests(TestCase):
     # =========================================================
     # 5) UPLOAD API (BATCH)
     # =========================================================
-    @patch("core.views.process_document")
+    @patch("core.service.process_document")
     def test_upload_api_success_single_file(self, mock_process_document):
         """
         Penting: backend kamu membaca request.FILES.getlist("files")
@@ -162,7 +163,7 @@ class AcademicRAGSystemTests(TestCase):
 
         mock_process_document.assert_called_once()
 
-    @patch("core.views.process_document")
+    @patch("core.service.process_document")
     def test_upload_api_batch_mixed_success_and_fail(self, mock_process_document):
         """
         Test batch upload 2 file:

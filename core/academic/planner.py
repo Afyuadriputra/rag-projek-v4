@@ -553,7 +553,7 @@ def build_wizard_blueprint_v3(
     ]
 
     return {
-        "version": "v3_dynamic",
+        "version": "v3",
         "data_level": data_level,
         "profile_hints": {
             "confidence_summary": profile_hints.get("confidence_summary"),

@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import UploadedFile
 from core.academic.profile_extractor import extract_profile_hints
 from core.ai_engine.config import get_vectorstore
 from core.ai_engine.ingest import process_document
-from core.ai_engine.retrieval import ask_bot
+from core.ai_engine.retrieval.main import ask_bot
 from core.ai_engine.retrieval.llm import build_llm, get_backup_models, get_runtime_openrouter_config, invoke_text
 from core.ai_engine.retrieval.prompt import PLANNER_OUTPUT_TEMPLATE
 from core.ai_engine.vector_ops import delete_vectors_for_doc, delete_vectors_for_doc_strict

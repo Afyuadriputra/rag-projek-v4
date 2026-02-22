@@ -14,6 +14,8 @@ from ..config import get_vectorstore
 from .hybrid import retrieve_dense, retrieve_sparse_bm25, fuse_rrf
 from .rerank import rerank_documents
 from .rules import _SEMESTER_RE, infer_doc_type
+from .intent_router import route_intent
+from .structured_analytics import run_structured_analytics, polish_structured_answer
 from .utils import build_sources_from_docs, looks_like_markdown_table, has_interactive_sections
 from .llm import get_runtime_openrouter_config, get_backup_models, build_llm, invoke_text, llm_fallback_message
 from .prompt import CHATBOT_SYSTEM_PROMPT
@@ -21,6 +23,12 @@ from ...monitoring import record_rag_metric
 
 logger = logging.getLogger(__name__)
 _MENTION_RE = re.compile(r"@([A-Za-z0-9._\- ]{2,120})")
+_STRICT_TRANSCRIPT_MARKERS = [
+    "transkrip",
+    "khs",
+    "tabel mentah",
+    "data mentah",
+]
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -35,7 +43,12 @@ def _env_int(name: str, default: int) -> int:
         return int(default)
 
 
-def _build_chroma_filter(user_id: int, query: str, doc_ids: List[int] | None = None) -> Dict[str, Any]:
+def _build_chroma_filter(
+    user_id: int,
+    query: str,
+    doc_ids: List[int] | None = None,
+    forced_doc_types: List[str] | None = None,
+) -> Dict[str, Any]:
     ql = (query or "").lower()
 
     def _is_multi_semester_recap_query(text: str) -> bool:
@@ -55,10 +68,15 @@ def _build_chroma_filter(user_id: int, query: str, doc_ids: List[int] | None = N
             base_filter["semester"] = int(sem_match.group(1))
         except Exception:
             pass
-    doc_type = infer_doc_type(query)
-    # Untuk rekap lintas semester, hindari filter doc_type agar konteks tidak terpotong.
-    if doc_type and not multi_semester_recap:
-        base_filter["doc_type"] = doc_type
+    if forced_doc_types:
+        vals = [str(x).strip() for x in forced_doc_types if str(x).strip()]
+        if vals:
+            base_filter["doc_type"] = {"$in": vals}
+    else:
+        doc_type = infer_doc_type(query)
+        # Untuk rekap lintas semester, hindari filter doc_type agar konteks tidak terpotong.
+        if doc_type and not multi_semester_recap:
+            base_filter["doc_type"] = doc_type
     if len(base_filter) == 1:
         return base_filter
     return {"$and": [{"user_id": str(user_id)}] + [{k: v} for k, v in base_filter.items() if k != "user_id"]}
@@ -99,8 +117,15 @@ def _has_user_documents(user_id: int) -> bool:
     ck = f"rag:user_has_docs:{int(user_id)}"
     try:
         cached = cache.get(ck)
-        if cached is not None:
-            return bool(cached)
+        if cached is True:
+            return True
+        if cached is False:
+            # Negative cache bisa stale setelah upload/re-ingest; verifikasi ringan.
+            has_docs_now = AcademicDocument.objects.filter(user_id=user_id).exists()
+            if has_docs_now:
+                cache.set(ck, True, 60)
+                return True
+            return False
         has_docs = AcademicDocument.objects.filter(user_id=user_id).exists()
         cache.set(ck, bool(has_docs), 60)
         return bool(has_docs)
@@ -248,8 +273,9 @@ def _load_full_row_context_docs(user_id: int, doc_ids: List[int] | None = None) 
             where_parts.append({"doc_id": {"$in": [str(x) for x in doc_ids]}})
         where: Dict[str, Any] = {"$and": where_parts}
         try:
-            got = col.get(where=where, include=["documents", "metadatas", "ids"])
-        except TypeError:
+            # Chroma v1.x tidak menerima "ids" pada include.
+            got = col.get(where=where, include=["documents", "metadatas"])
+        except Exception:
             got = col.get(where=where)
 
         documents = list(got.get("documents", []) or [])
@@ -474,7 +500,17 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
             source_count=0,
             status_code=200,
         )
-        return {"answer": answer, "sources": [], "meta": {"mode": "guard"}}
+        return {
+            "answer": answer,
+            "sources": [],
+            "meta": {
+                "mode": "guard",
+                "pipeline": "route_guard",
+                "intent_route": "default_rag",
+                "validation": "not_applicable",
+                "analytics_stats": {},
+            },
+        }
 
     mention_resolution = _resolve_user_doc_mentions(user_id, mentions)
     resolved_doc_ids = mention_resolution.get("resolved_doc_ids", [])
@@ -505,14 +541,200 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
             "answer": answer,
             "sources": [],
             "meta": {
+                "mode": "doc_referenced",
+                "pipeline": "rag_semantic",
+                "intent_route": "default_rag",
+                "validation": "not_applicable",
+                "analytics_stats": {},
                 "referenced_documents": [],
                 "unresolved_mentions": unresolved_mentions,
                 "ambiguous_mentions": ambiguous_mentions,
             },
         }
 
+    has_docs_hint = _has_user_documents(user_id)
+
+    intent_route = "default_rag"
+    route_info: Dict[str, Any] = {"reason": "router_disabled", "matched": []}
+    if _env_bool("RAG_INTENT_ROUTER_ENABLED", default=True):
+        route_info = route_intent(q)
+        intent_route = str(route_info.get("route") or "default_rag")
+    logger.info(
+        " INTENT_ROUTE route=%s reason=%s matched=%s",
+        intent_route,
+        route_info.get("reason"),
+        route_info.get("matched"),
+        extra={"request_id": request_id},
+    )
+
+    if intent_route == "out_of_domain":
+        answer = (
+            "## Ringkasan\n"
+            "Maaf, saya hanya asisten akademik kampus.\n\n"
+            "## Opsi Lanjut\n"
+            "- Saya bisa bantu jadwal kuliah, rekap nilai, KRS/KHS, dan strategi studi.\n"
+            "- Coba tulis ulang pertanyaan dalam konteks akademik."
+        )
+        answer = _polish_answer_text(answer)
+        record_rag_metric(
+            request_id=request_id,
+            user_id=user_id,
+            mode="out_of_domain",
+            query_len=len(q),
+            dense_hits=0,
+            bm25_hits=0,
+            final_docs=0,
+            retrieval_ms=0,
+            rerank_ms=0,
+            llm_model="",
+            llm_time_ms=0,
+            fallback_used=False,
+            source_count=0,
+            status_code=200,
+        )
+        return {
+            "answer": answer,
+            "sources": [],
+            "meta": {
+                "mode": "guard",
+                "pipeline": "route_guard",
+                "intent_route": intent_route,
+                "validation": "not_applicable",
+                "analytics_stats": {},
+                "referenced_documents": resolved_titles,
+                "unresolved_mentions": unresolved_mentions,
+                "ambiguous_mentions": ambiguous_mentions,
+            },
+        }
+
+    if (
+        intent_route == "analytical_tabular"
+        and has_docs_hint
+        and _env_bool("RAG_STRUCTURED_ANALYTICS_ENABLED", default=True)
+    ):
+        logger.info(" STRUCTURED_ANALYTICS_START route=%s", intent_route, extra={"request_id": request_id})
+        structured = run_structured_analytics(
+            user_id=int(user_id),
+            query=q,
+            doc_ids=resolved_doc_ids if resolved_doc_ids else None,
+        )
+        if structured.get("ok"):
+            structured_doc_type = str(structured.get("doc_type") or "")
+            structured_mode = "structured_transcript" if structured_doc_type == "transcript" else "structured_schedule"
+            deterministic_answer = str(structured.get("answer") or "").strip() or "Maaf, data tidak ditemukan di dokumen Anda."
+            structured_facts = list(structured.get("facts") or [])
+            ql = (q or "").lower()
+            strict_transcript_mode = (
+                structured_doc_type == "transcript"
+                and any(m in ql for m in _STRICT_TRANSCRIPT_MARKERS)
+            )
+            if strict_transcript_mode:
+                # Query transcript tabular harus anti-ngarang: pakai deterministic output.
+                answer = deterministic_answer
+                validation_status = "skipped_strict"
+            else:
+                polished = polish_structured_answer(
+                    query=q,
+                    deterministic_answer=deterministic_answer,
+                    facts=structured_facts,
+                    doc_type=structured_doc_type,
+                )
+                answer = str(polished.get("answer") or deterministic_answer)
+                validation_status = str(polished.get("validation") or "failed_fallback")
+            stats = structured.get("stats") or {}
+            sources = list(structured.get("sources") or [])
+
+            if unresolved_mentions:
+                answer = (
+                    f"{answer}\n\n"
+                    f"Catatan rujukan: ada file yang tidak ditemukan ({', '.join([f'@{m}' for m in unresolved_mentions])})."
+                ).strip()
+            answer = _polish_answer_text(answer)
+
+            logger.info(
+                " STRUCTURED_ANALYTICS_OK mode=%s returned=%s validation=%s",
+                structured_mode,
+                (stats.get("returned") or 0),
+                validation_status,
+                extra={"request_id": request_id},
+            )
+            if validation_status == "passed":
+                logger.info(" POLISH_VALIDATE_PASS", extra={"request_id": request_id})
+            elif validation_status == "failed_fallback":
+                logger.warning(" POLISH_VALIDATE_FAIL", extra={"request_id": request_id})
+
+            record_rag_metric(
+                request_id=request_id,
+                user_id=user_id,
+                mode=structured_mode,
+                query_len=len(q),
+                dense_hits=int(stats.get("raw") or 0),
+                bm25_hits=0,
+                final_docs=int(stats.get("returned") or 0),
+                retrieval_ms=int(stats.get("latency_ms") or 0),
+                rerank_ms=0,
+                llm_model=str(os.environ.get("RAG_ANALYTICS_POLISH_MODEL", "google/gemini-3-flash-preview")).strip(),
+                llm_time_ms=0,
+                fallback_used=validation_status == "failed_fallback",
+                source_count=len(sources),
+                status_code=200,
+            )
+            return {
+                "answer": answer,
+                "sources": sources,
+                "meta": {
+                    "mode": structured_mode,
+                    "pipeline": "structured_analytics",
+                    "intent_route": intent_route,
+                    "validation": validation_status,
+                    "analytics_stats": {
+                        "raw": int(stats.get("raw") or 0),
+                        "deduped": int(stats.get("deduped") or 0),
+                        "returned": int(stats.get("returned") or 0),
+                    },
+                    "referenced_documents": resolved_titles,
+                    "unresolved_mentions": unresolved_mentions,
+                    "ambiguous_mentions": ambiguous_mentions,
+                },
+            }
+        logger.warning(
+            " STRUCTURED_ANALYTICS_EMPTY reason=%s -> fallback rag",
+            structured.get("reason") or "unknown",
+            extra={"request_id": request_id},
+        )
+        structured_doc_type = str(structured.get("doc_type") or "")
+        ql = (q or "").lower()
+        strict_transcript_mode = (
+            structured_doc_type == "transcript"
+            and any(m in ql for m in _STRICT_TRANSCRIPT_MARKERS)
+        )
+        if strict_transcript_mode:
+            # Hindari fallback generatif untuk transcript recap; return deterministic-empty agar jelas.
+            strict_answer = str(structured.get("answer") or "").strip() or (
+                "## Ringkasan\n"
+                "Maaf, data tidak ditemukan di dokumen Anda.\n\n"
+                "## Opsi Lanjut\n"
+                "- Pastikan dokumen KHS/Transkrip sudah terunggah.\n"
+                "- Jika sudah, coba re-ingest dokumen lalu ulangi pertanyaan."
+            )
+            strict_answer = _polish_answer_text(strict_answer)
+            return {
+                "answer": strict_answer,
+                "sources": list(structured.get("sources") or []),
+                "meta": {
+                    "mode": "structured_transcript",
+                    "pipeline": "structured_analytics",
+                    "intent_route": intent_route,
+                    "validation": "strict_no_fallback",
+                    "analytics_stats": structured.get("stats") or {},
+                    "referenced_documents": resolved_titles,
+                    "unresolved_mentions": unresolved_mentions,
+                    "ambiguous_mentions": ambiguous_mentions,
+                },
+            }
+
     t0 = time.time()
-    has_docs = _has_user_documents(user_id)
+    has_docs = has_docs_hint
     query_intent = _classify_query_intent(q)
     mode = "llm_only"
     if has_docs and resolved_doc_ids:
@@ -554,13 +776,14 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
 
     rag_mode = mode if mode == "llm_only" else ("hybrid" if use_hybrid else "dense")
     logger.info(
-        " RAG start user_id=%s dense_k=%s bm25_k=%s rerank_n=%s mode=%s intent=%s mentions=%s resolved=%s q='%s'",
+        " RAG start user_id=%s dense_k=%s bm25_k=%s rerank_n=%s mode=%s intent=%s route=%s mentions=%s resolved=%s q='%s'",
         user_id,
         dense_k,
         bm25_k,
         rerank_top_n,
         rag_mode,
         query_intent,
+        intent_route,
         len(mentions),
         len(resolved_doc_ids),
         query_preview,
@@ -587,7 +810,13 @@ def ask_bot(user_id, query, request_id: str = "-") -> Dict[str, Any]:
             dense_scored = []
         else:
             vectorstore = get_vectorstore()
-            chroma_where = _build_chroma_filter(user_id=user_id, query=q, doc_ids=resolved_doc_ids if resolved_doc_ids else None)
+            forced_doc_types = ["guideline", "general"] if intent_route == "semantic_policy" else None
+            chroma_where = _build_chroma_filter(
+                user_id=user_id,
+                query=q,
+                doc_ids=resolved_doc_ids if resolved_doc_ids else None,
+                forced_doc_types=forced_doc_types,
+            )
             query_variants = _rewrite_queries(q) if use_query_rewrite else [q]
             for query_variant in query_variants:
                 scored = retrieve_dense(vectorstore=vectorstore, query=query_variant, k=dense_k, filter_where=chroma_where)
@@ -773,7 +1002,7 @@ JAWABAN:
             record_rag_metric(
                 request_id=request_id,
                 user_id=user_id,
-                mode=mode,
+                mode="semantic_policy" if intent_route == "semantic_policy" else mode,
                 query_len=len(q),
                 dense_hits=len(dense_all),
                 bm25_hits=bm25_hits,
@@ -805,6 +1034,10 @@ JAWABAN:
                 "sources": sources,
                 "meta": {
                     "mode": mode,
+                    "pipeline": "rag_semantic",
+                    "intent_route": intent_route,
+                    "validation": "not_applicable",
+                    "analytics_stats": {},
                     "referenced_documents": resolved_titles,
                     "unresolved_mentions": unresolved_mentions,
                     "ambiguous_mentions": ambiguous_mentions,
@@ -837,7 +1070,7 @@ JAWABAN:
     record_rag_metric(
         request_id=request_id,
         user_id=user_id,
-        mode=mode,
+        mode="semantic_policy" if intent_route == "semantic_policy" else mode,
         query_len=len(q),
         dense_hits=len(dense_all),
         bm25_hits=bm25_hits,

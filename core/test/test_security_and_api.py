@@ -410,6 +410,12 @@ class SecurityAndApiTests(TestCase):
         self._announce("Retrieval isolation always filters by user_id")
         fake_vs = _FakeVectorStore()
         mock_vs.return_value = fake_vs
+        AcademicDocument.objects.create(
+            user=self.user_a,
+            file=SimpleUploadedFile("krs.txt", b"dummy"),
+            title="krs.txt",
+            is_embedded=True,
+        )
 
         class _DummyChain:
             def invoke(self, _):
@@ -418,15 +424,15 @@ class SecurityAndApiTests(TestCase):
         mock_chain.return_value = _DummyChain()
         mock_llm.return_value = object()
 
-        ask_bot(user_id=99, query="jadwal semester 1", request_id="t")
+        ask_bot(user_id=self.user_a.id, query="jadwal semester 1", request_id="t")
         self.assertTrue(fake_vs.filters)
         last_filter = fake_vs.filters[-1] or {}
         # bisa berbentuk {"user_id": "..."} atau {"$and":[{"user_id":...}, ...]}
         if "user_id" in last_filter:
-            self.assertEqual(last_filter["user_id"], "99")
+            self.assertEqual(last_filter["user_id"], str(self.user_a.id))
         else:
             and_list = last_filter.get("$and") or []
-            self.assertTrue(any(isinstance(x, dict) and x.get("user_id") == "99" for x in and_list))
+            self.assertTrue(any(isinstance(x, dict) and x.get("user_id") == str(self.user_a.id) for x in and_list))
 
     @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
     @patch("core.ai_engine.ingest.pdfplumber.open", side_effect=Exception("bad pdf"))

@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from django.contrib.auth.models import User
 
-from core.ai_engine.retrieval import ask_bot
+from core.ai_engine.retrieval.main import ask_bot
 from core.ai_engine.retrieval.rules import extract_grade_calc_input, is_grade_rescue_query
 from core.models import ChatHistory, ChatSession
 from core.academic.grade_calculator import calculate_required_score
