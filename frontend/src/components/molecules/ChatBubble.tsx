@@ -33,7 +33,7 @@ export type ChatItem = {
   planner_warning?: string | null;
   profile_hints?: Record<string, unknown>;
   message_kind?: "user" | "assistant_chat" | "assistant_planner_step" | "system_mode" | "planner_panel";
-  planner_panel_state?: "idle" | "onboarding" | "uploading" | "ready" | "reviewing" | "executing" | "done";
+  planner_panel_state?: "idle" | "onboarding" | "uploading" | "branching" | "ready" | "reviewing" | "executing" | "done";
   planner_panel_payload?: Record<string, unknown>;
   session_id?: number;
   updated_at_ts?: number;
@@ -134,6 +134,7 @@ export default function ChatBubble({
   const isUser = item.role === "user";
   const isSystemMode = item.message_kind === "system_mode";
   const isPlannerStep = item.message_kind === "assistant_planner_step";
+  const isLegacyPlannerMessage = isSystemMode || isPlannerStep;
   const plannerEventType = String(item.planner_meta?.event_type ?? "");
   const isPlannerMilestone =
     isSystemMode &&
@@ -180,8 +181,9 @@ export default function ChatBubble({
     item.response_type === "planner_step" &&
     plannerStep.length > 0 &&
     questionCandidates.some((q) => q.step === plannerStep);
+  const plannerLegacyUiEnabled = false;
   const canShowPlannerOptions =
-    !isUser && showPlannerOptions && plannerOptions.length > 0;
+    plannerLegacyUiEnabled && !isUser && showPlannerOptions && plannerOptions.length > 0;
 
   // Fallback: kalau model kirim "tabel plaintext" (tab/spaces) -> tampilkan pre-block rapi
   const showPlainTableFallback = !isUser && looksLikeTabularPlaintext(content) && !content.includes("|");
@@ -230,7 +232,7 @@ export default function ChatBubble({
             )}
           >
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 md:text-[11px] dark:text-zinc-400">
-              {isUser ? "Mahasiswa" : isSystemMode ? "Planner Aktif" : "Academic AI"}
+              {isUser ? "Mahasiswa" : "Academic AI"}
             </span>
             <span className="text-[10px] text-zinc-400 md:text-[11px] dark:text-zinc-500">
               {item.time}
@@ -244,9 +246,7 @@ export default function ChatBubble({
               "px-4 py-3 md:px-6 md:py-4",
               isUser
                 ? "rounded-2xl rounded-tr-sm bg-zinc-900 text-zinc-50 hover:bg-black"
-                : isSystemMode
-                  ? "rounded-2xl rounded-tl-sm border border-blue-200 bg-blue-50/70 text-zinc-800 dark:border-blue-900/60 dark:bg-blue-950/35 dark:text-zinc-100"
-                  : "rounded-2xl rounded-tl-sm border border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-500"
+                : "rounded-2xl rounded-tl-sm border border-zinc-200 bg-white text-zinc-800 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-500"
             )}
           >
             {isUser ? (
@@ -353,7 +353,7 @@ export default function ChatBubble({
                     {content}
                   </ReactMarkdown>
                 )}
-                {isQuestionDetectedFromDocument && (
+                {!isLegacyPlannerMessage && isQuestionDetectedFromDocument && (
                   <div
                     data-testid="planner-doc-detected-question"
                     className="mt-3 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
@@ -407,7 +407,7 @@ export default function ChatBubble({
                   </div>
                 )}
 
-                {isPlannerMilestone && (
+                {!isLegacyPlannerMessage && isPlannerMilestone && (
                   <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-100/60 px-2 py-1 text-[10px] font-semibold text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
                     <span className="material-symbols-outlined text-[12px]">flag</span>
                     Milestone Planner
@@ -416,7 +416,7 @@ export default function ChatBubble({
                 )}
 
                 {/* Footer Actions */}
-                {!isPlannerMilestone && (
+                {!isLegacyPlannerMessage && !isPlannerMilestone && (
                 <div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-3 dark:border-zinc-700">
                   <span className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
                     <span className="material-symbols-outlined text-[14px]">verified_user</span>
@@ -454,7 +454,7 @@ export default function ChatBubble({
                 )}
 
                 {/* Panel rujukan */}
-                {!isPlannerMilestone && sources.length > 0 && showSources && (
+                {!isLegacyPlannerMessage && !isPlannerMilestone && sources.length > 0 && showSources && (
                   <div className="mt-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
                     <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
                       <span className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-700 dark:text-zinc-200">

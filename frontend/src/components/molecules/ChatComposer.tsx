@@ -6,12 +6,14 @@ export default function ChatComposer({
   onUploadClick,
   loading,
   deletingDoc = false,
+  plannerLockReason,
   docs = [],
 }: {
   onSend: (message: string) => void;
   onUploadClick: () => void;
   loading?: boolean;
   deletingDoc?: boolean;
+  plannerLockReason?: string;
   docs?: Array<{ id: number; title: string }>;
 }) {
   const MAX_TEXTAREA_HEIGHT = 160;
@@ -272,8 +274,13 @@ export default function ChatComposer({
                 }}
               />
               {loading && (
-                <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-600/70 dark:text-zinc-400">
-                  Input dinonaktifkan sementara
+                <div
+                  className={cn(
+                    "mt-1 text-[10px] font-medium text-zinc-600/70 dark:text-zinc-400",
+                    plannerLockReason ? "tracking-normal normal-case" : "uppercase tracking-[0.2em]"
+                  )}
+                >
+                  {plannerLockReason || "Input dinonaktifkan sementara"}
                 </div>
               )}
             </div>
@@ -315,12 +322,15 @@ export default function ChatComposer({
         <div className="mt-3 flex justify-center">
           <p
             aria-live="polite"
-            className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-700/50 dark:text-zinc-400"
+            className={cn(
+              "flex items-center gap-2 text-[10px] font-medium text-zinc-700/50 dark:text-zinc-400",
+              loading && plannerLockReason ? "tracking-normal normal-case" : "uppercase tracking-[0.2em]"
+            )}
           >
             {loading ? (
               <>
                 <span className="block size-1.5 animate-pulse rounded-full bg-zinc-600/50" />
-                {deletingDoc ? "Sedang menghapus…" : "Thinking…"}
+                {deletingDoc ? "Sedang menghapus…" : plannerLockReason || "Thinking…"}
               </>
             ) : (
               "Academic AI • Context Aware"

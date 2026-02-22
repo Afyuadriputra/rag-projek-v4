@@ -1,0 +1,27 @@
+version: 1
+dataset_root: core/test/fixtures/uploaded_docs
+facts:
+  ti_rekap:
+    source: khs_ti_mahasiswa_a.pdf
+    total_sks: 144
+    total_matkul: 56
+    ipk: 3.42
+    count_tidak_lulus: 2
+    semester_terberat: 5
+    semester_terberat_sks: 24
+  hukum_rekap:
+    source: khs_hukum_mahasiswa_b.pdf
+    total_sks: 146
+    total_matkul: 58
+    ipk: 3.18
+    count_tidak_lulus: 3
+    semester_terberat: 4
+    semester_terberat_sks: 23
+  lintas_jurusan_2025:
+    source: rekap_lintas_jurusan_2025.pdf
+    ti_total_sks: 144
+    hukum_total_sks: 146
+    ti_ipk: 3.42
+    hukum_ipk: 3.18
+    ti_count_tidak_lulus: 2
+    hukum_count_tidak_lulus: 3

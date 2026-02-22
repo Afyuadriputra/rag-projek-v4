@@ -1,0 +1,255 @@
+version: 1
+dataset_root: dataset
+source_groups:
+  transcript_putri:
+    - Kartu Hasil Studi puput.pdf
+  khs_ahmad:
+    - khs23101051529.pdf
+    - khs23101051530.pdf
+    - khs23101051531.pdf
+    - khs23101051532.pdf
+  krs_putri:
+    - semester 1.pdf
+    - semester 2.pdf
+    - semester 3.pdf
+    - semester 4.pdf
+    - semester 5.pdf
+    - semester 6.pdf
+    - semester 7.pdf
+  curriculum_ti:
+    - KURIKULUM OBE OK.pdf
+  curriculum_hukum:
+    - MATRIK MATAKULIAH KURIKULUM 2025 PRODI ILMU HUKUM FAKULTAS HUKUM-3.pdf
+
+queries:
+  - id: q001
+    query: "coba rekap hasil studi saya"
+    expected_pipeline: structured_analytics
+    expected_intent_route: analytical_tabular
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback]
+    allowed_sources: [Kartu Hasil Studi puput.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["studi", "mata kuliah", "nilai"]
+    must_not_contain: ["resep", "politik"]
+
+  - id: q002
+    query: "rekap semua mata kuliah saya yang tidak lulus"
+    expected_pipeline: structured_analytics
+    expected_intent_route: analytical_tabular
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback]
+    allowed_sources: [Kartu Hasil Studi puput.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["tidak lulus", "nilai", "mata kuliah"]
+    must_not_contain: ["resep"]
+
+  - id: q003
+    query: "berapa ipk saya?"
+    expected_pipeline: structured_analytics
+    expected_intent_route: analytical_tabular
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback]
+    allowed_sources: [Kartu Hasil Studi puput.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["ipk", "3", "studi"]
+    must_not_contain: []
+
+  - id: q004
+    query: "ada mata kuliah yang pending belum dinilai?"
+    expected_pipeline: structured_analytics
+    expected_intent_route: analytical_tabular
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback]
+    allowed_sources: [Kartu Hasil Studi puput.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["belum", "nilai", "mata kuliah"]
+    must_not_contain: []
+
+  - id: q005
+    query: "jadwal semester 3 saya"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources: [semester 3.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["semester", "jadwal", "matakuliah"]
+    must_not_contain: ["resep"]
+
+  - id: q006
+    query: "mata kuliah apa saja di semester 6"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources: [semester 6.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["semester 6", "mata", "kuliah"]
+    must_not_contain: []
+
+  - id: q007
+    query: "siapa dosen pengampu di semester 5"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources: [semester 5.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["dosen", "semester 5"]
+    must_not_contain: []
+
+  - id: q008
+    query: "jadwal hari senin semester 2"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources: [semester 2.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["senin", "semester 2", "jam"]
+    must_not_contain: []
+
+  - id: q009
+    query: "kurikulum 2025 teknik informatika ada mata kuliah apa"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources: [KURIKULUM OBE OK.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["kurikulum", "sks", "mata kuliah"]
+    must_not_contain: []
+
+  - id: q010
+    query: "total sks tiap semester di kurikulum obe"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources: [KURIKULUM OBE OK.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["total", "sks", "semester"]
+    must_not_contain: []
+
+  - id: q011
+    query: "matrik kurikulum 2025 ilmu hukum semester 1"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources: [MATRIK MATAKULIAH KURIKULUM 2025 PRODI ILMU HUKUM FAKULTAS HUKUM-3.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["hukum", "semester", "sks"]
+    must_not_contain: []
+
+  - id: q012
+    query: "daftar mata kuliah wajib ilmu hukum"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources: [MATRIK MATAKULIAH KURIKULUM 2025 PRODI ILMU HUKUM FAKULTAS HUKUM-3.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["wajib", "ilmu hukum", "mata kuliah"]
+    must_not_contain: []
+
+  - id: q013
+    query: "khs ahmad semester 2 nilainya bagaimana"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources:
+      - khs23101051530.pdf
+    source_match_mode: any_of
+    must_contain_any: ["semester", "nilai", "hukum"]
+    must_not_contain: []
+
+  - id: q014
+    query: "di khs ahmad semester 4 ada nilai e tidak"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources:
+      - khs23101051532.pdf
+    source_match_mode: any_of
+    must_contain_any: ["semester 4", "nilai", "e"]
+    must_not_contain: []
+
+  - id: q015
+    query: "perbandingan ringkas studi saya dari semester 1 sampai 7"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources:
+      - Kartu Hasil Studi puput.pdf
+      - semester 1.pdf
+      - semester 2.pdf
+      - semester 3.pdf
+      - semester 4.pdf
+      - semester 5.pdf
+      - semester 6.pdf
+      - semester 7.pdf
+    source_match_mode: any_of
+    must_contain_any: ["semester", "studi"]
+    must_not_contain: []
+
+  - id: q016
+    query: "@Kartu Hasil Studi puput.pdf jelaskan hasil studi saya"
+    expected_pipeline: structured_analytics
+    expected_intent_route: analytical_tabular
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback]
+    allowed_sources: [Kartu Hasil Studi puput.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["hasil", "studi", "nilai"]
+    must_not_contain: []
+
+  - id: q017
+    query: "@semester 3.pdf jadwal saya hari selasa jam berapa"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources: [semester 3.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["selasa", "jam", "semester"]
+    must_not_contain: []
+
+  - id: q018
+    query: "berapa nilai saya untuk mata kuliah yang tidak ada di dokumen"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [no_grounding_evidence]
+    allowed_sources: []
+    source_match_mode: any_of
+    must_contain_any: ["tidak", "dokumen", "akurat"]
+    must_not_contain: []
+
+  - id: q019
+    query: "resep ayam kecap pedas"
+    expected_pipeline: route_guard
+    expected_intent_route: out_of_domain
+    expected_validation_in: [not_applicable]
+    allowed_sources: []
+    source_match_mode: any_of
+    must_contain_any: ["asisten akademik", "dokumen akademik"]
+    must_not_contain: []
+
+  - id: q020
+    query: "cara jadi dukun"
+    expected_pipeline: route_guard
+    expected_intent_route: out_of_domain
+    expected_validation_in: [not_applicable]
+    allowed_sources: []
+    source_match_mode: any_of
+    must_contain_any: ["asisten akademik", "tidak bisa"]
+    must_not_contain: []
+
+  - id: q021
+    query: "apa perbedaan kurikulum ti dan ilmu hukum dari dokumen saya"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources:
+      - KURIKULUM OBE OK.pdf
+      - MATRIK MATAKULIAH KURIKULUM 2025 PRODI ILMU HUKUM FAKULTAS HUKUM-3.pdf
+    source_match_mode: any_of
+    must_contain_any: ["kurikulum", "teknik informatika", "ilmu hukum"]
+    must_not_contain: []
+
+  - id: q022
+    query: "@khs23101051531.pdf nilai ahmad semester 3 bagaimana"
+    expected_pipeline: rag_semantic
+    expected_intent_route: default_rag
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources: [khs23101051531.pdf]
+    source_match_mode: any_of
+    must_contain_any: ["semester 3", "nilai", "hukum"]
+    must_not_contain: []

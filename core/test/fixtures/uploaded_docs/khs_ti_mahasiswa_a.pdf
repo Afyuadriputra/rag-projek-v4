@@ -1,0 +1,54 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 1 /Kids [3 0 R] >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 606 >>
+stream
+BT
+/F1 10 Tf
+50 800 Td
+(KHS Mahasiswa A - Teknik Informatika) Tj
+0 -14 Td
+(Rekap Semester 1-7) Tj
+0 -14 Td
+(Tabel: No | Kode | Mata Kuliah | SKS | Nilai | Bobot | Semester) Tj
+0 -14 Td
+(1 | IF101 | Algoritma Dasar | 3 | A | 4.0 | 1) Tj
+0 -14 Td
+(2 | IF102 | Matematika Diskrit | 3 | B+ | 3.5 | 1) Tj
+0 -14 Td
+(3 | IF201 | Struktur Data | 3 | B | 3.0 | 3) Tj
+0 -14 Td
+(4 | IF305 | Jaringan Komputer | 3 | C | 2.0 | 5) Tj
+0 -14 Td
+(5 | IF401 | Pembelajaran Mesin | 3 | A- | 3.7 | 7) Tj
+0 -14 Td
+(Total SKS: 144 | Total Mata Kuliah: 56 | IPK: 3.42) Tj
+0 -14 Td
+(Nilai Tidak Lulus \(D/E\): 2 mata kuliah) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+968
+%%EOF

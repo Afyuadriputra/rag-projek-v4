@@ -634,3 +634,191 @@ class PlannerV3ApiTests(TestCase):
         options = step.get("options") or []
         self.assertGreaterEqual(len(options), 2)
         self.assertTrue(all(isinstance(x, dict) and x.get("label") for x in options))
+
+    @patch("core.service._generate_planner_blueprint_llm")
+    @patch("core.service.extract_profile_hints")
+    @patch("core.service._extract_major_state")
+    def test_start_generates_doc_specific_questions_and_major_from_llm(
+        self,
+        major_state_mock,
+        profile_hints_mock,
+        blueprint_mock,
+    ):
+        ti_doc = AcademicDocument.objects.create(
+            user=self.user,
+            title="Transkrip Teknik Informatika.pdf",
+            file=SimpleUploadedFile("ti.pdf", b"x"),
+            is_embedded=True,
+        )
+        hukum_doc = AcademicDocument.objects.create(
+            user=self.user,
+            title="Transkrip Ilmu Hukum.pdf",
+            file=SimpleUploadedFile("hukum.pdf", b"x"),
+            is_embedded=True,
+        )
+
+        profile_hints_mock.return_value = {
+            "major_candidates": [
+                {"value": "Teknik Informatika", "label": "Teknik Informatika", "confidence": 0.91, "evidence": ["doc_terms"]}
+            ],
+            "career_candidates": [
+                {"value": "Software Engineer", "label": "Software Engineer", "confidence": 0.75, "evidence": ["doc_terms"]}
+            ],
+            "confidence_summary": "high",
+        }
+
+        def _major_state_side_effect(*args, **kwargs):
+            docs_summary = kwargs.get("docs_summary") or []
+            titles = " | ".join(str(x.get("title") or "") for x in docs_summary).lower()
+            if "hukum" in titles:
+                return {
+                    "major_label": "Ilmu Hukum",
+                    "major_confidence_score": 0.89,
+                    "major_confidence_level": "high",
+                    "source": "inferred",
+                    "evidence": ["title_match"],
+                }
+            return {
+                "major_label": "Teknik Informatika",
+                "major_confidence_score": 0.91,
+                "major_confidence_level": "high",
+                "source": "inferred",
+                "evidence": ["title_match"],
+            }
+
+        def _blueprint_side_effect(*, docs_summary, **kwargs):
+            titles = " | ".join(str(x.get("title") or "") for x in (docs_summary or [])).lower()
+            if "informatika" in titles:
+                return {
+                    "version": "v3_dynamic",
+                    "steps": [
+                        {
+                            "step_key": "intent",
+                            "title": "Fokus Analisis",
+                            "question": "Dari transkrip TI kamu, ingin fokus evaluasi IPK atau strategi mata kuliah inti?",
+                            "options": [
+                                {"id": 1, "label": "Evaluasi IPK TI", "value": "ipk_ti"},
+                                {"id": 2, "label": "Strategi MK inti TI", "value": "mk_inti_ti"},
+                            ],
+                            "allow_manual": True,
+                            "required": True,
+                            "source_hint": "mixed",
+                        }
+                    ],
+                    "meta": {"generation_mode": "llm"},
+                }
+            return {
+                "version": "v3_dynamic",
+                "steps": [
+                    {
+                        "step_key": "intent",
+                        "title": "Fokus Analisis",
+                        "question": "Berdasarkan dokumen hukum, mau fokus distribusi nilai atau kesiapan mata kuliah prasyarat?",
+                        "options": [
+                            {"id": 1, "label": "Distribusi nilai hukum", "value": "nilai_hukum"},
+                            {"id": 2, "label": "Prasyarat hukum", "value": "prasyarat_hukum"},
+                        ],
+                        "allow_manual": True,
+                        "required": True,
+                        "source_hint": "mixed",
+                    }
+                ],
+                "meta": {"generation_mode": "llm"},
+            }
+
+        major_state_mock.side_effect = _major_state_side_effect
+        blueprint_mock.side_effect = _blueprint_side_effect
+
+        res_ti = self.client.post(
+            "/api/planner/start/",
+            data=json.dumps({"reuse_doc_ids": [ti_doc.id]}),
+            content_type="application/json",
+        )
+        self.assertEqual(res_ti.status_code, 200)
+        payload_ti = res_ti.json()
+        self.assertEqual((payload_ti.get("planner_meta") or {}).get("generation_mode"), "llm")
+        ti_question = (((payload_ti.get("wizard_blueprint") or {}).get("steps") or [{}])[0]).get("question") or ""
+        self.assertIn("transkrip TI", ti_question)
+        self.assertEqual((payload_ti.get("planner_header") or {}).get("major_label"), "Teknik Informatika")
+
+        res_hukum = self.client.post(
+            "/api/planner/start/",
+            data=json.dumps({"reuse_doc_ids": [hukum_doc.id]}),
+            content_type="application/json",
+        )
+        self.assertEqual(res_hukum.status_code, 200)
+        payload_hukum = res_hukum.json()
+        self.assertEqual((payload_hukum.get("planner_meta") or {}).get("generation_mode"), "llm")
+        hukum_question = (((payload_hukum.get("wizard_blueprint") or {}).get("steps") or [{}])[0]).get("question") or ""
+        self.assertIn("dokumen hukum", hukum_question)
+        self.assertNotEqual(ti_question, hukum_question)
+        self.assertEqual((payload_hukum.get("planner_header") or {}).get("major_label"), "Ilmu Hukum")
+
+    @patch("core.service._generate_planner_blueprint_llm", return_value={})
+    def test_start_uses_fallback_when_llm_blueprint_empty(self, _blueprint_mock):
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="KHS Fallback.pdf",
+            file=SimpleUploadedFile("fallback.pdf", b"x"),
+            is_embedded=True,
+        )
+        res = self.client.post(
+            "/api/planner/start/",
+            data=json.dumps({"reuse_doc_ids": []}),
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        payload = res.json()
+        self.assertEqual(payload.get("status"), "success")
+        self.assertEqual((payload.get("planner_meta") or {}).get("generation_mode"), "fallback_rule")
+
+    @patch("core.service._generate_next_step_llm")
+    def test_next_step_question_comes_from_llm_generation(self, next_llm_mock):
+        AcademicDocument.objects.create(
+            user=self.user,
+            title="KHS Teknik Informatika Semester 5.pdf",
+            file=SimpleUploadedFile("khs-ti-s5.pdf", b"x"),
+            is_embedded=True,
+        )
+        start = self.client.post(
+            "/api/planner/start/",
+            data=json.dumps({"reuse_doc_ids": []}),
+            content_type="application/json",
+        ).json()
+        run_id = start["planner_run_id"]
+        next_llm_mock.return_value = {
+            "ready_to_generate": False,
+            "step": {
+                "step_key": "followup_doc_specific",
+                "title": "Pendalaman TI",
+                "question": "Di semester 5 TI kamu, apakah ingin fokus pemulihan nilai D/E atau optimasi beban SKS?",
+                "options": [
+                    {"id": 1, "label": "Pemulihan nilai D/E", "value": "recover_grade"},
+                    {"id": 2, "label": "Optimasi beban SKS", "value": "optimize_load"},
+                ],
+                "allow_manual": True,
+                "required": True,
+                "source_hint": "mixed",
+                "reason": "Dihasilkan dari konteks transkrip semester 5.",
+            },
+        }
+        res = self.client.post(
+            "/api/planner/next-step/",
+            data=json.dumps(
+                {
+                    "planner_run_id": run_id,
+                    "step_key": "intent",
+                    "answer_value": "ipk_trend",
+                    "answer_mode": "option",
+                    "client_step_seq": 1,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        payload = res.json()
+        self.assertEqual(payload.get("status"), "success")
+        step = payload.get("step") or {}
+        self.assertEqual(step.get("step_key"), "followup_doc_specific")
+        self.assertIn("semester 5 TI", str(step.get("question") or ""))
+        self.assertNotIn("Agar hasil lebih tajam", str(step.get("question") or ""))

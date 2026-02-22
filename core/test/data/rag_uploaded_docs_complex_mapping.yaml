@@ -1,0 +1,841 @@
+version: 1
+dataset_root: core/test/fixtures/uploaded_docs_complex
+source_groups:
+  ti_docs:
+  - khs_ti_mahasiswa_c_200x8.pdf
+  hukum_docs:
+  - khs_hukum_mahasiswa_d_200x8.pdf
+  ekonomi_docs:
+  - khs_ekonomi_mahasiswa_e_200x8.pdf
+  kedokteran_docs:
+  - khs_kedokteran_mahasiswa_f_200x8.pdf
+  sastra_docs:
+  - khs_sastra_mahasiswa_g_200x8.pdf
+  lintas_jurusan:
+  - rekap_lintas_jurusan_kompleks_2026.pdf
+  all_uploaded_complex:
+  - khs_ti_mahasiswa_c_200x8.pdf
+  - khs_hukum_mahasiswa_d_200x8.pdf
+  - khs_ekonomi_mahasiswa_e_200x8.pdf
+  - khs_kedokteran_mahasiswa_f_200x8.pdf
+  - khs_sastra_mahasiswa_g_200x8.pdf
+  - rekap_lintas_jurusan_kompleks_2026.pdf
+queries:
+- id: cxq001
+  query: rekap hasil studi jurusan ti semester 1 sampai 7
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: ti_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - hasil studi
+  - semester
+  - ti
+  must_not_contain:
+  - resep
+  expected_numbers:
+  - ti_rekap.total_sks
+  - ti_rekap.total_matkul
+- id: cxq002
+  query: berapa ipk jurusan ti
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: ti_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - ipk
+  - ti
+  must_not_contain: []
+  expected_numbers:
+  - ti_rekap.ipk
+- id: cxq003
+  query: jumlah nilai d dan e jurusan ti
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: ti_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - nilai
+  - d
+  - e
+  - ti
+  must_not_contain: []
+  expected_numbers:
+  - ti_rekap.count_nilai_d
+  - ti_rekap.count_nilai_e
+  - ti_rekap.count_tidak_lulus
+- id: cxq004
+  query: '@khs_ti_mahasiswa_c_200x8.pdf total sks nya berapa'
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: ti_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - sks
+  - ti
+  must_not_contain: []
+  expected_numbers:
+  - ti_rekap.total_sks
+- id: cxq005
+  query: semester terberat jurusan ti berapa sks
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - semester
+  - terberat
+  - ti
+  must_not_contain: []
+  expected_numbers:
+  - ti_rekap.semester_stats.semester_1.sks
+- id: cxq006
+  query: top 3 mata kuliah nilai tertinggi jurusan ti
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: ti_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - top
+  - mata kuliah
+  - nilai
+  must_not_contain: []
+- id: cxq007
+  query: rekap hasil studi jurusan hukum semester 1 sampai 7
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: hukum_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - hasil studi
+  - semester
+  - hukum
+  must_not_contain:
+  - resep
+  expected_numbers:
+  - hukum_rekap.total_sks
+  - hukum_rekap.total_matkul
+- id: cxq008
+  query: berapa ipk jurusan hukum
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: hukum_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - ipk
+  - hukum
+  must_not_contain: []
+  expected_numbers:
+  - hukum_rekap.ipk
+- id: cxq009
+  query: jumlah nilai d dan e jurusan hukum
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: hukum_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - nilai
+  - d
+  - e
+  - hukum
+  must_not_contain: []
+  expected_numbers:
+  - hukum_rekap.count_nilai_d
+  - hukum_rekap.count_nilai_e
+  - hukum_rekap.count_tidak_lulus
+- id: cxq010
+  query: '@khs_hukum_mahasiswa_d_200x8.pdf total sks nya berapa'
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: hukum_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - sks
+  - hukum
+  must_not_contain: []
+  expected_numbers:
+  - hukum_rekap.total_sks
+- id: cxq011
+  query: semester terberat jurusan hukum berapa sks
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - semester
+  - terberat
+  - hukum
+  must_not_contain: []
+  expected_numbers:
+  - hukum_rekap.semester_stats.semester_1.sks
+- id: cxq012
+  query: top 3 mata kuliah nilai tertinggi jurusan hukum
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: hukum_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - top
+  - mata kuliah
+  - nilai
+  must_not_contain: []
+- id: cxq013
+  query: rekap hasil studi jurusan ekonomi semester 1 sampai 7
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: ekonomi_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - hasil studi
+  - semester
+  - ekonomi
+  must_not_contain:
+  - resep
+  expected_numbers:
+  - ekonomi_rekap.total_sks
+  - ekonomi_rekap.total_matkul
+- id: cxq014
+  query: berapa ipk jurusan ekonomi
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: ekonomi_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - ipk
+  - ekonomi
+  must_not_contain: []
+  expected_numbers:
+  - ekonomi_rekap.ipk
+- id: cxq015
+  query: jumlah nilai d dan e jurusan ekonomi
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: ekonomi_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - nilai
+  - d
+  - e
+  - ekonomi
+  must_not_contain: []
+  expected_numbers:
+  - ekonomi_rekap.count_nilai_d
+  - ekonomi_rekap.count_nilai_e
+  - ekonomi_rekap.count_tidak_lulus
+- id: cxq016
+  query: '@khs_ekonomi_mahasiswa_e_200x8.pdf total sks nya berapa'
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: ekonomi_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - sks
+  - ekonomi
+  must_not_contain: []
+  expected_numbers:
+  - ekonomi_rekap.total_sks
+- id: cxq017
+  query: semester terberat jurusan ekonomi berapa sks
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - semester
+  - terberat
+  - ekonomi
+  must_not_contain: []
+  expected_numbers:
+  - ekonomi_rekap.semester_stats.semester_1.sks
+- id: cxq018
+  query: top 3 mata kuliah nilai tertinggi jurusan ekonomi
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: ekonomi_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - top
+  - mata kuliah
+  - nilai
+  must_not_contain: []
+- id: cxq019
+  query: rekap hasil studi jurusan kedokteran semester 1 sampai 7
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: kedokteran_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - hasil studi
+  - semester
+  - kedokteran
+  must_not_contain:
+  - resep
+  expected_numbers:
+  - kedokteran_rekap.total_sks
+  - kedokteran_rekap.total_matkul
+- id: cxq020
+  query: berapa ipk jurusan kedokteran
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: kedokteran_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - ipk
+  - kedokteran
+  must_not_contain: []
+  expected_numbers:
+  - kedokteran_rekap.ipk
+- id: cxq021
+  query: jumlah nilai d dan e jurusan kedokteran
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: kedokteran_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - nilai
+  - d
+  - e
+  - kedokteran
+  must_not_contain: []
+  expected_numbers:
+  - kedokteran_rekap.count_nilai_d
+  - kedokteran_rekap.count_nilai_e
+  - kedokteran_rekap.count_tidak_lulus
+- id: cxq022
+  query: '@khs_kedokteran_mahasiswa_f_200x8.pdf total sks nya berapa'
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: kedokteran_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - sks
+  - kedokteran
+  must_not_contain: []
+  expected_numbers:
+  - kedokteran_rekap.total_sks
+- id: cxq023
+  query: semester terberat jurusan kedokteran berapa sks
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - semester
+  - terberat
+  - kedokteran
+  must_not_contain: []
+  expected_numbers:
+  - kedokteran_rekap.semester_stats.semester_1.sks
+- id: cxq024
+  query: top 3 mata kuliah nilai tertinggi jurusan kedokteran
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: kedokteran_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - top
+  - mata kuliah
+  - nilai
+  must_not_contain: []
+- id: cxq025
+  query: rekap hasil studi jurusan sastra semester 1 sampai 7
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: sastra_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - hasil studi
+  - semester
+  - sastra
+  must_not_contain:
+  - resep
+  expected_numbers:
+  - sastra_rekap.total_sks
+  - sastra_rekap.total_matkul
+- id: cxq026
+  query: berapa ipk jurusan sastra
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: sastra_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - ipk
+  - sastra
+  must_not_contain: []
+  expected_numbers:
+  - sastra_rekap.ipk
+- id: cxq027
+  query: jumlah nilai d dan e jurusan sastra
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: sastra_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - nilai
+  - d
+  - e
+  - sastra
+  must_not_contain: []
+  expected_numbers:
+  - sastra_rekap.count_nilai_d
+  - sastra_rekap.count_nilai_e
+  - sastra_rekap.count_tidak_lulus
+- id: cxq028
+  query: '@khs_sastra_mahasiswa_g_200x8.pdf total sks nya berapa'
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  allowed_sources_group: sastra_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - sks
+  - sastra
+  must_not_contain: []
+  expected_numbers:
+  - sastra_rekap.total_sks
+- id: cxq029
+  query: semester terberat jurusan sastra berapa sks
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - semester
+  - terberat
+  - sastra
+  must_not_contain: []
+  expected_numbers:
+  - sastra_rekap.semester_stats.semester_1.sks
+- id: cxq030
+  query: top 3 mata kuliah nilai tertinggi jurusan sastra
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: sastra_docs
+  source_match_mode: any_of
+  must_contain_any:
+  - top
+  - mata kuliah
+  - nilai
+  must_not_contain: []
+- id: cxq031
+  query: bandingkan ipk semua jurusan
+  pipeline_in:
+  - rag_semantic
+  intent_route_in:
+  - default_rag
+  expected_validation_in:
+  - passed
+  - not_applicable
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - ipk
+  - jurusan
+  must_not_contain: []
+- id: cxq032
+  query: bandingkan total sks semua jurusan
+  pipeline_in:
+  - rag_semantic
+  intent_route_in:
+  - default_rag
+  expected_validation_in:
+  - passed
+  - not_applicable
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - sks
+  - jurusan
+  must_not_contain: []
+- id: cxq033
+  query: berapa nomor ijazah saya
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - no_grounding_evidence
+  allowed_sources_group: all_uploaded_complex
+  source_match_mode: any_of
+  require_source_match: false
+  must_contain_any:
+  - dokumen
+  - tidak
+  - cukup
+  must_not_contain: []
+- id: cxq034
+  query: resep ayam kecap
+  pipeline_in:
+  - route_guard
+  intent_route_in:
+  - out_of_domain
+  expected_validation_in:
+  - not_applicable
+  allowed_sources_group: all_uploaded_complex
+  source_match_mode: any_of
+  require_source_match: false
+  must_contain_any:
+  - asisten akademik
+  must_not_contain: []
+- id: cxq035
+  query: cara jadi dukun sakti
+  pipeline_in:
+  - route_guard
+  intent_route_in:
+  - out_of_domain
+  expected_validation_in:
+  - not_applicable
+  allowed_sources_group: all_uploaded_complex
+  source_match_mode: any_of
+  require_source_match: false
+  must_contain_any:
+  - asisten akademik
+  must_not_contain: []
+- id: cxq036
+  query: rekp nilia yg ga luls smua smstr semua jurusan
+  pipeline_in:
+  - structured_analytics
+  - rag_semantic
+  intent_route_in:
+  - analytical_tabular
+  - default_rag
+  expected_validation_in:
+  - passed
+  - skipped_strict
+  - strict_no_fallback
+  - not_applicable
+  - no_grounding_evidence
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - nilai
+  - semester
+  - jurusan
+  must_not_contain:
+  - politik
+- id: cxq037
+  query: which major has the heaviest semester load
+  pipeline_in:
+  - rag_semantic
+  intent_route_in:
+  - default_rag
+  expected_validation_in:
+  - passed
+  - not_applicable
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - heaviest
+  - semester
+  - jurusan
+  must_not_contain: []
+- id: cxq038
+  query: '@rekap_lintas_jurusan_kompleks_2026.pdf ranking ipk'
+  pipeline_in:
+  - rag_semantic
+  intent_route_in:
+  - default_rag
+  expected_validation_in:
+  - passed
+  - not_applicable
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - ranking
+  - ipk
+  must_not_contain: []
+- id: cxq039
+  query: '@rekap_lintas_jurusan_kompleks_2026.pdf ranking total sks'
+  pipeline_in:
+  - rag_semantic
+  intent_route_in:
+  - default_rag
+  expected_validation_in:
+  - passed
+  - not_applicable
+  allowed_sources_group: lintas_jurusan
+  source_match_mode: any_of
+  must_contain_any:
+  - ranking
+  - sks
+  must_not_contain: []
+- id: cxq040
+  query: bandingkan performa semester 3 vs 6 semua jurusan
+  pipeline_in:
+  - rag_semantic
+  - structured_analytics
+  intent_route_in:
+  - default_rag
+  - analytical_tabular
+  expected_validation_in:
+  - passed
+  - not_applicable
+  - skipped_strict
+  allowed_sources_group: all_uploaded_complex
+  source_match_mode: any_of
+  must_contain_any:
+  - semester 3
+  - semester 6
+  - jurusan
+  must_not_contain: []

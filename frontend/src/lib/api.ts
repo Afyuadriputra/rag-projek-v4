@@ -14,7 +14,9 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
-const PLANNER_START_TIMEOUT_MS = 90000;
+const PLANNER_START_TIMEOUT_MS = Number(
+  (import.meta as any)?.env?.VITE_PLANNER_START_TIMEOUT_MS || 180000
+);
 
 // ==========================================
 // 2. TIPE DATA (INTERFACES)

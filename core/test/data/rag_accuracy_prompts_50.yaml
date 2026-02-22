@@ -1,0 +1,230 @@
+version: 1
+dataset_root: dataset
+source_groups:
+  transcript_putri:
+    - Kartu Hasil Studi puput.pdf
+  khs_ahmad:
+    - khs23101051529.pdf
+    - khs23101051530.pdf
+    - khs23101051531.pdf
+    - khs23101051532.pdf
+  krs_putri:
+    - semester 1.pdf
+    - semester 2.pdf
+    - semester 3.pdf
+    - semester 4.pdf
+    - semester 5.pdf
+    - semester 6.pdf
+    - semester 7.pdf
+  curriculum_ti:
+    - KURIKULUM OBE OK.pdf
+  curriculum_hukum:
+    - MATRIK MATAKULIAH KURIKULUM 2025 PRODI ILMU HUKUM FAKULTAS HUKUM-3.pdf
+
+prompts:
+  - id: p001
+    category: factual_transcript
+    query: "coba rekap hasil studi saya"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["studi", "nilai", "mata kuliah"], must_not_contain: ["resep"]}
+  - id: p002
+    category: factual_transcript
+    query: "rekap semua matakuliah yang nilai nya tidak lulus"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["tidak lulus", "nilai", "mata kuliah"], must_not_contain: []}
+  - id: p003
+    category: factual_transcript
+    query: "berapa ipk saya saat ini"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["ipk", "studi"], must_not_contain: []}
+  - id: p004
+    category: factual_transcript
+    query: "berapa total sks yang sudah saya tempuh"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["sks", "ditempuh"], must_not_contain: []}
+  - id: p005
+    category: factual_transcript
+    query: "sebutkan mata kuliah dengan nilai rendah"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["nilai", "mata kuliah"], must_not_contain: []}
+  - id: p006
+    category: factual_transcript
+    query: "adakah mata kuliah yang masih pending penilaian"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["belum", "nilai", "mata kuliah"], must_not_contain: []}
+  - id: p007
+    category: factual_transcript
+    query: "nilai saya untuk praktikum pengantar teknologi informasi"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["praktikum", "nilai"], must_not_contain: []}
+  - id: p008
+    category: factual_transcript
+    query: "nim dan nama saya di transkrip"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["nim", "nama"], must_not_contain: []}
+  - id: p009
+    category: factual_transcript
+    query: "program studi saya apa"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["program studi", "teknik informatika"], must_not_contain: []}
+  - id: p010
+    category: factual_transcript
+    query: "buat tabel ringkas mata kuliah dan nilainya"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["mata kuliah", "nilai"], must_not_contain: []}
+  - id: p011
+    category: factual_transcript
+    query: "khs ahmad semester 1 nilainya bagaimana"
+    expected: {pipeline_in: [rag_semantic, structured_analytics], intent_route_in: [default_rag, analytical_tabular], validation_in: [not_applicable, passed, skipped_strict], require_source_match: true, allowed_sources: [khs23101051529.pdf], source_match_mode: any_of, must_contain_any: ["semester 1", "nilai", "hukum"], must_not_contain: []}
+  - id: p012
+    category: factual_transcript
+    query: "khs ahmad semester 2 ada nilai c atau d"
+    expected: {pipeline_in: [rag_semantic, structured_analytics], intent_route_in: [default_rag, analytical_tabular], validation_in: [not_applicable, passed, skipped_strict], require_source_match: true, allowed_sources: [khs23101051530.pdf], source_match_mode: any_of, must_contain_any: ["semester 2", "nilai"], must_not_contain: []}
+  - id: p013
+    category: factual_transcript
+    query: "khs ahmad semester 3 daftar mata kuliah"
+    expected: {pipeline_in: [rag_semantic, structured_analytics], intent_route_in: [default_rag, analytical_tabular], validation_in: [not_applicable, passed, skipped_strict], require_source_match: true, allowed_sources: [khs23101051531.pdf], source_match_mode: any_of, must_contain_any: ["semester 3", "mata kuliah"], must_not_contain: []}
+  - id: p014
+    category: factual_transcript
+    query: "khs ahmad semester 4 ada nilai e tidak"
+    expected: {pipeline_in: [rag_semantic, structured_analytics], intent_route_in: [default_rag, analytical_tabular], validation_in: [not_applicable, passed, skipped_strict], require_source_match: true, allowed_sources: [khs23101051532.pdf], source_match_mode: any_of, must_contain_any: ["semester 4", "nilai", "e"], must_not_contain: []}
+  - id: p015
+    category: factual_transcript
+    query: "@Kartu Hasil Studi puput.pdf ringkas nilai saya"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["nilai", "studi"], must_not_contain: []}
+  - id: p016
+    category: factual_transcript
+    query: "tolong tampilkan mata kuliah dengan sks tertinggi"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["sks", "mata kuliah"], must_not_contain: []}
+  - id: p017
+    category: factual_transcript
+    query: "nilai saya lebih banyak a atau b"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["nilai", "a", "b"], must_not_contain: []}
+  - id: p018
+    category: factual_transcript
+    query: "apakah transkrip saya sudah lengkap"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["transkrip", "studi"], must_not_contain: []}
+
+  - id: p019
+    category: factual_krs
+    query: "jadwal semester 1 saya"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 1.pdf], source_match_mode: any_of, must_contain_any: ["semester 1", "jadwal"], must_not_contain: []}
+  - id: p020
+    category: factual_krs
+    query: "jadwal semester 2 saya"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 2.pdf], source_match_mode: any_of, must_contain_any: ["semester 2", "jadwal"], must_not_contain: []}
+  - id: p021
+    category: factual_krs
+    query: "jadwal semester 3 saya"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 3.pdf], source_match_mode: any_of, must_contain_any: ["semester 3", "jadwal"], must_not_contain: []}
+  - id: p022
+    category: factual_krs
+    query: "jadwal semester 4 saya"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 4.pdf], source_match_mode: any_of, must_contain_any: ["semester 4", "jadwal"], must_not_contain: []}
+  - id: p023
+    category: factual_krs
+    query: "jadwal semester 5 saya"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 5.pdf], source_match_mode: any_of, must_contain_any: ["semester 5", "jadwal"], must_not_contain: []}
+  - id: p024
+    category: factual_krs
+    query: "jadwal semester 6 saya"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 6.pdf], source_match_mode: any_of, must_contain_any: ["semester 6", "jadwal"], must_not_contain: []}
+  - id: p025
+    category: factual_krs
+    query: "jadwal semester 7 saya"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 7.pdf], source_match_mode: any_of, must_contain_any: ["semester 7", "jadwal"], must_not_contain: []}
+  - id: p026
+    category: factual_krs
+    query: "jadwal saya hari senin"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: krs_putri, source_match_mode: any_of, must_contain_any: ["senin", "jam"], must_not_contain: []}
+  - id: p027
+    category: factual_krs
+    query: "siapa dosen pengampu di jadwal semester 3"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 3.pdf], source_match_mode: any_of, must_contain_any: ["dosen", "semester 3"], must_not_contain: []}
+  - id: p028
+    category: factual_krs
+    query: "@semester 2.pdf jadwal hari senin jam berapa"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 2.pdf], source_match_mode: any_of, must_contain_any: ["senin", "jam", "semester 2"], must_not_contain: []}
+
+  - id: p029
+    category: curriculum
+    query: "kurikulum obe 2025 teknik informatika"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: curriculum_ti, source_match_mode: any_of, must_contain_any: ["kurikulum", "teknik informatika", "sks"], must_not_contain: []}
+  - id: p030
+    category: curriculum
+    query: "mata kuliah wajib program studi di kurikulum obe"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: curriculum_ti, source_match_mode: any_of, must_contain_any: ["wajib", "program studi", "mata kuliah"], must_not_contain: []}
+  - id: p031
+    category: curriculum
+    query: "total sks semester 1 pada kurikulum obe"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: curriculum_ti, source_match_mode: any_of, must_contain_any: ["total", "sks", "semester 1"], must_not_contain: []}
+  - id: p032
+    category: curriculum
+    query: "matrik mata kuliah kurikulum 2025 ilmu hukum"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: curriculum_hukum, source_match_mode: any_of, must_contain_any: ["ilmu hukum", "kurikulum", "sks"], must_not_contain: []}
+  - id: p033
+    category: curriculum
+    query: "daftar mata kuliah semester 1 ilmu hukum"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: curriculum_hukum, source_match_mode: any_of, must_contain_any: ["semester", "ilmu hukum", "mata kuliah"], must_not_contain: []}
+  - id: p034
+    category: curriculum
+    query: "sks tiap semester di matrik hukum"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: curriculum_hukum, source_match_mode: any_of, must_contain_any: ["sks", "semester", "hukum"], must_not_contain: []}
+  - id: p035
+    category: curriculum
+    query: "perbedaan kurikulum teknik informatika dan ilmu hukum"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [KURIKULUM OBE OK.pdf, MATRIK MATAKULIAH KURIKULUM 2025 PRODI ILMU HUKUM FAKULTAS HUKUM-3.pdf], source_match_mode: any_of, must_contain_any: ["kurikulum", "teknik informatika", "ilmu hukum"], must_not_contain: []}
+  - id: p036
+    category: curriculum
+    query: "@KURIKULUM OBE OK.pdf tampilkan mata kuliah semester 2"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: curriculum_ti, source_match_mode: any_of, must_contain_any: ["semester 2", "mata kuliah"], must_not_contain: []}
+
+  - id: p037
+    category: evaluative
+    query: "bagaimana hasil studi saya ini"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["hasil studi", "nilai"], must_not_contain: []}
+  - id: p038
+    category: evaluative
+    query: "bagaimana progres studi saya"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["progres", "studi"], must_not_contain: []}
+  - id: p039
+    category: evaluative
+    query: "beban kuliah saya di semester akhir bagaimana"
+    expected: {pipeline_in: [rag_semantic, structured_analytics], intent_route_in: [default_rag, analytical_tabular], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: krs_putri, source_match_mode: any_of, must_contain_any: ["semester", "kuliah"], must_not_contain: []}
+  - id: p040
+    category: evaluative
+    query: "apakah rencana studi saya konsisten dari semester 1 sampai 7"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: krs_putri, source_match_mode: any_of, must_contain_any: ["semester", "rencana studi"], must_not_contain: []}
+  - id: p041
+    category: evaluative
+    query: "apakah nilai saya cenderung bagus"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["nilai"], must_not_contain: []}
+
+  - id: p042
+    category: typo_ambiguous
+    query: "rekp nilia yg ga luls smua smstr"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable, no_grounding_evidence], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["nilai", "mata kuliah", "semester"], must_not_contain: ["politik"]}
+  - id: p043
+    category: typo_ambiguous
+    query: "jdl smstr 3 hri slsa jm brp"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 3.pdf], source_match_mode: any_of, must_contain_any: ["semester 3", "selasa", "jam"], must_not_contain: []}
+  - id: p044
+    category: typo_ambiguous
+    query: "pls recap my khs and bad grades"
+    expected: {pipeline_in: [structured_analytics, rag_semantic], intent_route_in: [analytical_tabular, default_rag], validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable], require_source_match: true, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["khs", "nilai", "studi"], must_not_contain: []}
+  - id: p045
+    category: typo_ambiguous
+    query: "@semester 5.pdf matkul ai itu kelas apa"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources: [semester 5.pdf], source_match_mode: any_of, must_contain_any: ["kelas", "semester 5", "matakuliah"], must_not_contain: []}
+  - id: p046
+    category: typo_ambiguous
+    query: "kurikulm obe sks smstr 1 berpa"
+    expected: {pipeline_in: [rag_semantic], intent_route_in: [default_rag], validation_in: [not_applicable, passed], require_source_match: true, allowed_sources_group: curriculum_ti, source_match_mode: any_of, must_contain_any: ["sks", "semester 1", "kurikulum"], must_not_contain: []}
+
+  - id: p047
+    category: no_evidence
+    query: "berapa nilai saya di mata kuliah blockchain advanced"
+    expected: {pipeline_in: [rag_semantic, structured_analytics], intent_route_in: [default_rag, analytical_tabular], validation_in: [no_grounding_evidence], require_source_match: false, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["dokumen", "cukup", "akurat"], must_not_contain: []}
+  - id: p048
+    category: no_evidence
+    query: "berapa nomor ijazah saya"
+    expected: {pipeline_in: [rag_semantic, structured_analytics], intent_route_in: [default_rag, analytical_tabular], validation_in: [no_grounding_evidence], require_source_match: false, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["dokumen", "cukup", "akurat"], must_not_contain: []}
+
+  - id: p049
+    category: out_of_domain
+    query: "resep ayam kecap pedas manis"
+    expected: {pipeline_in: [route_guard], intent_route_in: [out_of_domain], validation_in: [not_applicable], require_source_match: false, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["asisten akademik"], must_not_contain: []}
+  - id: p050
+    category: out_of_domain
+    query: "cara jadi dukun sakti"
+    expected: {pipeline_in: [route_guard], intent_route_in: [out_of_domain], validation_in: [not_applicable], require_source_match: false, allowed_sources_group: transcript_putri, source_match_mode: any_of, must_contain_any: ["asisten akademik"], must_not_contain: []}

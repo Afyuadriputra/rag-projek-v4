@@ -11,7 +11,7 @@ export default function PlannerProgressOverlay({
   if (mode === "branching") {
     return (
       <GlassCard className="mx-auto w-[min(900px,92%)]">
-        <div className="space-y-4">
+        <div className="space-y-4" aria-live="polite">
           <div className="flex items-center justify-between">
             <div className="h-4 w-2/5 animate-pulse rounded bg-zinc-200/80 dark:bg-zinc-700/70" />
             <div className="h-4 w-10 animate-pulse rounded bg-zinc-200/70 dark:bg-zinc-700/70" />
@@ -30,12 +30,12 @@ export default function PlannerProgressOverlay({
 
   return (
     <GlassCard className="mx-auto w-[min(900px,92%)]">
-      <div className="space-y-3">
+      <div className="space-y-3" aria-live="polite">
         <InlineProgress message={message} />
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           {mode === "execute"
-            ? "Mengintegrasikan dokumen dengan panduan akademik umum."
-            : "Mengekstrak profil dan menyusun langkah planner."}
+            ? "Sistem sedang menyusun hasil akhir dari semua jawaban planner dan dokumen terpilih."
+            : "Sistem sedang mengekstrak profil dokumen untuk menyusun langkah planner."}
         </p>
       </div>
     </GlassCard>

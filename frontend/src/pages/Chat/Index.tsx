@@ -74,7 +74,7 @@ function plannerPanelId(sessionId?: number) {
 
 function buildPlannerPanelItem(
   sessionId: number | undefined,
-  state: "idle" | "onboarding" | "uploading" | "ready" | "reviewing" | "executing" | "done"
+  state: "idle" | "onboarding" | "uploading" | "branching" | "ready" | "reviewing" | "executing" | "done"
 ): ChatItem {
   return {
     id: plannerPanelId(sessionId),
@@ -193,7 +193,7 @@ export default function Index() {
   const [sessionsHasNext, setSessionsHasNext] = useState(false);
   const [sessionsLoadingMore, setSessionsLoadingMore] = useState(false);
   const [mode, setMode] = useState<"chat" | "planner">("chat");
-  const [plannerUiState, setPlannerUiState] = useState<"idle" | "onboarding" | "uploading" | "ready" | "reviewing" | "executing" | "done">("idle");
+  const [plannerUiState, setPlannerUiState] = useState<"idle" | "onboarding" | "uploading" | "branching" | "ready" | "reviewing" | "executing" | "done">("idle");
   const [plannerRunId, setPlannerRunId] = useState<string | null>(null);
   const [wizardSteps, setWizardSteps] = useState<PlannerWizardStep[]>([]);
   const [wizardAnswers, setWizardAnswers] = useState<Record<string, string>>({});
@@ -215,6 +215,8 @@ export default function Index() {
   const [plannerStateBySession, setPlannerStateBySession] = useState<Record<number, Record<string, unknown>>>({});
   const [plannerInitializedBySession, setPlannerInitializedBySession] = useState<Record<number, boolean>>({});
   const [plannerWarningBySession, setPlannerWarningBySession] = useState<Record<number, string | null>>({});
+  const [plannerSelectedDocIdsBySession, setPlannerSelectedDocIdsBySession] = useState<Record<number, number[]>>({});
+  const [plannerDocPickerOpen, setPlannerDocPickerOpen] = useState(false);
   const [activePlannerOptionMessageId, setActivePlannerOptionMessageId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -373,6 +375,21 @@ export default function Index() {
 
   const activeSessionIdNum = typeof activeSession === "number" ? activeSession : undefined;
   const plannerWarning = activeSessionIdNum ? plannerWarningBySession[activeSessionIdNum] ?? null : null;
+  const embeddedDocs = useMemo(
+    () => documents.filter((d) => d.is_embedded).map((d) => ({ id: d.id, title: d.title })),
+    [documents]
+  );
+  const selectedDocIds = useMemo(() => {
+    if (!activeSessionIdNum) return [];
+    const selected = plannerSelectedDocIdsBySession[activeSessionIdNum] ?? [];
+    const allowedDocIds = new Set(embeddedDocs.map((d) => d.id));
+    return selected.filter((id) => allowedDocIds.has(id));
+  }, [activeSessionIdNum, plannerSelectedDocIdsBySession, embeddedDocs]);
+  const selectedDocTitles = useMemo(() => {
+    if (!selectedDocIds.length) return [];
+    const byId = new Map(embeddedDocs.map((d) => [d.id, d.title] as const));
+    return selectedDocIds.map((id) => byId.get(id)).filter((title): title is string => !!title);
+  }, [embeddedDocs, selectedDocIds]);
   const shouldRenderPlannerPanel =
     mode === "planner" && plannerUiState !== "idle" && plannerUiState !== "done";
 
@@ -653,6 +670,7 @@ export default function Index() {
 
   const onToggleMode = async (nextMode: "chat" | "planner") => {
     if (nextMode === mode || loading) return;
+    setPlannerDocPickerOpen(false);
     if (mode === "planner" && plannerRunId && plannerUiState !== "done" && plannerUiState !== "idle") {
       try {
         await plannerCancelV3(plannerRunId);
@@ -772,10 +790,10 @@ export default function Index() {
     }
   };
 
-  const onPlannerReuseExisting = async () => {
-    const ids = documents.filter((d) => d.is_embedded).map((d) => d.id);
+  const onPlannerReuseExisting = async (selectedIds?: number[]) => {
+    const ids = selectedIds ?? selectedDocIds;
     if (!ids.length) {
-      setToast({ open: true, kind: "error", msg: "Tidak ada dokumen existing yang siap dipakai." });
+      setToast({ open: true, kind: "error", msg: "Pilih minimal satu dokumen existing untuk melanjutkan planner." });
       return;
     }
     setPlannerUiState("uploading");
@@ -811,6 +829,33 @@ export default function Index() {
     }
   };
 
+  const onPlannerOpenDocPicker = () => {
+    setPlannerDocPickerOpen(true);
+  };
+
+  const onPlannerCloseDocPicker = () => {
+    setPlannerDocPickerOpen(false);
+  };
+
+  const onPlannerClearDocSelection = () => {
+    if (!activeSessionIdNum) return;
+    setPlannerSelectedDocIdsBySession((prev) => ({ ...prev, [activeSessionIdNum]: [] }));
+  };
+
+  const onPlannerConfirmDocPicker = async (ids: number[]) => {
+    if (!activeSessionIdNum) return;
+    const normalized = Array.from(
+      new Set(ids.map((id) => Number(id)).filter((id) => Number.isFinite(id)))
+    );
+    setPlannerSelectedDocIdsBySession((prev) => ({ ...prev, [activeSessionIdNum]: normalized }));
+    setPlannerDocPickerOpen(false);
+    if (!normalized.length) {
+      setToast({ open: true, kind: "error", msg: "Pilih minimal satu dokumen existing untuk melanjutkan planner." });
+      return;
+    }
+    await onPlannerReuseExisting(normalized);
+  };
+
   const onPlannerSelectOption = (value: string) => {
     const step = wizardSteps[wizardIndex];
     if (!step) return;
@@ -832,7 +877,7 @@ export default function Index() {
     const answerPayload = matchedOpt ? String(matchedOpt.label || raw).trim() : raw;
     const answerMode: "option" | "manual" = matchedOpt ? "option" : "manual";
     setLoading(true);
-    setPlannerUiState("uploading");
+    setPlannerUiState("branching");
     setPlannerProgressMode("branching");
     setPlannerProgressMessage("Menyesuaikan percabangan AI berdasarkan jawaban...");
     try {
@@ -940,8 +985,17 @@ export default function Index() {
     setPlannerProgressMessage("Menyusun hasil akhir...");
     setLoading(true);
     try {
-      const firstAnswer = Object.values(wizardAnswers)[0] || "akademik umum";
-      const summary = `Analisis planner fokus ${firstAnswer}`;
+      const summaryParts = wizardSteps
+        .map((step) => {
+          const value = String(wizardAnswers[step.step_key] || "").trim();
+          if (!value) return null;
+          return `${step.title}: ${value}`;
+        })
+        .filter((part): part is string => !!part);
+      const summary =
+        summaryParts.length > 0
+          ? summaryParts.join(" | ")
+          : "Fokus: akademik umum | Filter: default | Output: ringkasan akademik";
       const userTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       setItems((prev) => [
         ...prev,
@@ -1054,6 +1108,7 @@ export default function Index() {
         },
       ]);
       setActivePlannerOptionMessageId(null);
+      setPlannerDocPickerOpen(false);
       setMobileMenuOpen(false);
     } catch (e: any) {
       setToast({ open: true, kind: "error", msg: e?.message ?? "Gagal membuat chat." });
@@ -1063,6 +1118,7 @@ export default function Index() {
   const onSelectSession = async (sessionId: number) => {
     if (sessionId === activeSession) return;
     setActiveSession(sessionId);
+    setPlannerDocPickerOpen(false);
     setActivePlannerOptionMessageId(null);
     setLoading(true);
     try {
@@ -1324,11 +1380,18 @@ export default function Index() {
                 plannerCanGenerateNow,
                 plannerPathSummary,
                 plannerDocs,
+                embeddedDocs,
+                selectedDocIds,
+                selectedDocTitles,
+                docPickerOpen: plannerDocPickerOpen,
                 loading,
                 deletingDocId,
                 plannerWarning,
                 onUploadNew: onUploadClick,
-                onReuseExisting: onPlannerReuseExisting,
+                onOpenDocPicker: onPlannerOpenDocPicker,
+                onConfirmDocPicker: onPlannerConfirmDocPicker,
+                onCloseDocPicker: onPlannerCloseDocPicker,
+                onClearDocSelection: onPlannerClearDocSelection,
                 onSelectOption: onPlannerSelectOption,
                 onChangeManual: onPlannerManualChange,
                 onNext: onPlannerNext,
@@ -1347,6 +1410,11 @@ export default function Index() {
               loading ||
               deletingDocId !== null ||
               (mode === "planner" && plannerUiState !== "done" && plannerUiState !== "idle")
+            }
+            plannerLockReason={
+              mode === "planner" && plannerUiState !== "done" && plannerUiState !== "idle"
+                ? "Selesaikan langkah planner atau klik Analisis Sekarang."
+                : undefined
             }
             deletingDoc={deletingDocId !== null}
             docs={documents.map((d) => ({ id: d.id, title: d.title }))}

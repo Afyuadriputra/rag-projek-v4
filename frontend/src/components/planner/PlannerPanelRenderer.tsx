@@ -2,10 +2,11 @@ import PlannerOnboardingCard from "@/components/planner/PlannerOnboardingCard";
 import PlannerWizardCard from "@/components/planner/PlannerWizardCard";
 import PlannerReviewCard from "@/components/planner/PlannerReviewCard";
 import PlannerProgressOverlay from "@/components/planner/PlannerProgressOverlay";
+import PlannerDocPickerSheet from "@/components/planner/PlannerDocPickerSheet";
 import type { PlannerProfileHintsSummary, PlannerWizardStep } from "@/lib/api";
 import type { PlannerHeaderMeta } from "@/lib/api";
 
-export type PlannerUiState = "idle" | "onboarding" | "uploading" | "ready" | "reviewing" | "executing" | "done";
+export type PlannerUiState = "idle" | "onboarding" | "uploading" | "branching" | "ready" | "reviewing" | "executing" | "done";
 
 export default function PlannerPanelRenderer({
   state,
@@ -25,11 +26,18 @@ export default function PlannerPanelRenderer({
   plannerCanGenerateNow,
   plannerPathSummary,
   plannerDocs,
+  embeddedDocs,
+  selectedDocIds,
+  selectedDocTitles,
+  docPickerOpen,
   loading,
   deletingDocId,
   plannerWarning,
   onUploadNew,
-  onReuseExisting,
+  onOpenDocPicker,
+  onConfirmDocPicker,
+  onCloseDocPicker,
+  onClearDocSelection,
   onSelectOption,
   onChangeManual,
   onNext,
@@ -54,11 +62,18 @@ export default function PlannerPanelRenderer({
   plannerCanGenerateNow: boolean;
   plannerPathSummary: string;
   plannerDocs: Array<{ id: number; title: string }>;
+  embeddedDocs: Array<{ id: number; title: string }>;
+  selectedDocIds: number[];
+  selectedDocTitles: string[];
+  docPickerOpen: boolean;
   loading: boolean;
   deletingDocId: number | null;
   plannerWarning?: string | null;
   onUploadNew: () => void;
-  onReuseExisting: () => void;
+  onOpenDocPicker: () => void;
+  onConfirmDocPicker: (ids: number[]) => void;
+  onCloseDocPicker: () => void;
+  onClearDocSelection: () => void;
   onSelectOption: (value: string) => void;
   onChangeManual: (value: string) => void;
   onNext: () => void;
@@ -70,18 +85,31 @@ export default function PlannerPanelRenderer({
 
   if (state === "onboarding") {
     return (
-      <PlannerOnboardingCard
-        hasEmbeddedDocs={hasEmbeddedDocs}
-        onUploadNew={onUploadNew}
-        onReuseExisting={onReuseExisting}
-        relevanceError={relevanceError}
-        majorSummary={majorSummary}
-        disabled={disabled}
-      />
+      <>
+        <PlannerOnboardingCard
+          hasEmbeddedDocs={hasEmbeddedDocs}
+          onUploadNew={onUploadNew}
+          onOpenDocPicker={onOpenDocPicker}
+          relevanceError={relevanceError}
+          majorSummary={majorSummary}
+          selectedDocTitles={selectedDocTitles}
+          selectedDocCount={selectedDocIds.length}
+          onClearDocSelection={onClearDocSelection}
+          disabled={disabled}
+        />
+        <PlannerDocPickerSheet
+          open={docPickerOpen}
+          docs={embeddedDocs}
+          selectedIds={selectedDocIds}
+          onClose={onCloseDocPicker}
+          onConfirm={onConfirmDocPicker}
+          onClear={onClearDocSelection}
+        />
+      </>
     );
   }
 
-  if (state === "uploading" || state === "executing") {
+  if (state === "uploading" || state === "branching" || state === "executing") {
     return <PlannerProgressOverlay message={progressMessage} mode={progressMode} />;
   }
 

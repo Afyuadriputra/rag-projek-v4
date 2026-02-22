@@ -82,3 +82,32 @@ Decommission rule:
 - `RAG_ROUTE_CACHE_TTL_S`: TTL cache resolusi route intent.
 - `RAG_MENTION_CACHE_TTL_S`: TTL cache resolusi mention `@file`.
 - `RAG_USER_DOCS_CACHE_TTL_S`: TTL cache cek keberadaan dokumen user.
+
+## Test Coverage Map (Dataset + Uploaded Docs)
+- Existing dataset contracts:
+  - `core/test/data/rag_query_source_mapping.yaml`
+  - `core/test/data/rag_accuracy_prompts_50.yaml`
+  - `core/test/test_rag_dataset_regression.py`
+- Uploaded docs contracts (complex academic tables, semester 1-7, multi-major):
+  - `core/test/fixtures/uploaded_docs/khs_ti_mahasiswa_a.pdf`
+  - `core/test/fixtures/uploaded_docs/khs_hukum_mahasiswa_b.pdf`
+  - `core/test/fixtures/uploaded_docs/rekap_lintas_jurusan_2025.pdf`
+  - `core/test/data/rag_uploaded_docs_ground_truth.yaml`
+  - `core/test/data/rag_uploaded_docs_mapping.yaml`
+  - `core/test/data/rag_uploaded_docs_prompts_50.yaml`
+  - `core/test/test_rag_uploaded_docs_regression.py`
+
+## Test Coverage Map (Uploaded Docs Complex Pack)
+- Complex fixtures (200 rows x 8 pages, 5 majors):
+  - `core/test/fixtures/uploaded_docs_complex/khs_ti_mahasiswa_c_200x8.pdf`
+  - `core/test/fixtures/uploaded_docs_complex/khs_hukum_mahasiswa_d_200x8.pdf`
+  - `core/test/fixtures/uploaded_docs_complex/khs_ekonomi_mahasiswa_e_200x8.pdf`
+  - `core/test/fixtures/uploaded_docs_complex/khs_kedokteran_mahasiswa_f_200x8.pdf`
+  - `core/test/fixtures/uploaded_docs_complex/khs_sastra_mahasiswa_g_200x8.pdf`
+  - `core/test/fixtures/uploaded_docs_complex/rekap_lintas_jurusan_kompleks_2026.pdf`
+- Complex contracts:
+  - `core/test/data/rag_uploaded_docs_complex_ground_truth.yaml`
+  - `core/test/data/rag_uploaded_docs_complex_mapping.yaml`
+  - `core/test/data/rag_uploaded_docs_complex_prompts_80.yaml`
+  - `core/test/test_rag_uploaded_docs_complex_regression.py`
+  - `core/test/tools/generate_uploaded_docs_complex_fixtures.py`

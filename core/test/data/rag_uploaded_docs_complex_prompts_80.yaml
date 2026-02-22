@@ -1,0 +1,1904 @@
+version: 1
+dataset_root: core/test/fixtures/uploaded_docs_complex
+source_groups:
+  ti_docs:
+  - khs_ti_mahasiswa_c_200x8.pdf
+  hukum_docs:
+  - khs_hukum_mahasiswa_d_200x8.pdf
+  ekonomi_docs:
+  - khs_ekonomi_mahasiswa_e_200x8.pdf
+  kedokteran_docs:
+  - khs_kedokteran_mahasiswa_f_200x8.pdf
+  sastra_docs:
+  - khs_sastra_mahasiswa_g_200x8.pdf
+  lintas_jurusan:
+  - rekap_lintas_jurusan_kompleks_2026.pdf
+  all_uploaded_complex:
+  - khs_ti_mahasiswa_c_200x8.pdf
+  - khs_hukum_mahasiswa_d_200x8.pdf
+  - khs_ekonomi_mahasiswa_e_200x8.pdf
+  - khs_kedokteran_mahasiswa_f_200x8.pdf
+  - khs_sastra_mahasiswa_g_200x8.pdf
+  - rekap_lintas_jurusan_kompleks_2026.pdf
+prompts:
+- id: cp001
+  category: factual_transcript
+  query: rekap hasil studi jurusan ti
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - hasil studi
+    - ti
+    must_not_contain: []
+    allowed_sources_group: ti_docs
+    expected_numbers:
+    - ti_rekap.total_sks
+- id: cp002
+  category: factual_transcript
+  query: berapa ipk jurusan hukum sekarang
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ipk
+    - hukum
+    must_not_contain: []
+    allowed_sources_group: hukum_docs
+    expected_numbers:
+    - hukum_rekap.ipk
+- id: cp003
+  category: factual_transcript
+  query: nilai d dan e jurusan ekonomi ada berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - nilai
+    - d
+    - e
+    must_not_contain: []
+    allowed_sources_group: ekonomi_docs
+    expected_numbers:
+    - ekonomi_rekap.count_nilai_d
+    - ekonomi_rekap.count_nilai_e
+- id: cp004
+  category: factual_transcript
+  query: '@khs_kedokteran_mahasiswa_f_200x8.pdf total mata kuliah berapa'
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - mata kuliah
+    - jumlah
+    must_not_contain: []
+    allowed_sources_group: kedokteran_docs
+    expected_numbers:
+    - kedokteran_rekap.total_matkul
+- id: cp005
+  category: factual_transcript
+  query: buat ringkasan transcript sastra dengan angka utama
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - studi
+    - nilai
+    must_not_contain: []
+    allowed_sources_group: sastra_docs
+    expected_numbers:
+    - sastra_rekap.total_sks
+    - sastra_rekap.ipk
+- id: cp006
+  category: factual_transcript
+  query: rekap hasil studi jurusan ti
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - hasil studi
+    - ti
+    must_not_contain: []
+    allowed_sources_group: ti_docs
+    expected_numbers:
+    - ti_rekap.total_sks
+- id: cp007
+  category: factual_transcript
+  query: berapa ipk jurusan hukum sekarang
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ipk
+    - hukum
+    must_not_contain: []
+    allowed_sources_group: hukum_docs
+    expected_numbers:
+    - hukum_rekap.ipk
+- id: cp008
+  category: factual_transcript
+  query: nilai d dan e jurusan ekonomi ada berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - nilai
+    - d
+    - e
+    must_not_contain: []
+    allowed_sources_group: ekonomi_docs
+    expected_numbers:
+    - ekonomi_rekap.count_nilai_d
+    - ekonomi_rekap.count_nilai_e
+- id: cp009
+  category: factual_transcript
+  query: '@khs_kedokteran_mahasiswa_f_200x8.pdf total mata kuliah berapa'
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - mata kuliah
+    - jumlah
+    must_not_contain: []
+    allowed_sources_group: kedokteran_docs
+    expected_numbers:
+    - kedokteran_rekap.total_matkul
+- id: cp010
+  category: factual_transcript
+  query: buat ringkasan transcript sastra dengan angka utama
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - studi
+    - nilai
+    must_not_contain: []
+    allowed_sources_group: sastra_docs
+    expected_numbers:
+    - sastra_rekap.total_sks
+    - sastra_rekap.ipk
+- id: cp011
+  category: factual_transcript
+  query: rekap hasil studi jurusan ti
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - hasil studi
+    - ti
+    must_not_contain: []
+    allowed_sources_group: ti_docs
+    expected_numbers:
+    - ti_rekap.total_sks
+- id: cp012
+  category: factual_transcript
+  query: berapa ipk jurusan hukum sekarang
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ipk
+    - hukum
+    must_not_contain: []
+    allowed_sources_group: hukum_docs
+    expected_numbers:
+    - hukum_rekap.ipk
+- id: cp013
+  category: factual_transcript
+  query: nilai d dan e jurusan ekonomi ada berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - nilai
+    - d
+    - e
+    must_not_contain: []
+    allowed_sources_group: ekonomi_docs
+    expected_numbers:
+    - ekonomi_rekap.count_nilai_d
+    - ekonomi_rekap.count_nilai_e
+- id: cp014
+  category: factual_transcript
+  query: '@khs_kedokteran_mahasiswa_f_200x8.pdf total mata kuliah berapa'
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - mata kuliah
+    - jumlah
+    must_not_contain: []
+    allowed_sources_group: kedokteran_docs
+    expected_numbers:
+    - kedokteran_rekap.total_matkul
+- id: cp015
+  category: factual_transcript
+  query: buat ringkasan transcript sastra dengan angka utama
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - studi
+    - nilai
+    must_not_contain: []
+    allowed_sources_group: sastra_docs
+    expected_numbers:
+    - sastra_rekap.total_sks
+    - sastra_rekap.ipk
+- id: cp016
+  category: factual_transcript
+  query: rekap hasil studi jurusan ti
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - hasil studi
+    - ti
+    must_not_contain: []
+    allowed_sources_group: ti_docs
+    expected_numbers:
+    - ti_rekap.total_sks
+- id: cp017
+  category: factual_transcript
+  query: berapa ipk jurusan hukum sekarang
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ipk
+    - hukum
+    must_not_contain: []
+    allowed_sources_group: hukum_docs
+    expected_numbers:
+    - hukum_rekap.ipk
+- id: cp018
+  category: factual_transcript
+  query: nilai d dan e jurusan ekonomi ada berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - nilai
+    - d
+    - e
+    must_not_contain: []
+    allowed_sources_group: ekonomi_docs
+    expected_numbers:
+    - ekonomi_rekap.count_nilai_d
+    - ekonomi_rekap.count_nilai_e
+- id: cp019
+  category: factual_transcript
+  query: '@khs_kedokteran_mahasiswa_f_200x8.pdf total mata kuliah berapa'
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - mata kuliah
+    - jumlah
+    must_not_contain: []
+    allowed_sources_group: kedokteran_docs
+    expected_numbers:
+    - kedokteran_rekap.total_matkul
+- id: cp020
+  category: factual_transcript
+  query: buat ringkasan transcript sastra dengan angka utama
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - studi
+    - nilai
+    must_not_contain: []
+    allowed_sources_group: sastra_docs
+    expected_numbers:
+    - sastra_rekap.total_sks
+    - sastra_rekap.ipk
+- id: cp021
+  category: factual_transcript
+  query: rekap hasil studi jurusan ti
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - hasil studi
+    - ti
+    must_not_contain: []
+    allowed_sources_group: ti_docs
+    expected_numbers:
+    - ti_rekap.total_sks
+- id: cp022
+  category: factual_transcript
+  query: berapa ipk jurusan hukum sekarang
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ipk
+    - hukum
+    must_not_contain: []
+    allowed_sources_group: hukum_docs
+    expected_numbers:
+    - hukum_rekap.ipk
+- id: cp023
+  category: factual_transcript
+  query: nilai d dan e jurusan ekonomi ada berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - nilai
+    - d
+    - e
+    must_not_contain: []
+    allowed_sources_group: ekonomi_docs
+    expected_numbers:
+    - ekonomi_rekap.count_nilai_d
+    - ekonomi_rekap.count_nilai_e
+- id: cp024
+  category: factual_transcript
+  query: '@khs_kedokteran_mahasiswa_f_200x8.pdf total mata kuliah berapa'
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - mata kuliah
+    - jumlah
+    must_not_contain: []
+    allowed_sources_group: kedokteran_docs
+    expected_numbers:
+    - kedokteran_rekap.total_matkul
+- id: cp025
+  category: factual_transcript
+  query: buat ringkasan transcript sastra dengan angka utama
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - studi
+    - nilai
+    must_not_contain: []
+    allowed_sources_group: sastra_docs
+    expected_numbers:
+    - sastra_rekap.total_sks
+    - sastra_rekap.ipk
+- id: cp026
+  category: factual_schedule_or_semester
+  query: jurusan ti semester 1 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '1'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: ti_docs
+    expected_numbers:
+    - ti_rekap.semester_stats.semester_1.sks
+    - ti_rekap.semester_stats.semester_1.matkul
+    expected_semesters:
+    - 1
+- id: cp027
+  category: factual_schedule_or_semester
+  query: jurusan hukum semester 2 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '2'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: hukum_docs
+    expected_numbers:
+    - hukum_rekap.semester_stats.semester_2.sks
+    - hukum_rekap.semester_stats.semester_2.matkul
+    expected_semesters:
+    - 2
+- id: cp028
+  category: factual_schedule_or_semester
+  query: jurusan ekonomi semester 3 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '3'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: ekonomi_docs
+    expected_numbers:
+    - ekonomi_rekap.semester_stats.semester_3.sks
+    - ekonomi_rekap.semester_stats.semester_3.matkul
+    expected_semesters:
+    - 3
+- id: cp029
+  category: factual_schedule_or_semester
+  query: jurusan kedokteran semester 4 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '4'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: kedokteran_docs
+    expected_numbers:
+    - kedokteran_rekap.semester_stats.semester_4.sks
+    - kedokteran_rekap.semester_stats.semester_4.matkul
+    expected_semesters:
+    - 4
+- id: cp030
+  category: factual_schedule_or_semester
+  query: jurusan sastra semester 5 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '5'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: sastra_docs
+    expected_numbers:
+    - sastra_rekap.semester_stats.semester_5.sks
+    - sastra_rekap.semester_stats.semester_5.matkul
+    expected_semesters:
+    - 5
+- id: cp031
+  category: factual_schedule_or_semester
+  query: jurusan ti semester 6 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '6'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: ti_docs
+    expected_numbers:
+    - ti_rekap.semester_stats.semester_6.sks
+    - ti_rekap.semester_stats.semester_6.matkul
+    expected_semesters:
+    - 6
+- id: cp032
+  category: factual_schedule_or_semester
+  query: jurusan hukum semester 7 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '7'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: hukum_docs
+    expected_numbers:
+    - hukum_rekap.semester_stats.semester_7.sks
+    - hukum_rekap.semester_stats.semester_7.matkul
+    expected_semesters:
+    - 7
+- id: cp033
+  category: factual_schedule_or_semester
+  query: jurusan ekonomi semester 1 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '1'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: ekonomi_docs
+    expected_numbers:
+    - ekonomi_rekap.semester_stats.semester_1.sks
+    - ekonomi_rekap.semester_stats.semester_1.matkul
+    expected_semesters:
+    - 1
+- id: cp034
+  category: factual_schedule_or_semester
+  query: jurusan kedokteran semester 2 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '2'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: kedokteran_docs
+    expected_numbers:
+    - kedokteran_rekap.semester_stats.semester_2.sks
+    - kedokteran_rekap.semester_stats.semester_2.matkul
+    expected_semesters:
+    - 2
+- id: cp035
+  category: factual_schedule_or_semester
+  query: jurusan sastra semester 3 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '3'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: sastra_docs
+    expected_numbers:
+    - sastra_rekap.semester_stats.semester_3.sks
+    - sastra_rekap.semester_stats.semester_3.matkul
+    expected_semesters:
+    - 3
+- id: cp036
+  category: factual_schedule_or_semester
+  query: jurusan ti semester 4 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '4'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: ti_docs
+    expected_numbers:
+    - ti_rekap.semester_stats.semester_4.sks
+    - ti_rekap.semester_stats.semester_4.matkul
+    expected_semesters:
+    - 4
+- id: cp037
+  category: factual_schedule_or_semester
+  query: jurusan hukum semester 5 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '5'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: hukum_docs
+    expected_numbers:
+    - hukum_rekap.semester_stats.semester_5.sks
+    - hukum_rekap.semester_stats.semester_5.matkul
+    expected_semesters:
+    - 5
+- id: cp038
+  category: factual_schedule_or_semester
+  query: jurusan ekonomi semester 6 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '6'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: ekonomi_docs
+    expected_numbers:
+    - ekonomi_rekap.semester_stats.semester_6.sks
+    - ekonomi_rekap.semester_stats.semester_6.matkul
+    expected_semesters:
+    - 6
+- id: cp039
+  category: factual_schedule_or_semester
+  query: jurusan kedokteran semester 7 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '7'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: kedokteran_docs
+    expected_numbers:
+    - kedokteran_rekap.semester_stats.semester_7.sks
+    - kedokteran_rekap.semester_stats.semester_7.matkul
+    expected_semesters:
+    - 7
+- id: cp040
+  category: factual_schedule_or_semester
+  query: jurusan sastra semester 1 sks dan jumlah matkul berapa
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - '1'
+    - sks
+    must_not_contain: []
+    allowed_sources_group: sastra_docs
+    expected_numbers:
+    - sastra_rekap.semester_stats.semester_1.sks
+    - sastra_rekap.semester_stats.semester_1.matkul
+    expected_semesters:
+    - 1
+- id: cp041
+  category: cross_major_comparison
+  query: bandingkan ipk antar 5 jurusan
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ipk
+    - jurusan
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+- id: cp042
+  category: cross_major_comparison
+  query: bandingkan total sks antar 5 jurusan
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - sks
+    - jurusan
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+- id: cp043
+  category: cross_major_comparison
+  query: siapa jurusan dengan beban semester terberat
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - terberat
+    - jurusan
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+    expected_numbers:
+    - lintas_jurusan_kompleks_2026.semester_terberat
+    - lintas_jurusan_kompleks_2026.sks_semester_terberat
+- id: cp044
+  category: cross_major_comparison
+  query: '@rekap_lintas_jurusan_kompleks_2026.pdf tampilkan ranking ipk'
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ranking
+    - ipk
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+- id: cp045
+  category: cross_major_comparison
+  query: bandingkan ipk antar 5 jurusan
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ipk
+    - jurusan
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+- id: cp046
+  category: cross_major_comparison
+  query: bandingkan total sks antar 5 jurusan
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - sks
+    - jurusan
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+- id: cp047
+  category: cross_major_comparison
+  query: siapa jurusan dengan beban semester terberat
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - terberat
+    - jurusan
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+    expected_numbers:
+    - lintas_jurusan_kompleks_2026.semester_terberat
+    - lintas_jurusan_kompleks_2026.sks_semester_terberat
+- id: cp048
+  category: cross_major_comparison
+  query: '@rekap_lintas_jurusan_kompleks_2026.pdf tampilkan ranking ipk'
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ranking
+    - ipk
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+- id: cp049
+  category: cross_major_comparison
+  query: bandingkan ipk antar 5 jurusan
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ipk
+    - jurusan
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+- id: cp050
+  category: cross_major_comparison
+  query: bandingkan total sks antar 5 jurusan
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - sks
+    - jurusan
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+- id: cp051
+  category: cross_major_comparison
+  query: siapa jurusan dengan beban semester terberat
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - semester
+    - terberat
+    - jurusan
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+    expected_numbers:
+    - lintas_jurusan_kompleks_2026.semester_terberat
+    - lintas_jurusan_kompleks_2026.sks_semester_terberat
+- id: cp052
+  category: cross_major_comparison
+  query: '@rekap_lintas_jurusan_kompleks_2026.pdf tampilkan ranking ipk'
+  expected:
+    pipeline_in:
+    - rag_semantic
+    intent_route_in:
+    - default_rag
+    validation_in:
+    - passed
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - ranking
+    - ipk
+    must_not_contain: []
+    allowed_sources_group: lintas_jurusan
+- id: cp053
+  category: evaluative_grounded
+  query: menurut data dokumen, bagaimana performa akademik ti
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - berdasarkan
+    - dokumen
+    - ti
+    must_not_contain: []
+    allowed_sources_group: ti_docs
+- id: cp054
+  category: evaluative_grounded
+  query: menurut data dokumen, bagaimana performa akademik hukum
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - berdasarkan
+    - dokumen
+    - hukum
+    must_not_contain: []
+    allowed_sources_group: hukum_docs
+- id: cp055
+  category: evaluative_grounded
+  query: menurut data dokumen, bagaimana performa akademik ekonomi
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - berdasarkan
+    - dokumen
+    - ekonomi
+    must_not_contain: []
+    allowed_sources_group: ekonomi_docs
+- id: cp056
+  category: evaluative_grounded
+  query: menurut data dokumen, bagaimana performa akademik kedokteran
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - berdasarkan
+    - dokumen
+    - kedokteran
+    must_not_contain: []
+    allowed_sources_group: kedokteran_docs
+- id: cp057
+  category: evaluative_grounded
+  query: menurut data dokumen, bagaimana performa akademik sastra
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - berdasarkan
+    - dokumen
+    - sastra
+    must_not_contain: []
+    allowed_sources_group: sastra_docs
+- id: cp058
+  category: evaluative_grounded
+  query: menurut data dokumen, bagaimana performa akademik ti
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - berdasarkan
+    - dokumen
+    - ti
+    must_not_contain: []
+    allowed_sources_group: ti_docs
+- id: cp059
+  category: evaluative_grounded
+  query: menurut data dokumen, bagaimana performa akademik hukum
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - berdasarkan
+    - dokumen
+    - hukum
+    must_not_contain: []
+    allowed_sources_group: hukum_docs
+- id: cp060
+  category: evaluative_grounded
+  query: menurut data dokumen, bagaimana performa akademik ekonomi
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - berdasarkan
+    - dokumen
+    - ekonomi
+    must_not_contain: []
+    allowed_sources_group: ekonomi_docs
+- id: cp061
+  category: evaluative_grounded
+  query: menurut data dokumen, bagaimana performa akademik kedokteran
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - berdasarkan
+    - dokumen
+    - kedokteran
+    must_not_contain: []
+    allowed_sources_group: kedokteran_docs
+- id: cp062
+  category: evaluative_grounded
+  query: menurut data dokumen, bagaimana performa akademik sastra
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - berdasarkan
+    - dokumen
+    - sastra
+    must_not_contain: []
+    allowed_sources_group: sastra_docs
+- id: cp063
+  category: typo_ambiguous_multilingual
+  query: rekp nilia yg ga luls smua smstr jurusan ti
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    - no_grounding_evidence
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    must_not_contain:
+    - politik
+    allowed_sources_group: all_uploaded_complex
+- id: cp064
+  category: typo_ambiguous_multilingual
+  query: ipk hkm skrg brp?
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    - no_grounding_evidence
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    must_not_contain:
+    - politik
+    allowed_sources_group: all_uploaded_complex
+- id: cp065
+  category: typo_ambiguous_multilingual
+  query: pls summarize econ transcript and failed subjects
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    - no_grounding_evidence
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    must_not_contain:
+    - politik
+    allowed_sources_group: all_uploaded_complex
+- id: cp066
+  category: typo_ambiguous_multilingual
+  query: smstr 3 med sks brp?
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    - no_grounding_evidence
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    must_not_contain:
+    - politik
+    allowed_sources_group: all_uploaded_complex
+- id: cp067
+  category: typo_ambiguous_multilingual
+  query: '@khs_sastra_mahasiswa_g_200x8.pdf top mk yg nilainya jelek'
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    - no_grounding_evidence
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    must_not_contain:
+    - politik
+    allowed_sources_group: all_uploaded_complex
+- id: cp068
+  category: typo_ambiguous_multilingual
+  query: bndingkn skl jurusan yg plng bnyk d/e
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    - no_grounding_evidence
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    must_not_contain:
+    - politik
+    allowed_sources_group: all_uploaded_complex
+- id: cp069
+  category: typo_ambiguous_multilingual
+  query: which major has highest gpa from uploaded docs
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    - no_grounding_evidence
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    must_not_contain:
+    - politik
+    allowed_sources_group: all_uploaded_complex
+- id: cp070
+  category: typo_ambiguous_multilingual
+  query: tolong recap lintas jurusan tp singkat
+  expected:
+    pipeline_in:
+    - structured_analytics
+    - rag_semantic
+    - rag_semantic
+    intent_route_in:
+    - analytical_tabular
+    - default_rag
+    validation_in:
+    - passed
+    - skipped_strict
+    - strict_no_fallback
+    - not_applicable
+    - no_grounding_evidence
+    require_source_match: true
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    must_not_contain:
+    - politik
+    allowed_sources_group: all_uploaded_complex
+- id: cp071
+  category: partial_evidence
+  query: apakah ada data kehadiran mahasiswa di dokumen ini
+  expected:
+    pipeline_in:
+    - rag_semantic
+    - structured_analytics
+    intent_route_in:
+    - default_rag
+    - analytical_tabular
+    validation_in:
+    - no_grounding_evidence
+    - passed
+    - not_applicable
+    require_source_match: false
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    - tidak
+    - tersedia
+    must_not_contain: []
+    allowed_sources_group: all_uploaded_complex
+- id: cp072
+  category: partial_evidence
+  query: siapa dosen wali saya dari dokumen upload
+  expected:
+    pipeline_in:
+    - rag_semantic
+    - structured_analytics
+    intent_route_in:
+    - default_rag
+    - analytical_tabular
+    validation_in:
+    - no_grounding_evidence
+    - passed
+    - not_applicable
+    require_source_match: false
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    - tidak
+    - tersedia
+    must_not_contain: []
+    allowed_sources_group: all_uploaded_complex
+- id: cp073
+  category: partial_evidence
+  query: apakah ada data nomor hp mahasiswa
+  expected:
+    pipeline_in:
+    - rag_semantic
+    - structured_analytics
+    intent_route_in:
+    - default_rag
+    - analytical_tabular
+    validation_in:
+    - no_grounding_evidence
+    - passed
+    - not_applicable
+    require_source_match: false
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    - tidak
+    - tersedia
+    must_not_contain: []
+    allowed_sources_group: all_uploaded_complex
+- id: cp074
+  category: partial_evidence
+  query: dokumen ini ada data alamat rumah?
+  expected:
+    pipeline_in:
+    - rag_semantic
+    - structured_analytics
+    intent_route_in:
+    - default_rag
+    - analytical_tabular
+    validation_in:
+    - no_grounding_evidence
+    - passed
+    - not_applicable
+    require_source_match: false
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    - tidak
+    - tersedia
+    must_not_contain: []
+    allowed_sources_group: all_uploaded_complex
+- id: cp075
+  category: no_evidence
+  query: berapa nomor ijazah saya
+  expected:
+    pipeline_in:
+    - rag_semantic
+    - structured_analytics
+    intent_route_in:
+    - default_rag
+    - analytical_tabular
+    validation_in:
+    - no_grounding_evidence
+    require_source_match: false
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    - tidak
+    - cukup
+    must_not_contain: []
+    allowed_sources_group: all_uploaded_complex
+- id: cp076
+  category: no_evidence
+  query: berapa gaji pertama saya nanti
+  expected:
+    pipeline_in:
+    - rag_semantic
+    - structured_analytics
+    intent_route_in:
+    - default_rag
+    - analytical_tabular
+    validation_in:
+    - no_grounding_evidence
+    require_source_match: false
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    - tidak
+    - cukup
+    must_not_contain: []
+    allowed_sources_group: all_uploaded_complex
+- id: cp077
+  category: no_evidence
+  query: siapa jodoh saya berdasarkan transkrip
+  expected:
+    pipeline_in:
+    - rag_semantic
+    - structured_analytics
+    intent_route_in:
+    - default_rag
+    - analytical_tabular
+    validation_in:
+    - no_grounding_evidence
+    require_source_match: false
+    source_match_mode: any_of
+    must_contain_any:
+    - dokumen
+    - tidak
+    - cukup
+    must_not_contain: []
+    allowed_sources_group: all_uploaded_complex
+- id: cp078
+  category: out_of_domain
+  query: resep ayam kecap pedas
+  expected:
+    pipeline_in:
+    - route_guard
+    intent_route_in:
+    - out_of_domain
+    validation_in:
+    - not_applicable
+    require_source_match: false
+    source_match_mode: any_of
+    must_contain_any:
+    - asisten akademik
+    must_not_contain: []
+    allowed_sources_group: all_uploaded_complex
+- id: cp079
+  category: out_of_domain
+  query: cara jadi dukun sakti
+  expected:
+    pipeline_in:
+    - route_guard
+    intent_route_in:
+    - out_of_domain
+    validation_in:
+    - not_applicable
+    require_source_match: false
+    source_match_mode: any_of
+    must_contain_any:
+    - asisten akademik
+    must_not_contain: []
+    allowed_sources_group: all_uploaded_complex
+- id: cp080
+  category: out_of_domain
+  query: prediksi skor bola malam ini
+  expected:
+    pipeline_in:
+    - route_guard
+    intent_route_in:
+    - out_of_domain
+    validation_in:
+    - not_applicable
+    require_source_match: false
+    source_match_mode: any_of
+    must_contain_any:
+    - asisten akademik
+    must_not_contain: []
+    allowed_sources_group: all_uploaded_complex

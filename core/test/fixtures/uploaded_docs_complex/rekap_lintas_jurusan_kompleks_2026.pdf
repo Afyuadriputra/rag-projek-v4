@@ -1,0 +1,197 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 8 /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 469 >>
+stream
+BT
+/F1 9 Tf
+45 805 Td
+(REKAP LINTAS JURUSAN KOMPLEKS 2026) Tj
+0 -12 Td
+(Layout campuran dan tabel agregat) Tj
+0 -12 Td
+(Columns: Jurusan | Total SKS | Total MK | IPK | D | E | Tidak Lulus) Tj
+0 -12 Td
+(TI | 601 | 200 | 2.46 | 25 | 25 | 50) Tj
+0 -12 Td
+(HUKUM | 601 | 200 | 2.46 | 25 | 25 | 50) Tj
+0 -12 Td
+(EKONOMI | 601 | 200 | 2.46 | 25 | 25 | 50) Tj
+0 -12 Td
+(KEDOKTERAN | 601 | 200 | 2.46 | 25 | 25 | 50) Tj
+0 -12 Td
+(SASTRA | 601 | 200 | 2.46 | 25 | 25 | 50) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 196 >>
+stream
+BT
+/F1 9 Tf
+45 805 Td
+(RANKING IPK) Tj
+0 -12 Td
+(1. TI : 2.46) Tj
+0 -12 Td
+(2. HUKUM : 2.46) Tj
+0 -12 Td
+(3. EKONOMI : 2.46) Tj
+0 -12 Td
+(4. KEDOKTERAN : 2.46) Tj
+0 -12 Td
+(5. SASTRA : 2.46) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 197 >>
+stream
+BT
+/F1 9 Tf
+45 805 Td
+(RANKING TOTAL SKS) Tj
+0 -12 Td
+(1. TI : 601) Tj
+0 -12 Td
+(2. HUKUM : 601) Tj
+0 -12 Td
+(3. EKONOMI : 601) Tj
+0 -12 Td
+(4. KEDOKTERAN : 601) Tj
+0 -12 Td
+(5. SASTRA : 601) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 169 >>
+stream
+BT
+/F1 9 Tf
+45 805 Td
+(SEMESTER TERBERAT LINTAS JURUSAN) Tj
+0 -12 Td
+(jurusan_terberat=TI) Tj
+0 -12 Td
+(semester_terberat=1) Tj
+0 -12 Td
+(sks_semester_terberat=88) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 188 >>
+stream
+BT
+/F1 9 Tf
+45 805 Td
+(APPENDIX PAGE 5) Tj
+0 -12 Td
+(Catatan: dokumen ini dibuat untuk regression test RAG kompleks.) Tj
+0 -12 Td
+(Termasuk variasi format jurusan dan tabel panjang.) Tj
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 188 >>
+stream
+BT
+/F1 9 Tf
+45 805 Td
+(APPENDIX PAGE 6) Tj
+0 -12 Td
+(Catatan: dokumen ini dibuat untuk regression test RAG kompleks.) Tj
+0 -12 Td
+(Termasuk variasi format jurusan dan tabel panjang.) Tj
+ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 14 0 R >>
+endobj
+16 0 obj
+<< /Length 188 >>
+stream
+BT
+/F1 9 Tf
+45 805 Td
+(APPENDIX PAGE 7) Tj
+0 -12 Td
+(Catatan: dokumen ini dibuat untuk regression test RAG kompleks.) Tj
+0 -12 Td
+(Termasuk variasi format jurusan dan tabel panjang.) Tj
+ET
+endstream
+endobj
+17 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 16 0 R >>
+endobj
+18 0 obj
+<< /Length 188 >>
+stream
+BT
+/F1 9 Tf
+45 805 Td
+(APPENDIX PAGE 8) Tj
+0 -12 Td
+(Catatan: dokumen ini dibuat untuk regression test RAG kompleks.) Tj
+0 -12 Td
+(Termasuk variasi format jurusan dan tabel panjang.) Tj
+ET
+endstream
+endobj
+19 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 18 0 R >>
+endobj
+xref
+0 20
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000162 00000 n 
+0000000232 00000 n 
+0000000752 00000 n 
+0000000878 00000 n 
+0000001125 00000 n 
+0000001251 00000 n 
+0000001499 00000 n 
+0000001625 00000 n 
+0000001846 00000 n 
+0000001974 00000 n 
+0000002214 00000 n 
+0000002342 00000 n 
+0000002582 00000 n 
+0000002710 00000 n 
+0000002950 00000 n 
+0000003078 00000 n 
+0000003318 00000 n 
+trailer
+<< /Size 20 /Root 1 0 R >>
+startxref
+3446
+%%EOF

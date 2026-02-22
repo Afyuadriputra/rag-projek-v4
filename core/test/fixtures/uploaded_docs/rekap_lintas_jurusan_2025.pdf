@@ -1,0 +1,50 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 1 /Kids [3 0 R] >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 495 >>
+stream
+BT
+/F1 10 Tf
+50 800 Td
+(Rekap Lintas Jurusan 2025) Tj
+0 -14 Td
+(Perbandingan Teknik Informatika dan Ilmu Hukum) Tj
+0 -14 Td
+(Tabel agregat: Jurusan | Total SKS | Total MK | IPK Rata-rata | D/E) Tj
+0 -14 Td
+(Teknik Informatika | 144 | 56 | 3.42 | 2) Tj
+0 -14 Td
+(Ilmu Hukum | 146 | 58 | 3.18 | 3) Tj
+0 -14 Td
+(Semester terberat TI: Semester 5 \(24 SKS\)) Tj
+0 -14 Td
+(Semester terberat Hukum: Semester 4 \(23 SKS\)) Tj
+0 -14 Td
+(Catatan: Data disusun untuk uji regresi RAG upload document.) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+857
+%%EOF

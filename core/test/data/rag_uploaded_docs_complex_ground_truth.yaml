@@ -1,0 +1,231 @@
+version: 1
+dataset_root: core/test/fixtures/uploaded_docs_complex
+facts:
+  ti_rekap:
+    source: khs_ti_mahasiswa_c_200x8.pdf
+    total_sks: 601
+    total_matkul: 200
+    ipk: 2.46
+    count_nilai_d: 25
+    count_nilai_e: 25
+    count_tidak_lulus: 50
+    semester_stats:
+      semester_1:
+        sks: 88
+        matkul: 29
+      semester_2:
+        sks: 87
+        matkul: 29
+      semester_3:
+        sks: 86
+        matkul: 29
+      semester_4:
+        sks: 88
+        matkul: 29
+      semester_5:
+        sks: 85
+        matkul: 28
+      semester_6:
+        sks: 83
+        matkul: 28
+      semester_7:
+        sks: 84
+        matkul: 28
+    top_3_matkul_tertinggi:
+    - Teknik Informatika Course 014
+    - Teknik Informatika Course 038
+    - Teknik Informatika Course 062
+    top_3_matkul_terendah:
+    - Teknik Informatika Course 021
+    - Teknik Informatika Course 045
+    - Teknik Informatika Course 069
+  hukum_rekap:
+    source: khs_hukum_mahasiswa_d_200x8.pdf
+    total_sks: 601
+    total_matkul: 200
+    ipk: 2.46
+    count_nilai_d: 25
+    count_nilai_e: 25
+    count_tidak_lulus: 50
+    semester_stats:
+      semester_1:
+        sks: 88
+        matkul: 29
+      semester_2:
+        sks: 87
+        matkul: 29
+      semester_3:
+        sks: 86
+        matkul: 29
+      semester_4:
+        sks: 88
+        matkul: 29
+      semester_5:
+        sks: 85
+        matkul: 28
+      semester_6:
+        sks: 83
+        matkul: 28
+      semester_7:
+        sks: 84
+        matkul: 28
+    top_3_matkul_tertinggi:
+    - Ilmu Hukum Course 011
+    - Ilmu Hukum Course 035
+    - Ilmu Hukum Course 059
+    top_3_matkul_terendah:
+    - Ilmu Hukum Course 018
+    - Ilmu Hukum Course 042
+    - Ilmu Hukum Course 066
+  ekonomi_rekap:
+    source: khs_ekonomi_mahasiswa_e_200x8.pdf
+    total_sks: 601
+    total_matkul: 200
+    ipk: 2.46
+    count_nilai_d: 25
+    count_nilai_e: 25
+    count_tidak_lulus: 50
+    semester_stats:
+      semester_1:
+        sks: 88
+        matkul: 29
+      semester_2:
+        sks: 87
+        matkul: 29
+      semester_3:
+        sks: 86
+        matkul: 29
+      semester_4:
+        sks: 88
+        matkul: 29
+      semester_5:
+        sks: 85
+        matkul: 28
+      semester_6:
+        sks: 83
+        matkul: 28
+      semester_7:
+        sks: 84
+        matkul: 28
+    top_3_matkul_tertinggi:
+    - Ekonomi Course 017
+    - Ekonomi Course 041
+    - Ekonomi Course 065
+    top_3_matkul_terendah:
+    - Ekonomi Course 024
+    - Ekonomi Course 048
+    - Ekonomi Course 072
+  kedokteran_rekap:
+    source: khs_kedokteran_mahasiswa_f_200x8.pdf
+    total_sks: 601
+    total_matkul: 200
+    ipk: 2.46
+    count_nilai_d: 25
+    count_nilai_e: 25
+    count_tidak_lulus: 50
+    semester_stats:
+      semester_1:
+        sks: 88
+        matkul: 29
+      semester_2:
+        sks: 87
+        matkul: 29
+      semester_3:
+        sks: 86
+        matkul: 29
+      semester_4:
+        sks: 88
+        matkul: 29
+      semester_5:
+        sks: 85
+        matkul: 28
+      semester_6:
+        sks: 83
+        matkul: 28
+      semester_7:
+        sks: 84
+        matkul: 28
+    top_3_matkul_tertinggi:
+    - Kedokteran Course 014
+    - Kedokteran Course 038
+    - Kedokteran Course 062
+    top_3_matkul_terendah:
+    - Kedokteran Course 021
+    - Kedokteran Course 045
+    - Kedokteran Course 069
+  sastra_rekap:
+    source: khs_sastra_mahasiswa_g_200x8.pdf
+    total_sks: 601
+    total_matkul: 200
+    ipk: 2.46
+    count_nilai_d: 25
+    count_nilai_e: 25
+    count_tidak_lulus: 50
+    semester_stats:
+      semester_1:
+        sks: 88
+        matkul: 29
+      semester_2:
+        sks: 87
+        matkul: 29
+      semester_3:
+        sks: 86
+        matkul: 29
+      semester_4:
+        sks: 88
+        matkul: 29
+      semester_5:
+        sks: 85
+        matkul: 28
+      semester_6:
+        sks: 83
+        matkul: 28
+      semester_7:
+        sks: 84
+        matkul: 28
+    top_3_matkul_tertinggi:
+    - Sastra Course 002
+    - Sastra Course 026
+    - Sastra Course 050
+    top_3_matkul_terendah:
+    - Sastra Course 009
+    - Sastra Course 033
+    - Sastra Course 057
+  lintas_jurusan_kompleks_2026:
+    source: rekap_lintas_jurusan_kompleks_2026.pdf
+    ranking_ipk:
+    - ti
+    - hukum
+    - ekonomi
+    - kedokteran
+    - sastra
+    ranking_total_sks:
+    - ti
+    - hukum
+    - ekonomi
+    - kedokteran
+    - sastra
+    jurusan_terberat: ti
+    semester_terberat: 1
+    sks_semester_terberat: 88
+    distribusi_grade:
+      ti:
+        d: 25
+        e: 25
+        tidak_lulus: 50
+      hukum:
+        d: 25
+        e: 25
+        tidak_lulus: 50
+      ekonomi:
+        d: 25
+        e: 25
+        tidak_lulus: 50
+      kedokteran:
+        d: 25
+        e: 25
+        tidak_lulus: 50
+      sastra:
+        d: 25
+        e: 25
+        tidak_lulus: 50

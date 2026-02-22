@@ -1,0 +1,246 @@
+version: 1
+dataset_root: core/test/fixtures/uploaded_docs
+source_groups:
+  khs_ti_a:
+    - khs_ti_mahasiswa_a.pdf
+  khs_hukum_b:
+    - khs_hukum_mahasiswa_b.pdf
+  lintas_jurusan:
+    - rekap_lintas_jurusan_2025.pdf
+  all_uploaded_docs:
+    - khs_ti_mahasiswa_a.pdf
+    - khs_hukum_mahasiswa_b.pdf
+    - rekap_lintas_jurusan_2025.pdf
+queries:
+  - id: uq001
+    query: "rekap semua matkul tidak lulus semester 1 sampai 7"
+    pipeline_in: [structured_analytics, rag_semantic]
+    intent_route_in: [analytical_tabular, default_rag]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_ti_a
+    source_match_mode: any_of
+    must_contain_any: ["tidak lulus", "semester", "mata kuliah"]
+    must_not_contain: ["resep"]
+    expected_numbers: [ti_rekap.count_tidak_lulus]
+  - id: uq002
+    query: "total sks saya dari semester 1 sampai 7 berapa"
+    pipeline_in: [structured_analytics, rag_semantic]
+    intent_route_in: [analytical_tabular, default_rag]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_ti_a
+    source_match_mode: any_of
+    must_contain_any: ["total", "sks"]
+    must_not_contain: []
+    expected_numbers: [ti_rekap.total_sks]
+  - id: uq003
+    query: "ipk saya berdasarkan khs teknik informatika"
+    pipeline_in: [structured_analytics, rag_semantic]
+    intent_route_in: [analytical_tabular, default_rag]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_ti_a
+    source_match_mode: any_of
+    must_contain_any: ["ipk", "teknik informatika"]
+    must_not_contain: []
+    expected_numbers: [ti_rekap.ipk]
+  - id: uq004
+    query: "jumlah mata kuliah saya berapa pada khs ti"
+    pipeline_in: [structured_analytics, rag_semantic]
+    intent_route_in: [analytical_tabular, default_rag]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_ti_a
+    source_match_mode: any_of
+    must_contain_any: ["mata kuliah", "jumlah"]
+    must_not_contain: []
+    expected_numbers: [ti_rekap.total_matkul]
+  - id: uq005
+    query: "khs hukum total sks nya berapa"
+    pipeline_in: [rag_semantic, structured_analytics]
+    intent_route_in: [default_rag, analytical_tabular]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_hukum_b
+    source_match_mode: any_of
+    must_contain_any: ["hukum", "sks"]
+    must_not_contain: []
+    expected_numbers: [hukum_rekap.total_sks]
+  - id: uq006
+    query: "khs hukum ipk saya berapa"
+    pipeline_in: [rag_semantic, structured_analytics]
+    intent_route_in: [default_rag, analytical_tabular]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_hukum_b
+    source_match_mode: any_of
+    must_contain_any: ["ipk", "hukum"]
+    must_not_contain: []
+    expected_numbers: [hukum_rekap.ipk]
+  - id: uq007
+    query: "nilai d atau e di hukum ada berapa"
+    pipeline_in: [rag_semantic, structured_analytics]
+    intent_route_in: [default_rag, analytical_tabular]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_hukum_b
+    source_match_mode: any_of
+    must_contain_any: ["nilai", "d", "e"]
+    must_not_contain: []
+    expected_numbers: [hukum_rekap.count_tidak_lulus]
+  - id: uq008
+    query: "bandingkan total sks teknik informatika dan ilmu hukum"
+    pipeline_in: [rag_semantic]
+    intent_route_in: [default_rag]
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources_group: lintas_jurusan
+    source_match_mode: any_of
+    must_contain_any: ["teknik informatika", "ilmu hukum", "sks"]
+    must_not_contain: []
+    expected_numbers: [lintas_jurusan_2025.ti_total_sks, lintas_jurusan_2025.hukum_total_sks]
+  - id: uq009
+    query: "mana ipk yang lebih tinggi antara ti dan hukum"
+    pipeline_in: [rag_semantic]
+    intent_route_in: [default_rag]
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources_group: lintas_jurusan
+    source_match_mode: any_of
+    must_contain_any: ["ipk", "ti", "hukum"]
+    must_not_contain: []
+    expected_numbers: [lintas_jurusan_2025.ti_ipk, lintas_jurusan_2025.hukum_ipk]
+  - id: uq010
+    query: "semester terberat teknik informatika ada di semester berapa"
+    pipeline_in: [rag_semantic]
+    intent_route_in: [default_rag]
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources_group: lintas_jurusan
+    source_match_mode: any_of
+    must_contain_any: ["semester", "terberat", "teknik informatika"]
+    must_not_contain: []
+    expected_numbers: [ti_rekap.semester_terberat, ti_rekap.semester_terberat_sks]
+  - id: uq011
+    query: "semester terberat ilmu hukum ada di semester berapa"
+    pipeline_in: [rag_semantic]
+    intent_route_in: [default_rag]
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources_group: lintas_jurusan
+    source_match_mode: any_of
+    must_contain_any: ["semester", "terberat", "ilmu hukum"]
+    must_not_contain: []
+    expected_numbers: [hukum_rekap.semester_terberat, hukum_rekap.semester_terberat_sks]
+  - id: uq012
+    query: "@khs_ti_mahasiswa_a.pdf rangkum nilai saya"
+    pipeline_in: [structured_analytics, rag_semantic]
+    intent_route_in: [analytical_tabular, default_rag]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_ti_a
+    source_match_mode: any_of
+    must_contain_any: ["nilai", "teknik informatika"]
+    must_not_contain: []
+  - id: uq013
+    query: "@khs_hukum_mahasiswa_b.pdf ringkasan hasil studi"
+    pipeline_in: [rag_semantic, structured_analytics]
+    intent_route_in: [default_rag, analytical_tabular]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_hukum_b
+    source_match_mode: any_of
+    must_contain_any: ["hasil studi", "hukum"]
+    must_not_contain: []
+  - id: uq014
+    query: "@rekap_lintas_jurusan_2025.pdf bandingkan beban studi"
+    pipeline_in: [rag_semantic]
+    intent_route_in: [default_rag]
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources_group: lintas_jurusan
+    source_match_mode: any_of
+    must_contain_any: ["beban", "ti", "hukum"]
+    must_not_contain: []
+  - id: uq015
+    query: "rekp nilia yg ga luls smua smstr"
+    pipeline_in: [structured_analytics, rag_semantic]
+    intent_route_in: [analytical_tabular, default_rag]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, no_grounding_evidence, not_applicable]
+    allowed_sources_group: khs_ti_a
+    source_match_mode: any_of
+    must_contain_any: ["nilai", "semester"]
+    must_not_contain: ["politik"]
+  - id: uq016
+    query: "pls summarize my TI transcript with failed courses"
+    pipeline_in: [structured_analytics, rag_semantic]
+    intent_route_in: [analytical_tabular, default_rag]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_ti_a
+    source_match_mode: any_of
+    must_contain_any: ["transcript", "failed", "courses"]
+    must_not_contain: []
+  - id: uq017
+    query: "berapa nomor ijazah saya"
+    pipeline_in: [rag_semantic, structured_analytics]
+    intent_route_in: [default_rag, analytical_tabular]
+    expected_validation_in: [no_grounding_evidence]
+    allowed_sources_group: all_uploaded_docs
+    source_match_mode: any_of
+    require_source_match: false
+    must_contain_any: ["dokumen", "tidak", "cukup"]
+    must_not_contain: []
+  - id: uq018
+    query: "nilai saya di mata kuliah blockchain advanced berapa"
+    pipeline_in: [rag_semantic, structured_analytics]
+    intent_route_in: [default_rag, analytical_tabular]
+    expected_validation_in: [no_grounding_evidence]
+    allowed_sources_group: all_uploaded_docs
+    source_match_mode: any_of
+    require_source_match: false
+    must_contain_any: ["dokumen", "tidak", "ditemukan"]
+    must_not_contain: []
+  - id: uq019
+    query: "resep ayam kecap"
+    pipeline_in: [route_guard]
+    intent_route_in: [out_of_domain]
+    expected_validation_in: [not_applicable]
+    allowed_sources_group: all_uploaded_docs
+    source_match_mode: any_of
+    require_source_match: false
+    must_contain_any: ["asisten akademik"]
+    must_not_contain: []
+  - id: uq020
+    query: "cara jadi dukun sakti"
+    pipeline_in: [route_guard]
+    intent_route_in: [out_of_domain]
+    expected_validation_in: [not_applicable]
+    allowed_sources_group: all_uploaded_docs
+    source_match_mode: any_of
+    require_source_match: false
+    must_contain_any: ["asisten akademik"]
+    must_not_contain: []
+  - id: uq021
+    query: "apakah hasil studi teknik informatika saya sudah bagus"
+    pipeline_in: [structured_analytics, rag_semantic]
+    intent_route_in: [analytical_tabular, default_rag]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_ti_a
+    source_match_mode: any_of
+    must_contain_any: ["hasil studi", "nilai"]
+    must_not_contain: []
+  - id: uq022
+    query: "apakah beban studi hukum lebih berat dari teknik informatika"
+    pipeline_in: [rag_semantic]
+    intent_route_in: [default_rag]
+    expected_validation_in: [not_applicable, passed]
+    allowed_sources_group: lintas_jurusan
+    source_match_mode: any_of
+    must_contain_any: ["hukum", "teknik informatika", "sks"]
+    must_not_contain: []
+    expected_numbers: [lintas_jurusan_2025.ti_total_sks, lintas_jurusan_2025.hukum_total_sks]
+  - id: uq023
+    query: "tampilkan daftar nilai c ke bawah di ti"
+    pipeline_in: [structured_analytics, rag_semantic]
+    intent_route_in: [analytical_tabular, default_rag]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_ti_a
+    source_match_mode: any_of
+    must_contain_any: ["nilai", "c", "mata kuliah"]
+    must_not_contain: []
+  - id: uq024
+    query: "urutkan hasil studi hukum per semester"
+    pipeline_in: [rag_semantic, structured_analytics]
+    intent_route_in: [default_rag, analytical_tabular]
+    expected_validation_in: [passed, skipped_strict, strict_no_fallback, not_applicable]
+    allowed_sources_group: khs_hukum_b
+    source_match_mode: any_of
+    must_contain_any: ["semester", "hukum", "nilai"]
+    must_not_contain: []
