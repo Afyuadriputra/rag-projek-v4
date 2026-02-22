@@ -118,6 +118,10 @@ def record_rag_metric(
     fallback_used: bool,
     source_count: int,
     status_code: int,
+    pipeline: str = "",
+    intent_route: str = "",
+    validation: str = "",
+    answer_mode: str = "",
 ) -> None:
     # write path dibuat ringan dan fail-safe supaya tidak mengganggu request utama
     try:
@@ -138,6 +142,10 @@ def record_rag_metric(
             llm_time_ms=max(int(llm_time_ms or 0), 0),
             fallback_used=bool(fallback_used),
             source_count=max(int(source_count or 0), 0),
+            pipeline=(pipeline or "")[:64],
+            intent_route=(intent_route or "")[:64],
+            validation=(validation or "")[:64],
+            answer_mode=(answer_mode or "")[:32],
             status_code=max(int(status_code or 0), 0),
         )
     except Exception:

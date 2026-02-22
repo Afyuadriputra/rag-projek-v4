@@ -307,6 +307,10 @@ class RagRequestMetric(models.Model):
     llm_time_ms = models.PositiveIntegerField(default=0)
     fallback_used = models.BooleanField(default=False)
     source_count = models.PositiveIntegerField(default=0)
+    pipeline = models.CharField(max_length=64, blank=True, default="")
+    intent_route = models.CharField(max_length=64, blank=True, default="")
+    validation = models.CharField(max_length=64, blank=True, default="")
+    answer_mode = models.CharField(max_length=32, blank=True, default="")
     status_code = models.PositiveIntegerField(default=200)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -316,6 +320,10 @@ class RagRequestMetric(models.Model):
             models.Index(fields=["created_at"]),
             models.Index(fields=["status_code", "created_at"]),
             models.Index(fields=["fallback_used", "created_at"]),
+            models.Index(fields=["pipeline", "created_at"]),
+            models.Index(fields=["validation", "created_at"]),
+            models.Index(fields=["intent_route", "created_at"]),
+            models.Index(fields=["answer_mode", "created_at"]),
         ]
 
     def __str__(self):

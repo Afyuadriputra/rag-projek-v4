@@ -1,3 +1,4 @@
+import re
 from typing import List
 
 
@@ -33,3 +34,22 @@ def has_interactive_sections(answer: str) -> bool:
 def looks_like_markdown_table(answer: str) -> bool:
     a = (answer or "")
     return ("|" in a) and ("---" in a)
+
+
+def polish_answer_text_light(answer: str) -> str:
+    text = str(answer or "").strip()
+    if not text:
+        return text
+
+    typo_map = {
+        "kiatar": "maksud",
+        "prosfek": "prospek",
+        "karir": "karier",
+        "di karenakan": "dikarenakan",
+    }
+    for wrong, right in typo_map.items():
+        text = re.sub(rf"\b{re.escape(wrong)}\b", right, text, flags=re.IGNORECASE)
+
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()

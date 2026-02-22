@@ -1,0 +1,90 @@
+[32mINFO[0m|[37m18:04:33[0m|[36maxes.apps[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mapps.py:53[0m|AXES: BEGIN version 8.1.0, blocking by username or ip_address
+[0m
+Creating test database for alias 'default'...
+.[32mINFO[0m|[37m18:04:51[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:288[0m|AXES: Successful login by {username: "u_api", ip_address: "None", user_agent: "<unknown>", path_info: "<unknown>"}.
+[0m
+[32mINFO[0m|[37m18:04:51[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:412[0m|AXES: Cleaned up 0 expired access attempts from database that were older than 2026-02-22 11:01:51.582267+00:00
+[0m
+[32mINFO[0m|[37m18:04:51[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:432[0m|AXES: Reset 0 access attempts from database.
+[0m
+[32mINFO[0m|[37m18:04:51[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:310[0m|AXES: Deleted 0 failed login attempts by {username: "u_api", ip_address: "None", user_agent: "<unknown>", path_info: "<unknown>"} from database.
+[0m
+[32mINFO[0m|[37m18:04:52[0m|[36mcore.views[0m|[37mrid=9e0b7aaa50[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mviews.py:639[0m| [CHAT REQUEST] user=u_api(id=1) ip=127.0.0.1 mode=chat q='halo'
+[0m
+[32mINFO[0m|[37m18:04:52[0m|[36mcore.views[0m|[37mrid=9e0b7aaa50[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mviews.py:674[0m| [CHAT RESPONSE] user=u_api(id=1) ip=127.0.0.1 mode=chat len=11 sources=0
+[0m
+[32mINFO[0m|[37m18:04:52[0m|[34mPOST[0m|[37m/api/chat/[0m|[1;32m200[0m|[33m594ms[0m|[37muser=u_api[0m|[37mip=127.0.0.1[0m|[37mrid=9e0b7aaa50[0m|[37mua=-[0m|[37mrc=-[0m
+[0m
+..[32mINFO[0m|[37m18:04:53[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:288[0m|AXES: Successful login by {username: "svc_facade_u", ip_address: "None", user_agent: "<unknown>", path_info: "<unknown>"}.
+[0m
+[32mINFO[0m|[37m18:04:53[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:412[0m|AXES: Cleaned up 0 expired access attempts from database that were older than 2026-02-22 11:01:53.413982+00:00
+[0m
+[32mINFO[0m|[37m18:04:53[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:432[0m|AXES: Reset 0 access attempts from database.
+[0m
+[32mINFO[0m|[37m18:04:53[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:310[0m|AXES: Deleted 0 failed login attempts by {username: "svc_facade_u", ip_address: "None", user_agent: "<unknown>", path_info: "<unknown>"} from database.
+[0m
+[32mINFO[0m|[37m18:04:53[0m|[36mcore.views[0m|[37mrid=c20d450c53[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mviews.py:724[0m| [PLANNER V3 START] user=svc_facade_u(id=1) ip=127.0.0.1 status=error docs=0 est_total=-
+[0m
+[32mINFO[0m|[37m18:04:53[0m|[34mPOST[0m|[37m/api/planner/start/[0m|[1;33m400[0m|[33m5ms[0m|[37muser=svc_facade_u[0m|[37mip=127.0.0.1[0m|[37mrid=c20d450c53[0m|[37mua=-[0m|[37mrc=-[0m
+[0m
+.[32mINFO[0m|[37m18:04:54[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:288[0m|AXES: Successful login by {username: "svc_facade_u", ip_address: "None", user_agent: "<unknown>", path_info: "<unknown>"}.
+[0m
+[32mINFO[0m|[37m18:04:54[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:412[0m|AXES: Cleaned up 0 expired access attempts from database that were older than 2026-02-22 11:01:54.035222+00:00
+[0m
+[32mINFO[0m|[37m18:04:54[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:432[0m|AXES: Reset 0 access attempts from database.
+[0m
+[32mINFO[0m|[37m18:04:54[0m|[36maxes.handlers.database[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mdatabase.py:310[0m|AXES: Deleted 0 failed login attempts by {username: "svc_facade_u", ip_address: "None", user_agent: "<unknown>", path_info: "<unknown>"} from database.
+[0m
+[32mINFO[0m|[37m18:04:54[0m|[36msentence_transformers.SentenceTransformer[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mSentenceTransformer.py:219[0m|Use pytorch device_name: cpu
+[0m
+[32mINFO[0m|[37m18:04:54[0m|[36msentence_transformers.SentenceTransformer[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mSentenceTransformer.py:227[0m|Load pretrained SentenceTransformer: intfloat/multilingual-e5-large
+[0m
+[32mINFO[0m|[37m18:05:01[0m|[36mcore.ai_engine.config[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mconfig.py:76[0m|RAG embedding loaded model=intfloat/multilingual-e5-large normalize=True
+[0m
+[32mINFO[0m|[37m18:05:12[0m|[36mcore.services.planner.service[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mservice.py:931[0m|planner_start_v3_ms=18657
+[0m
+[32mINFO[0m|[37m18:05:12[0m|[36mcore.views[0m|[37mrid=341f61ff4d[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mviews.py:724[0m| [PLANNER V3 START] user=svc_facade_u(id=1) ip=127.0.0.1 status=success docs=1 est_total=4
+[0m
+[32mINFO[0m|[37m18:05:12[0m|[34mPOST[0m|[37m/api/planner/start/[0m|[1;32m200[0m|[33m18665ms[0m|[37muser=svc_facade_u[0m|[37mip=127.0.0.1[0m|[37mrid=341f61ff4d[0m|[37mua=-[0m|[37mrc=-[0m
+[0m
+[32mINFO[0m|[37m18:05:12[0m|[36mcore.services.planner.service[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mservice.py:1034[0m|planner_next_step_v3_ms=4
+[0m
+[32mINFO[0m|[37m18:05:12[0m|[36mcore.views[0m|[37mrid=14ee7162fa[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mviews.py:840[0m| [PLANNER V3 NEXT] user=svc_facade_u(id=1) ip=127.0.0.1 status=success run=31b7bda1-f917-48db-aa3e-8c783dd70603 seq=1 est_total=4 major_source=inferred
+[0m
+[32mINFO[0m|[37m18:05:12[0m|[34mPOST[0m|[37m/api/planner/next-step/[0m|[1;32m200[0m|[33m13ms[0m|[37muser=svc_facade_u[0m|[37mip=127.0.0.1[0m|[37mrid=14ee7162fa[0m|[37mua=-[0m|[37mrc=-[0m
+[0m
+........[32mINFO[0m|[37m18:05:17[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=sf-6[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=doc_background dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0 has_docs=True docs_used=False q='berapa nilai saya?'
+[0m
+.[32mINFO[0m|[37m18:05:17[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=sf-2[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=doc_background dense_hits=1 bm25_hits=0 final_docs=1 top_score=0.9000 retrieval_ms=0 rerank_ms=0 has_docs=True docs_used=True q='apa syarat lulus skripsi?'
+[0m
+...[32mINFO[0m|[37m18:05:17[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=t5[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=doc_background dense_hits=1 bm25_hits=0 final_docs=1 top_score=0.2000 retrieval_ms=0 rerank_ms=0 has_docs=True docs_used=True q='jadwal senin'
+[0m
+..[32mINFO[0m|[37m18:05:17[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=t11[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=doc_referenced dense_hits=1 bm25_hits=0 final_docs=1 top_score=0.9000 retrieval_ms=0 rerank_ms=0 has_docs=True docs_used=True q='jadwal senin?'
+[0m
+.[32mINFO[0m|[37m18:05:17[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=t13[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=doc_background dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0 has_docs=True docs_used=False q='jurusan HRD?'
+[0m
+.....[32mINFO[0m|[37m18:05:20[0m|[36msentence_transformers.cross_encoder.CrossEncoder[0m|[37mrid=-[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mCrossEncoder.py:228[0m|Use pytorch device: cpu
+[0m
+Found 69 test(s).
+System check identified no issues (0 silenced).
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:02<00:00,  2.07s/it]Batches: 100%|##########| 1/1 [00:02<00:00,  2.07s/it]
+[32mINFO[0m|[37m18:05:23[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=t2[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=doc_background dense_hits=2 bm25_hits=2 final_docs=2 top_score=0.9000 retrieval_ms=5938 rerank_ms=5938 has_docs=True docs_used=True q='jadwal semester 3'
+[0m
+..[32mINFO[0m|[37m18:05:23[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=t10[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=llm_only dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0 has_docs=False docs_used=False q='apa itu sks?'
+[0m
+.[32mINFO[0m|[37m18:05:23[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=t4c[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=llm_only dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0 has_docs=False docs_used=False q='jurusan apa yang cocok jadi HRD?'
+[0m
+.[32mINFO[0m|[37m18:05:23[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=t4[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=llm_only dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0 has_docs=False docs_used=False q='jadwal hari senin jam 07.00'
+[0m
+.[32mINFO[0m|[37m18:05:23[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=t4b[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=llm_only dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0 has_docs=False docs_used=False q='ipk saya 2.8, aman gak?'
+[0m
+.[32mINFO[0m|[37m18:05:23[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=t3[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=doc_background dense_hits=2 bm25_hits=2 final_docs=2 top_score=0.0328 retrieval_ms=8 rerank_ms=0 has_docs=True docs_used=True q='jadwal kelas'
+[0m
+......[32mINFO[0m|[37m18:05:23[0m|[36mcore.ai_engine.retrieval.main_legacy[0m|[37mrid=rm-3[0m|[34m-[0m|[37m-[0m|-[0m|[33m-ms[0m|[37muser=-[0m|[37mip=-[0m|[37mua=-[0m|[37mrc=-[0m|[35mmain_legacy.py:550[0m| RAG retrieval done mode=doc_background dense_hits=0 bm25_hits=0 final_docs=0 top_score=0.0000 retrieval_ms=0 rerank_ms=0 has_docs=True docs_used=False q='brp nilai saya?'
+[0m
+.................................
+----------------------------------------------------------------------
+Ran 69 tests in 35.403s
+
+OK
+Destroying test database for alias 'default'...

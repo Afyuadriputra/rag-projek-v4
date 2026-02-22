@@ -165,8 +165,9 @@ class RagRetrievalFlowTests(SimpleTestCase):
         chain_mock.return_value = fake_chain
 
         out = ask_bot(user_id=1, query="ipk saya 2.8, aman gak?", request_id="t4b")
-        self.assertIn("Dari sisi strategi", out.get("answer", ""))
-        self.assertIn("Aku masih butuh data dokumenmu", out.get("answer", ""))
+        self.assertEqual(out.get("meta", {}).get("validation"), "no_grounding_evidence")
+        self.assertIn("belum menemukan data dokumen", out.get("answer", "").lower())
+        chain_mock.assert_not_called()
 
     @patch("core.ai_engine.retrieval.main.create_stuff_documents_chain")
     @patch("core.ai_engine.retrieval.main.build_llm")

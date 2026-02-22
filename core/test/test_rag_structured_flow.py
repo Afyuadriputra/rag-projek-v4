@@ -141,3 +141,54 @@ class RagStructuredFlowTests(SimpleTestCase):
         self.assertEqual(out.get("answer"), "jawaban rapi tervalidasi")
         polish_mock.assert_called_once()
         dense_mock.assert_not_called()
+
+    @patch("core.ai_engine.retrieval.main.create_stuff_documents_chain")
+    @patch("core.ai_engine.retrieval.main._has_user_documents")
+    @patch("core.ai_engine.retrieval.main.retrieve_dense")
+    @patch("core.ai_engine.retrieval.main.get_vectorstore")
+    @patch("core.ai_engine.retrieval.main.get_runtime_openrouter_config")
+    def test_personal_doc_query_without_evidence_returns_no_grounding(
+        self,
+        cfg_mock,
+        _vs_mock,
+        dense_mock,
+        has_docs_mock,
+        chain_mock,
+    ):
+        has_docs_mock.return_value = True
+        cfg_mock.return_value = {"api_key": "key", "model": "m", "backup_models": ["m"]}
+        dense_mock.return_value = []
+        out = ask_bot(user_id=1, query="berapa nilai saya?", request_id="sf-6")
+        self.assertEqual(out.get("meta", {}).get("validation"), "no_grounding_evidence")
+        self.assertIn("belum menemukan data dokumen", out.get("answer", "").lower())
+        chain_mock.assert_not_called()
+
+    @patch("core.ai_engine.retrieval.main.polish_structured_answer")
+    @patch("core.ai_engine.retrieval.main.run_structured_analytics")
+    @patch("core.ai_engine.retrieval.main._has_user_documents")
+    @patch("core.ai_engine.retrieval.main.retrieve_dense")
+    @patch("core.ai_engine.retrieval.main.get_runtime_openrouter_config")
+    def test_evaluative_transcript_query_uses_evaluative_polish_mode(
+        self,
+        cfg_mock,
+        dense_mock,
+        has_docs_mock,
+        structured_mock,
+        polish_mock,
+    ):
+        has_docs_mock.return_value = True
+        cfg_mock.return_value = {"api_key": "key", "model": "m", "backup_models": ["m"]}
+        structured_mock.return_value = {
+            "ok": True,
+            "doc_type": "transcript",
+            "answer": "deterministic answer",
+            "sources": [{"source": "khs.pdf", "snippet": "x"}],
+            "facts": [{"semester": 3, "mata_kuliah": "Algoritma", "sks": 3, "nilai_huruf": "B"}],
+            "stats": {"raw": 2, "deduped": 1, "returned": 1, "latency_ms": 5},
+        }
+        polish_mock.return_value = {"answer": "jawaban evaluatif tervalidasi", "validation": "passed"}
+        out = ask_bot(user_id=1, query="bagaimana progres hasil studi saya?", request_id="sf-7")
+        self.assertEqual(out.get("meta", {}).get("answer_mode"), "evaluative")
+        self.assertEqual(out.get("answer"), "jawaban evaluatif tervalidasi")
+        self.assertEqual(polish_mock.call_args.kwargs.get("style_hint"), "evaluative")
+        dense_mock.assert_not_called()
